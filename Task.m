@@ -1,39 +1,32 @@
 classdef Task < handle
+%{
+This class specifies task-specific instance variables for the simulation of state dependent contrast differences and action dependent rewards. 
+The methods of this call generate a trial's state, contrast differences, and rewards. 
+%}
     properties
-        T = taskvars.T
-        Theta = taskvars.Theta
-        kappa = taskvars.kappa
-        mu = taskvars.mu
-        experiment = taskvars.experiment
+        T = taskvars.T % number of trials in a block
+        Theta = taskvars.Theta % parameter for state generation
+        kappa = taskvars.kappa % 
+        mu = taskvars.mu % contingency parameter
         C   % range of discrete contrast differences
-        p_cs
+        p_cs  % initialize vector for p(c_t|s_t)
         p_ras = NaN(2, 2)  % initialize vector for p^(a_t)(r_t|s, \mu)
         s_t = NaN(1)
         c_t = NaN(1)
         r_t = NaN(1)
-        condition = taskvars.condition
+        condition = taskvars.condition % experimental condition i.e. 1 = HH...4 = LL
         min = taskvars.min
+        kappa_min = taskvars.kappa_min
+        kappa_max = taskvars.kappa_max
         s_index = NaN(1) % s_index instead of s_t
         a_index = NaN(1) % a_index instead of a_t
     end
     methods
         function obj=Task
-            if obj.condition == 1 || obj.condition == 2 % condition dependent absolute maximum contrast levels 
-                obj.kappa = 0.08;
-            else
-                obj.kappa = 0.38;
-            end
-            if obj.condition == 1 || obj.condition == 2 % condition dependent contrast level range
-                obj.C = linspace(-obj.kappa,obj.kappa,20);
-            else
-                obj.C = [linspace(-obj.kappa,-obj.min,10),linspace(obj.min,obj.kappa,10)];
-            end
-            if obj.condition == 1 || obj.condition == 3 % condition dependent reward contingency parameter
-                obj.mu = 0.6;
-            else
-                obj.mu = 0.9;
-            end
-            obj.p_cs = NaN(length(obj.C), 2);  % initialize vector for p(c_t|s_t)
+        %{
+        This function changes the value of p_cs, p_ras depending on the contrast level range and reward contingency parameter.
+        %}
+            obj.p_cs = NaN(length(obj.C), 2); 
             obj.p_cs(:, 1) = (obj.C < 0) / sum(obj.C < 0);  % p(c_t|s_t = 0)
             obj.p_cs(:, 2) = (obj.C >= 0) / sum(obj.C >= 0);  % p(c_t|s_t = 1)    
             obj.p_ras(1, 2) = 1 - obj.mu;  % p^(a_t = 0)(r_t = 1|s = 1, 1-\mu)
@@ -42,10 +35,16 @@ classdef Task < handle
             obj.p_ras(2, 2) = obj.mu;
         end
         function state_sample(obj)
+        %{
+        state_sample samples the trial's state randomly from a binomial distribution.
+        %}
             obj.s_t = binornd(1, obj.Theta)      
             obj.s_index = obj.s_t + 1 % s_index because s_t can't be used for indexing in MATLAB
         end
         function contrast_sample(obj)
+        %{
+        contrast_sample samples the trial's state dependent contrast difference level.
+        %}
             obj.state_sample()
             if obj.experiment == 1 || obj.experiment == 3
                 p_cs_giv_s = obj.p_cs(:, obj.s_index)  % contrast differences conditional on state
@@ -62,6 +61,9 @@ classdef Task < handle
         end
         
         function reward_sample(obj)
+        %{
+        reward_sample samples the trial's action dependent reward for that trial.
+        %}
             obj.random_action()
             obj.a_index = obj.a_t + 1 % a_index because a_t can't be used for indexing in MATLAB
             obj.contrast_sample()
