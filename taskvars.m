@@ -13,8 +13,9 @@ This class specifies task-specific instance variables for the simulation of stat
         min = 0.3 % absolute minimum contrast level for low PU conditions
         kappa_min 
         kappa_max
+        C   % range of discrete contrast differences
     end
-    method 
+    methods
         function obj = taskvars
         %{
         This function sets kappa_min and kappa_max contingent on the experimental condition.
@@ -28,11 +29,16 @@ This class specifies task-specific instance variables for the simulation of stat
                 obj.kappa_min = 0.30;
                 obj.kappa_max = 0.38;
             end
-            obj.C = linspace(-obj.kappa_max,obj.kappa,20); % change it from the OG MATLAB file
+            if obj.condition == 1 || obj.condition == 2 % condition dependent contrast level range
+                obj.C = linspace(obj.kappa_min,obj.kappa_max,20);
+            else
+                obj.C = [linspace(-obj.kappa_max,-obj.kappa_min,10),linspace(obj.kappa_min,obj.kappa_max,10)];
+            end
             if obj.condition == 1 || obj.condition == 3 % condition dependent reward contingency parameter
                 obj.mu = 0.6;
             else
                 obj.mu = 0.9;
             end
+        end
     end
 end
