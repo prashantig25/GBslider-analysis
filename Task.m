@@ -72,7 +72,7 @@ The methods of this call generate a trial's state, contrast differences, and rew
     end
 end
 
-%%
+
 %Questions
 % Can we convert state 0,1, to 1,2, because 0 indexing does not work in
 % MATLAB or can we just substitute 1,2 wherever indexing is needed. 
