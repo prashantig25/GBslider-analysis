@@ -1,27 +1,23 @@
-classdef taskvars < handle % task variables
-%{
-This class specifies task-specific instance variables for the simulation of state dependent contrast differences and action dependent rewards. 
-%}
+classdef taskvars < handle 
+% This class specifies task-specific instance variables for the simulation
+% of state dependent contrast differences and action dependent rewards.
     properties 
         T = 25 % number of trials
         B = 4 % number of blocks
-        Theta = 0.5 % the parameter
-        mu % just initialised without attributing a value. Value has been set depending on the condition in the Task class
-        experiment = 3 % ???
+        Theta = 0.5 % parameter for sampling the state of the trial
+        mu % contingency parameter
         condition = 1 % experimental condition i.e. HH = 1....LL = 4
-        kappa % just initialised without attributing a value. Value has been set depending on the condition in the Task class
-        min = 0.3 % absolute minimum contrast level for low PU conditions
-        kappa_min 
-        kappa_max
+        kappa_min % minimum contrast level
+        kappa_max % maximum contrast level
         C   % range of discrete contrast differences
     end
     methods
         function obj = taskvars
-        %{
-        This function sets kappa_min and kappa_max contingent on the experimental condition.
-        It also generates the range of contrast levels depending on kappa_min and kappa_max.
-        It also sets the reward contingency parameter depending on the experimental condition.
-        %}
+%         This function sets kappa_min and kappa_max contingent on the
+%         experimental condition. It also generates the range of contrast
+%         levels depending on kappa_min and kappa_max. It also sets the
+%         reward contingency parameter depending on the experimental
+%         condition.
             if obj.condition == 1 || obj.condition == 2 % condition dependent absolute maximum contrast levels 
                 obj.kappa_max  = 0.08;
                 obj.kappa_min = -0.08;
