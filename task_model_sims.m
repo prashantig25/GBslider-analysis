@@ -1,10 +1,18 @@
 function task_model_sims
-    T = task.T;
+    % This function runs simulations for the task model. 
+    % The task model simulates a trial's state and state-dependent contrast
+    % level. For purposes of simulation, the task model also generates an
+    % action like a random agent & the model simulates an action-dependent
+    % reward. 
+    task = Task(); % import task model
+    T = task.T; % number of trials
+    B = task.B; % number of blocks
+    % pre-allocation
     s = zeros(1,T);
     c = zeros(1,T);
     a = zeros(1,T);
     r = zeros(1,T);
-    for j = 1:4 % number of blocks
+    for j = 1:B % number of blocks
         for i = 1:T % number of trials in a block
             task.state_sample();
             task.contrast_sample();
@@ -15,7 +23,8 @@ function task_model_sims
             a(i) = task.a_t;
             r(i) = task.r_t;
         end
-        x = 1:25;
+        % create plots
+        x = 1:T;
         figure
         subplot(2,2,1)
         scatter(x,s,40,'k','filled')
@@ -26,7 +35,7 @@ function task_model_sims
         subplot(2,2,2)
         bar(x,c)
         xlabel('Trials')
-        ylabel('Contrast level')
+        ylabel('Contrast difference')
         box on
         hold on
         subplot(2,2,3)
@@ -40,11 +49,7 @@ function task_model_sims
         box on
         xlabel('Trials')
         ylabel('Reward')
-        ylim([0,1])
-        s = [];
-        c = [];
-        a = [];
-        r = [];
+        ylim([0,1]);
         filename = ['task_simulations_2_', num2str(j)];
         sgt = sgtitle('High Perceptual & Low Reward Uncertainty')
         sgt.FontSize = 10;
@@ -52,10 +57,3 @@ function task_model_sims
         saveas(gcf,filename,'fig')
     end
 end
-
-
-
- 
-
-
-
