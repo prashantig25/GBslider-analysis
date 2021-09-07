@@ -32,7 +32,6 @@ function task_agent_int
         agent.observation_sample(task.c_t) % contrast based observation sampled
         agent.decide_e() % economic choice 
         task.reward_sample(agent.a_t) % economic choice based reward
-%         agent.compute_action_dep_rew(task.r_t)
         agent.learn(task.r_t) % update based on reward
         if (task.s_t == 0 && agent.a_t == 0) || (task.s_t == 1 && agent.a_t == 1)
                 corr(i) = 1;
@@ -50,9 +49,7 @@ function task_agent_int
         a(i) = agent.a_t
         p_a0_t(i) = agent.p_a_t(1)
         p_a1_t(i) = agent.p_a_t(2)
-        %p_a_t(T) = agent.p_a_t(T)
         r(i) = task.r_t
         trial(i) = i 
-        %block(T) = sim_vars.block
     end
 end
