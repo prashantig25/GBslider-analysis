@@ -4,14 +4,17 @@ function task_model_sims
     % level. For purposes of simulation, the task model also generates an
     % action like a random agent & the model simulates an action-dependent
     % reward. 
-    task = Task(); % import task model
+    
+    task = Task(); % import task class
     T = task.T; % number of trials
     B = task.B; % number of blocks
+    
     % pre-allocation
     s = zeros(1,T);
     c = zeros(1,T);
     a = zeros(1,T);
     r = zeros(1,T);
+    
     for j = 1:B % number of blocks
         for i = 1:T % number of trials in a block
             task.state_sample();
@@ -23,6 +26,7 @@ function task_model_sims
             a(i) = task.a_t;
             r(i) = task.r_t;
         end
+        
         % create plots
         x = 1:T;
         figure
