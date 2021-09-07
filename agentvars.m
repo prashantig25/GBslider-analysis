@@ -22,7 +22,8 @@ classdef agentvars < handle
 %         levels depending on kappa_min and kappa_max. It also sets the
 %         reward contingency parameter depending on the experimental
 %         condition.
-            if obj.condition == 1 || obj.condition == 2 % condition dependent absolute maximum contrast levels 
+            if obj.condition == 1 || obj.condition == 2 
+            % condition dependent absolute maximum contrast levels 
                 obj.kappa_max  = 0.08;
                 obj.kappa_min = -0.08;
             else 
