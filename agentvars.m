@@ -14,6 +14,7 @@ classdef agentvars < handle
         task_agent_analysis = 0 % if this is true, integration over observations
         condition = 3 % experimental condition
     end 
+    
     methods
         function obj = agentvars
 %         This function sets kappa_min and kappa_max contingent on the
