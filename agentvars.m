@@ -16,7 +16,7 @@ classdef agentvars < handle
     end 
     
     methods
-        function obj = agentvars
+        function obj=agentvars
 %         This function sets kappa_min and kappa_max contingent on the
 %         experimental condition. It also generates the range of contrast
 %         levels depending on kappa_min and kappa_max. It also sets the
