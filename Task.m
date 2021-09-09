@@ -47,8 +47,8 @@ classdef Task < taskvars
         function reward_sample(obj)
         %reward_sample samples the trial's action dependent reward for that
         %trial.
-            obj.a_index = obj.a_t + 1; % a_index because a_t can't be used for indexing in MATLAB
-            obj.r_t = binornd(1, obj.p_ras(obj.a_index, obj.s_index));
+            obj.a_index = a_t + 1; % a_index because a_t can't be used for indexing in MATLAB
+            obj.r_t = binornd(1, obj.p_ras(obj.a_index,obj.s_index));
         end
     end
 end
