@@ -158,17 +158,7 @@ classdef learning_agents < agentvars
             % and 6, the action value is a sum of acquired and unacquired
             % salience. 
                 obj.v_a_0 = obj.phi_0 + obj.epsilon_p_0
-                obj.v_a_1 = obj.phi_1 + obj.epsilon_p_1
-%             else
-%                 if obj.eval_ana == 1
-%                     obj.E_mu_t = obj.eval_poly() 
-%                 else
-%                     obj.E_mu_t = dot(obj.mu_for_ev, obj.p_mu) % approximate EV
-%                     obj.G = dot(obj.mu_for_ev, obj.p_mu)
-%                 end 
-%             obj.v_a_0 = (obj.pi_0 - obj.pi_1) * obj.E_mu_t + obj.pi_1 
-%             obj.v_a_1 = (obj.pi_1 - obj.pi_0) * obj.E_mu_t + obj.pi_0
-%             end       
+                obj.v_a_1 = obj.phi_1 + obj.epsilon_p_1  
         %Concatenate action valences
         obj.v_a_t = [obj.v_a_0, obj.v_a_1]
         v_a_t_ag_1 = obj.v_a_t
@@ -176,12 +166,8 @@ classdef learning_agents < agentvars
         
         function decide_e(obj, o_t, r_t) 
             % This function makes an economic decision based on the agent
-            % by using the observed contrast difference. 
-            % if task_agent_analysis is true, then compute action values by
-            % integrating over observations
+            % by adding the acquired and unacquired salience to compute valence. 
             % finally, uses softmax policy to make a choice for the agent
-            % Computes action values based on salience of an
-            % alternative for the learning agents. 
             obj.unacquired_salience()
             obj.prediction_errors(o_t,r_t)
             obj.acquired_salience(o_t,r_t)
