@@ -26,3 +26,5 @@ classdef taskvars < handle
         end
     end
 end
+
+%% check if space mirroring works
