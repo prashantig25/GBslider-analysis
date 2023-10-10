@@ -1,4 +1,4 @@
-function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,xlabelname,ylabelname)
+function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,xlabelname,ylabelname,fontsize,linewidth,fontname)
     
     % LG_CURVES PLOTS MEAN OF DATA ACROSS PARTICIPANTS, ACROSS TRIALS IN A
     % BLOCK.
@@ -11,6 +11,9 @@ function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,
         % title_name = cell array with title for plot
         % xlabelname = cell array with label name of x-axis
         % ylabelname = cell array with label name of y-axis
+        % fontsize = font size of the text
+        % linewidth = line width of the plot
+        % fontname = font of the text
 
     figure
     hold on
@@ -34,8 +37,8 @@ function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,
     title(title_name)
     xlabel(xlabelname)
     ylabel(ylabelname)
-    set(gca,'LineWidth',1)
-    set(gca,'fontname','times new roman') 
+    set(gca,'LineWidth',linewidth)
+    set(gca,'fontname',fontname) 
     pl = gca;
-    pl.FontSize = 12;
+    pl.FontSize = fontsize;
 end
