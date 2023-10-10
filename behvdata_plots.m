@@ -1,15 +1,9 @@
-%% Note
-% make sure the behaviour data file has state,action,choice,contrast left,
+% NOTE: make sure the behaviour data file has state,action,choice,contrast left,
 % contrast right, contrast difference, condition, reward probability,
-% contrast of the block.
+% contrast of the block. Choice is the correct economic performance in the study 1 files
+% FOR study 2, create condition column with 1,2,3 and create contrast column 0,1. 
 
-% choice is the correct economic performance in the study 1 files
 
-% FOR study 2
-% create condition column with 1,2,3
-% create contrast column 0,1 
-
-%% READ and MERGE all data files for study 1
 clc
 clearvars 
 
@@ -24,13 +18,13 @@ total_blocks = 16; % total number of blocks per subject
 % CHANGE DATA DIRECTORY ACCORDINGLY
 behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\clean_scripts\Behaviour\Data\Study1"; 
 
-% MERGE ALL SUBJECT DATA
+% READ AND MERGE ALL DATA FILES FROM STUDY 1
 subj_ids = [11:17,19:22,24,26:33,36,37,42,46,48,51,53,54,56,58,59,61,62,...
     65,68,69,74,76,83,85,86,87,89,95,96,99,100,109,110,113,114,115,...
     117	119	121	122	124	126	127	128	129	136	138	141	143	144	145	146	147,...
     148	149	150	151	153	154	156	157	159	161	162	163	164	165	167	171	172,...	
     176	177	180	182	183	188	191];
-num_subjs = length(subj_ids);
+num_subjs = length(subj_ids); % number of subjects
 data_all = []; % empty table to merge all subjects data
 for i = 1:length(subj_ids)
     data_subj = readtable(strcat(behv_dir,'\',num2str(subj_ids(i)),".xlsx"),"Sheet","Sheet1"); % read each subject's file
@@ -42,16 +36,12 @@ for i = 1:length(subj_ids)
     data_all = [data_all;data_tbl];
 end
 
-%% clean the data by removing missed and practice trials
-
 % REMOVE MISSED TRIALS
 data_all(isnan(data_all.response),:) = [];
 
 % REMOVE PRACTICE BLOCKS
 data_all(strcmp(data_all.condition,"lowcon"),:) = [];
 data_all(strcmp(data_all.condition,"highcon"),:) = [];
-
-%% add trial and block numbers
 
 % ADD TRIAL NUMBER
 trials = 1:t; % array with trial number array
@@ -79,12 +69,10 @@ for i = 1:height(data_all)
     end
 end
 
-%% prepare and recode to calculate ecoperf
-
 % RECORDING MORE REWARDING OPTION TO FIT AGENT'S a = 0 or a = 1
 for i = 1:height(data_all)
     if data_all.("correct response")(i) == 37
-        data_all.corr_resp(i) = 0;
+        data_all.corr_resp(i) = 0; % left choice is stored as 0
     else
         data_all.corr_resp(i) = 1;
     end
@@ -110,7 +98,7 @@ for i = 1:height(data_all)
     end
 end
 
-% COMPUTE PROBABILITY OF TRIALS WHERE HIGH CONTRAST PATCH IS MORE REWARDING
+% COMPUTE PROBABILITY OF TRIALS (within a block) WHERE HIGH CONTRAST PATCH IS MORE REWARDING
 ecoperf_mat = NaN(num_subjs,16);
 for i = 1:num_subjs
     for b = 1:total_blocks
@@ -122,7 +110,7 @@ end
 contrast_bl = NaN(num_subjs,total_blocks); % initialise matrix for contrast of each block
 for i = 1:num_subjs
     for b = 1:total_blocks
-        if ecoperf_mat(i,b) > 0.5
+        if ecoperf_mat(i,b) > 0.5 % if number of trials with high contrast option is greater than 0.5
             contrast_bl(i,b) = 1;
         else
             contrast_bl(i,b) = 0;
@@ -140,7 +128,6 @@ for i = 1:num_subjs
     end
     contrast_all = [contrast_all; contrast_subj];
 end
-
 data_all.contrast = contrast_all; % add to table 
 
 % BASED ON BLOCK'S CONTRAST, CHECK PARTICIPANT HAS CHOSEN THE MORE
@@ -175,35 +162,29 @@ for i = 1:height(data_all)
     end
 end
 
-%% calculate economic performance
-
-% ACROSS CONDITIONS
-ecoperf_cond = NaN(num_subjs,num_cond);
+% CALCULATE ECONOMIC PERFORMANCE
 
 % MEAN ECONOMIC PERFORMANCE FOR EACH CONDITION
+ecoperf_cond = NaN(num_subjs,num_cond);
 for i = 1:num_subjs
     for c = 1:num_cond
         ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.condition_int == c)));
     end
 end
 
-% ACROSS CONTRAST
-ecoperf_cont = NaN(num_subjs,num_cont);
-
 % MEAN ECONOMIC PERFORMANCE FOR EACH CONTRAST
+ecoperf_cont = NaN(num_subjs,num_cont);
 for i = 1:num_subjs
     for c = 1:num_cont
         ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.contrast == c-1)));
     end
 end
 
-% ACROSS CONDITION AND CONTRAST
+% MEANS FOR EACH CONDITION, ACROSS CONTRASTS
 ecoperf_hh = NaN(num_subjs,num_cont);
 ecoperf_hl = NaN(num_subjs,num_cont);
 ecoperf_lh = NaN(num_subjs,num_cont);
 ecoperf_ll = NaN(num_subjs,num_cont);
-
-% MEANS FOR EACH CONDITION, ACROSS CONTRASTS
 for i = 1:num_subjs
     data_subj = data_all(data_all.id == subj_ids(i),:);
     for c = 1:num_cont
@@ -214,8 +195,8 @@ for i = 1:num_subjs
     end
 end
 ecoperf_cond_cont = [ecoperf_hh,ecoperf_hl,ecoperf_lh,ecoperf_ll];
-%% plot figures
 
+% PLOT FIGURES
 y = [ecoperf_hh;ecoperf_hl;ecoperf_lh;ecoperf_ll]; % across conditions
 num_subjs = length(ecoperf_ll); % number of subjects 
 hh_avg = nanmean(ecoperf_hh,1); % mean across subjects 
