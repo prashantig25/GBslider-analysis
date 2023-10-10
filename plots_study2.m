@@ -1,4 +1,3 @@
-%% READ and MERGE all data files for study 2
 clc
 clearvars 
 
@@ -13,6 +12,7 @@ total_blocks = 12; % total number of blocks per subject
 % CHANGE DIRECTORY ACCORDINGLY
 behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\clean_scripts\Behaviour\Data\Study2"; 
 
+% READ and MERGE all data files for study 2
 % ARRAY WITH SUBJECT IDS
 subj_ids = [139	143	145	146	151	157	159	160	162	163	164	165	174	176	181	192	198,...	
     199	207	208	209	210	211	213	214	216	219	220	229	242	243	247	249	254	255,...	
@@ -48,11 +48,11 @@ end
 % EXTRACT LAST KEYPRESS FROM MULTIPLE KEYPRESSES
 for i =1:height(data_all)
     multi_keypress = string(data_all.response(i));
-    multi_keypress = strsplit(multi_keypress,',');
+    multi_keypress = strsplit(multi_keypress,','); % split the string to get multiple keypresses
     if length(multi_keypress) > 1
-        multi_keypress_char = convertStringsToChars(multi_keypress(end));
-        multi_keypress_char(isletter(multi_keypress_char)==0)=[];
-        data_all.response_str(i) = convertCharsToStrings(multi_keypress_char);
+        multi_keypress_char = convertStringsToChars(multi_keypress(end)); % get last keypress
+        multi_keypress_char(isletter(multi_keypress_char)==0)=[]; % delete extra characters
+        data_all.response_str(i) = convertCharsToStrings(multi_keypress_char); % store last keypress
     else
         multi_keypress_char = convertStringsToChars(multi_keypress);
         multi_keypress_char(isletter(multi_keypress_char)==0)=[];
@@ -68,7 +68,6 @@ for i =1:height(data_all)
         data_all.choice(i) = 1;
     end
 end
-%% add trial and block numbers
 
 % ADD TRIAL NUMBERS
 trials = 1:t; % array with trial numbers
@@ -85,8 +84,6 @@ for b = 1:total_blocks
 end
 blocks_all = repmat(blocks,num_subjs,1); % repeat for each subject
 data_all.blocks = blocks_all; % add to table
-
-%% get conditions and contrast levels
 
 % CHECK IF TRIAL BELONGS TO LOW/HIGH CONTRAST BLOCK
 for i = 1:height(data_all)
@@ -125,7 +122,6 @@ for i = 1:height(data_all)
         data_all.congruence(i) = 0;
     end
 end
-%% check if participant chose the more rewarding option in a trial
 
 % ECONOMIC PERFORMANCE ON A TRIAL
 for i = 1:height(data_all)
@@ -144,22 +140,16 @@ for i = 1:height(data_all)
     end
 end
 
-%% calculate economic performance
-
-% ACROSS CONDITIONS
-ecoperf_cond = NaN(num_subjs,num_blocks);
-
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS, FOR EACH CONDITION
+ecoperf_cond = NaN(num_subjs,num_blocks);
 for i = 1:num_subjs
     for c = 1:num_blocks
         ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.condition_int == c)));
     end
 end
 
-% ACROSS LOW/HIGH CONTRAST BLOCKS
-ecoperf_cont = NaN(num_subjs,num_cont);
-
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS, FOR EACH LOW/HIGH CONTRAST
+ecoperf_cont = NaN(num_subjs,num_cont);
 for i = 1:num_subjs
     for c = 1:num_cont
         ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.contrast == c-1)));
@@ -182,9 +172,7 @@ end
 
 ecoperf_cond_cont = [ecoperf_mix,ecoperf_perc,ecoperf_rew];
 
-%% get subjective estimate of contingency parameter
-
-% COMPUTE SUBJECTIVE CONTINGENCY PARAMETER FOR INCONGRUENT BLOCKS
+% COMPUTE REPORTED CONTINGENCY PARAMETER FOR INCONGRUENT BLOCKS
 for i = 1:height(data_all)
     if data_all.congruence(i) == 1
         data_all.mu_congruence(i) = data_all.mu(i);
