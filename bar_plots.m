@@ -1,5 +1,6 @@
 function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xticklabs,title_name, ...
-    xlabelname,ylabelname,varargin)   
+    xlabelname,ylabelname,fontsize,linewidth,fontname,varargin)   
+    
     % BAR_PLOTS creates bar plots with multiple bars, single data scatter
     % points, and SEM bars.
     % INPUTS:
@@ -18,6 +19,10 @@ function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xtickl
         % title_name = cell array containing name of the plot
         % xlabelname = cell array containing label for x-axis
         % ylabelname = cell array containing label for y-axis
+        % fontsize = font size for text
+        % linewidth = line width for plot
+        % fontname = font
+        % varargin{1} = face color for bars
 
     % ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
@@ -73,7 +78,7 @@ function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xtickl
     title(title_name)
     xlabel(xlabelname)
     ylabel(ylabelname)
-    set(gca,'LineWidth',1.25)
-    set(gca,'fontname','times new roman') 
+    set(gca,'LineWidth',linewidth)
+    set(gca,'fontname',fontname) 
     pl = gca;
-    pl.FontSize = 7;
+    pl.FontSize = fontsize;
