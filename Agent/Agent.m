@@ -52,9 +52,11 @@ classdef Agent < agentvars
         function observation_sample(obj,c_t)       
             % observation_sample computes the contrast difference dependent
             % observation. 
+            
             % INPUT:
                 % c_t: task generated contrast difference 
                 % obj: current object
+                
             % OUTPUT:
                 % o_t: returns observation that is sampled from a normal
                 % distribution with presented contrast difference as mean 
@@ -68,9 +70,11 @@ classdef Agent < agentvars
         function p_s_giv_o(obj, o_t)     
             % p_s_giv_o computes belief state given observation of 
             % contrast difference. 
+            
             % INPUT: 
                 % obj: current object
                 % o_t: observed contrast differnece
+                
             % OUTPUT: 
                 % pi_0,pi_1: returns the belief state.
           	% COMPUTE CUMULATIVE DISTRIBUTION FUNCTIONS
@@ -84,8 +88,10 @@ classdef Agent < agentvars
         end  
         function poly_eval = eval_poly(obj)     
             % poly_eval evaluates the polynomial.
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % poly_eval: evaluated polynomial
             poly_int = polyint([obj.c_t, 0]); % anti-derivative of the polynomial
@@ -95,8 +101,10 @@ classdef Agent < agentvars
         function compute_valence(obj)
             % compute_valence computes the expected value of each action
             % based on belief states and contingency parameter. 
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % v_a_t: array with action valences
             if obj.eval_ana == 1
@@ -112,8 +120,10 @@ classdef Agent < agentvars
         function softmax(obj)
             % softmax returns choice probabilities based on the computed
             % action values and beta parameter 
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % p_a_t: vector with choice probabilities
             obj.p_a_t = exp(obj.v_a_t.*obj.beta) / sum(exp(obj.v_a_t.*obj.beta));
@@ -121,9 +131,11 @@ classdef Agent < agentvars
        function int_voi = integrate_voi(obj,voi,varargin)
             % integrate_voi returns the integral of a particular variable
             % conditional of contrast difference. 
+            
             % INPUT:
                 % obj: current object
                 % voi: 0 is action values, voi = 1 is polynomial updates.
+                
             % OUTPUT:
                 % int_voi: array with polynomial updates
             obj.r_t = varargin{1}; % access the first varargin because the only additional input is r_t
@@ -149,9 +161,11 @@ classdef Agent < agentvars
         function decide_e(obj, o_t) 
             % decide_e makes an economic decision based for the agent and 
             % uses softmax policy to make a choice for the agent
+            
             % INPUT:
                 % obj: current object
                 % o_t: observed contrast difference
+                
             % OUTPUT:
                 % a_t: economic decision
             if obj.agent == 0 % random decision agent
@@ -176,18 +190,22 @@ classdef Agent < agentvars
         function r_t = compute_action_dep_rew(obj, r_t) 
             % compute_action_dep_rew recodes task generated reward 
             % contingent on action. 
+            
             % INPUT: 
                 % obj: current object
                 % r_t: task generated reward
+                
             % OUTPUT:
                 % r_t: agent recoded reward
             r_t = r_t + (obj.a_t *((-1) .^ (2 + r_t)));
         end
         function compute_q(obj,r_t)
             % compute_q computes q_0 and q_1 for the polynomial update.
+            
             % INPUT: 
                 % obj: current object
                 % r_t: task generated reward
+                
             % OUTPUT:
                 % q_0,q_1: fractions for polynomial update
             obj.t = length(obj.c_t) + 1; % degree of polynomial
@@ -211,8 +229,10 @@ classdef Agent < agentvars
         function update_coefficients(obj)
             % update_coefficients updates the prior probability using the
             % evaluated polynomials.
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % c_t: updated coefficient
             obj.d = zeros(1,obj.t);
@@ -226,9 +246,11 @@ classdef Agent < agentvars
         function learn(obj,r_t)
             % learn updates the q-values to help the agent learn and
             % update contingency parameter.
+            
             % INPUT:
                 % obj: current object
                 % r_t: task generated reward
+                
             % OUTPUT:
                 % G: updated contingency parameter
             if obj.agent == 0
