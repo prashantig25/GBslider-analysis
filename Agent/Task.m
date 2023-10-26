@@ -39,7 +39,7 @@ classdef Task <taskvars
         end
         function contrast_sample(obj)
             % CONTRAST_SAMPLE samples the trial's state dependent contrast
-            %difference level.
+            % difference level.
             % INPUT:
                 % obj: current object
             % OUTPUT:
@@ -51,7 +51,7 @@ classdef Task <taskvars
         end
         function reward_sample(obj,a_t)
             % REWARD_SAMPLE samples the trial's action dependent reward for that
-            %trial.
+            % trial.
             % INPUT:
                 % obj: current object
                 % a_t: agent's action
