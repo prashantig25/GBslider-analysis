@@ -1,7 +1,9 @@
 function [data_int] = task_agent_int(varargin)
     % TASK_AGENT_INT simulates the interaction between task and agent.
+    
     % INPUT:
         % use task-based variables from participant's files
+        
     % OUTPUT:
         % data_int: simulated interaction stored in a table
 
