@@ -28,8 +28,10 @@ classdef Task <taskvars
         function state_sample(obj)
             % STATE_SAMPLE samples a trial's state from a binomial
             % distribution. 
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % s_t: trial state
                 % s_index: index to generate rewards and contrast
@@ -40,8 +42,10 @@ classdef Task <taskvars
         function contrast_sample(obj)
             % CONTRAST_SAMPLE samples the trial's state dependent contrast
             % difference level.
+            
             % INPUT:
                 % obj: current object
+                
             % OUTPUT:
                 % c_t: state dependent contrast difference
                 p_cs_giv_s = obj.p_cs(:, obj.s_index);  % contrast differences conditional on state
@@ -52,9 +56,11 @@ classdef Task <taskvars
         function reward_sample(obj,a_t)
             % REWARD_SAMPLE samples the trial's action dependent reward for that
             % trial.
+            
             % INPUT:
                 % obj: current object
                 % a_t: agent's action
+                
             % OUTPUT:
                 % r_t: state and action dependent reward
             obj.s_index = obj.s_t + 1; % s_index because s_t can't be used for indexing in MATLAB
