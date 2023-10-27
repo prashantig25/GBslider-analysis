@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz</title>
+    <script src="js/jspsych.js"></script>
+    <script src="js/jspsych-survey-multi-choice.js"></script>
+</head>
+<script>
+    var timeline = [];
+    var demo = {
+        type: 'image-keyboard-response',
+        stimulus: 'demo.png',
+        prompt: "<p>Before we proceed to the instructions of the experiment, here is a short demonstration. Here are two examples of two images, each with varying contrast levels, presented on every trial. In the upper example, it is easy to discriminate between the two images based on contrast (brightness) levels. In the lower example, it is more difficult to discriminate the two images. In each trial, you are required to select one of the two images. <br> Please press any key to proceed if you have seen the images. </p>",
+    };
+    var lc_lose = {
+        type: 'image-keyboard-response',
+        stimulus: '0.5_green.png',
+        prompt: "<p> After the images are presented to you, you are required to select one of them. Depending on the image you choose in a trial, you will get different types of feedback. On each block of trials, there is a relationship between the contrast (brightness) level of the image and how often you will win 1 point if you choose that image." +
+            "For example, on some blocks of trials, the image with higher contrast (brightness) is associated with winning 1 point, while in another block of trials, the relationship may be reversed. Here is an example of feedback after choosing the lighter image. In this block of trials, the underlying relationship is that the lighter images are more often rewarding. In this case, you would win 1 point on choosing the lighter image more often and 0 points on choosing the darker image. However, <strong> please note</strong> that you will not necessarily win 1 point when choosing the lighter image in this block. That is, there may be trials in a block in which you win 0 points even after choosing the correct image. Please press any key to proceed if you have understood these instructions. </p>",
+    }
+    var lc_win = {
+        type: 'image-keyboard-response',
+        stimulus: '0.5_Red.png',
+        prompt: "<p>  Here is an example of feedback in a trial belonging to a block with the relationship: the lighter image would lead to mostly 0 points. <strong> Please note </strong> that despite this relationship in this block, you may sometimes win 1 point even after choosing the lighter image on certain trials in this block. Thus, you may win 1 point even after choosing the incorrect image on some trials in some blocks. Please press any key to proceed if you have understood the instructions.  </p>",
+    }
+    var hc_win = {
+        type: 'image-keyboard-response',
+        stimulus: '1_Green.png',
+        prompt: "<p>  Here is another example of feedback after choosing the darker image. In this case, you would win 1 point on choosing the darker image because of the block's relationship: the darker image would lead to mostly 1 point. <strong>Please note</strong> that although choosing the darker image is supposed to yield 1 point, this may not happen in some trials of this block. Please press any key to proceed if you have understood the instructions. </p>",
+    }
+    var hc_lose = {
+        type: 'image-keyboard-response',
+        stimulus: '1_Red.png',
+        prompt: "<p>  Here is another example of feedback after choosing the darker image. <strong> Please note </strong> that although choosing the darker image is supposed to yield 1 point, here you win 0 points. This may happen in some trials of some blocks. Please press any key to proceed if you have understood the instructions. </p>",
+        response_ends_trial: true,
+    }
+    var questions = [
+        {
+            prompt: "If you want to choose the image on the left of the fixation (+), which key should you press?",
+            options: [
+                "Right Arrow",
+                "Left Arrow",
+                "Space Bar",
+            ],
+            required: true,
+            horizontal: false,
+            correct: 1, // which answer is correct?
+            reminder: `
+    <div style="max-width: 800px">
+    <p style="color:#000000"><strong>If you want to choose the image on the left of the fixation (+), which key should you press?</strong></p>
+    <p style="color:green"><strong>Correct Answer: Left Arrow</strong></p>
+    <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify">Please press the left arrow to choose the image on the left of the fixation (+) and the right arrow for choosing the right image.</p>
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+        {
+            prompt: "Assume that you won 1 point after choosing the high contrast image on the left-hand side. Does it mean that you will always win if you choose the image on the left side, irrespective of the contrast levels of the images?",
+            options: [
+                "Yes",
+                "May be",
+                "No",
+            ],
+            required: true,
+            horizontal: false,
+            correct: 2, // which answer is correct?
+            reminder: `
+    <p style="color:#000000"><strong>Assume that you won 1 point by choosing the high contrast image, which was to left side of the fixation (+).
+    Does it mean that you will always win if you choose the image on the left side, irrespective of the contrast levels of the image?</strong></p>
+    <p style="color:green"><strong>Correct Answer: No</strong></p>
+    <p style="color:orangered"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify">There is a relationship between the contrast (brightness) levels of the images and the points you will win. The location of an image that has been rewarding in the past does not guarantee any future rewards. Thus, there is no association between rewards and image locations.</p>
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+        {
+            prompt: "Assume that you have previously won 1 point after choosing the image with high contrast in a certain block of trials. Does it mean that you will always win a point when choosing the dark patch in this block? ",
+            options: [
+                "No",
+                "May be",
+                "Yes",
+            ],
+            required: true,
+            horizontal: false,
+            correct: 0, // which answer is correct?
+            reminder: `
+    <p style="color:#000000"><strong>Assume that you have previously won 1 point, after choosing the image with high contrast in a certain block of trials.
+    Does it mean that you will always win a reward on choosing the dark patch in this block?</strong></p>
+    <p style="color:green"><strong>Correct Answer: No</strong></p>
+    <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify">You will not necessarily win a point after choosing a high contrast image in a particular block of trials. The contrast level of the image does not guarantee a reward. However, in each block of trials, one of the two contrast levels will get rewarded more often than the other. </p>
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+        {
+            prompt: "There could be trials when it can be difficult to distinguish between the patches based on their contrast levels.",
+            options: [
+                "True",
+                "False",
+            ],
+            required: true,
+            horizontal: false,
+            correct: 0, // which answer is correct?
+            reminder: `
+    <p style="color:#000000"><strong>There could be trials when it can be difficult to distinguish between the patches based on their contrast levels.</strong></p>
+    <p style="color:green"><strong>Correct Answer: True</strong></p>
+    <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify">There will be trials where it will be easy to distinguish each patch from the other based on its contrast levels. But you will also be presented with trials where it will be difficult to discriminate between the images based on their contrast levels. </p>
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+        {
+            prompt: "Assume that you did not win after choosing the patch that you previously mostly won on. Identify possible reason(s) for it.",
+            options: [
+                "a) I may have been confused between the contrast levels of the images because they look similar. ",
+                "b) It may happen that I may not win even after choosing the previously rewarding patch because there is no gaurantee that you will win on the same patch in a block.",
+                "c) It is possible that there is no reward associated with both images on certain trials.",
+                "d) You may have been confused between the contrast levels of the images because they look similar. And it may happen that you do not win even after choosing the previously rewarding patch because there is no guarantee that you will win on the same patch in a block."
+            ],
+            required: true,
+            horizontal: false,
+            correct: 3, // which answer is correct?
+            reminder: `
+    <p style="color:#000000"><strong>Assume that you did not win after choosing the patch that you previously mostly won on. Identify possible reason(s) for it.</strong></p>
+    <p style="color:green"><strong>Correct Answer: I may have been confused between the contrast levels of the images because they look similar. And It may happen that I may not win even after choosing the previously rewarding patch because there is no gaurantee that you will win on the same patch in a block.</strong></p>
+    <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify">You may not win a reward even after choosing the same image that you previously won on because of two reasons:</p><br>a) It is hard to choose the most rewarding image because both images look similar to each other. b) There is no gaurantee that you will win one point on choosing the image with a certain contrast level.
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+        {
+            prompt: "Assume that in block 1, the image with higher contrast was almost always rewarding. Does that mean the higher contrast patch will always reward you in the next block?",
+            options: [
+                "Yes",
+                "No",
+            ],
+            required: true,
+            horizontal: false,
+            correct: 1, // which answer is correct?
+            reminder: `
+    <p style="color:#000000"><strong>Assume that in block 1, the image with higher contrast was almost always rewarding. Does that mean the higher contrast patch will always reward you in the next block?</strong></p>
+    <p style="color:green"><strong>Correct Answer: No</strong></p>
+    <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+    <p align="justify"> The relationship between the image's contrast level and rewards may change from one block to the other. </p>
+    <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+    `,
+        },
+    ]
+
+
+    // Define how many questions have to be answered correctly to advance
+    var nQuestions = 6  // How many questions should be sampled?
+    var nCorrectRequired = 6  // How many correct responses before participant can advance?
+
+    var reminder_pages = [];  // initialize an empty list that will collect reminder pages of incorrect responses
+
+
+    // Define the first question sample (can be a subset of questions, or all, ...)
+    questionSample = jsPsych.randomization.sampleWithoutReplacement(
+        questions,
+        nQuestions
+    );
+    /* Comprehension quiz */
+    var quiz = {
+        type: "survey-multi-choice",
+        preamble: `
+    <p align="justify"> 
+  Please answer these questions to make sure that you understood the instructions. The red * after a question indicates that those questions are compulsory. You will be provided with feedback if you respond to questions incorrectly. </p>
+    </div>`,
+        questions: function () {
+            return questionSample;
+        },
+        randomize_question_order: false,
+        button_label: "Submit answers",
+        on_start: function () {
+            document.body.style.cursor = "auto";
+            nCorrect = 0;
+        },
+        on_finish: function (data) {
+            data.questions = questionSample; // Save questions that were asked
+
+            // Count correct responses
+            var responses = data.response;
+            var i;
+            for (i = 0; i < questionSample.length; i++) {
+                var response = responses["Q" + i];
+                var correct =
+                    response ===
+                    questionSample[i]["options"][questionSample[i]["correct"]];
+                if (correct) {
+                    nCorrect++;
+                } else {
+                    // Add reminders for wrong answers
+                    reminder_pages.push(questionSample[i]["reminder"]);
+                }
+            }
+            // Draw a new sample of questions
+            questionSample = jsPsych.randomization.sampleWithoutReplacement(
+                questions,
+                nQuestions
+            );
+        },
+    };
+
+    // Show reminders for questions with wrong answers.
+    reminders = {
+        type: "instructions",
+        show_page_number: true,
+        page_label: "Reminder",
+        key_forward: " ",
+        pages: function () {
+            return reminder_pages;
+        },
+        on_finish: function () {
+            reminder_pages = [];
+        },
+        on_start: () => (document.body.style.cursor = "none"),
+    };
+
+    var correct = {
+        type: 'html-keyboard-response',
+        stimulus: '<p style="color:green; font-size: 30px"><strong> Congratulations!</strong> </p> <br> You responded correctly to all questions. You can now proceed to the task. Please press any key to proceed.</p>',
+    }
+    var if_node = {
+        timeline: [correct],
+        conditional_function: function(){
+            // get the data from the previous trial,
+            // and check which key was pressed
+            if(nCorrect === 6){
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+    // Put the quiz procedure together
+    quizProcedure = {
+        timeline: [
+            quiz,
+            {
+                timeline: [reminders],
+                conditional_function: function () {
+                    return nCorrect < nCorrectRequired;
+                },
+            },
+            if_node,
+        ],
+
+    };
+    var highprac_instruct = {
+        type: "html-keyboard-response", stimulus: "<p style=\"font-size: 20px;color: #000000\"> Here is a summary of the instructions for the practice task. Please read them thoroughly to understand the task. </p>" +
+            "<p style=\"font-size: 20px;color: #000000\"> In these practice blocks, trials will begin with a fixation cross, which looks like this (+). In each trial, you will see two images. Both images may have different levels of contrast (i.e., brightness) on each trial. The main aim of this block is to choose the image that will maximize your rewards. You have to figure out which image you should choose. On each block of trials, there is a relationship between the contrast (brightness) level of the image and how often you will win 1 point if you choose that image. " +
+            "<br> For example, on some blocks of trials, the image with higher contrast (brightness) is mostly associated with winning 1 point, while in another block of trials, the relationship may be reversed. It is important that you figure out this relationship and use it to maximize your rewards. Please note that the relationship may change with a new block of trials.  If you want to choose the image on the left, press the <strong> left arrow</strong>. If you want to choose the image on the right, press the <strong> right arrow</strong>. Please proceed to the practice block by pressing any key. " };
+
+    
+</script>
+</html>
+
+// Reference: https://github.com/moltaire/causality_task/ 
