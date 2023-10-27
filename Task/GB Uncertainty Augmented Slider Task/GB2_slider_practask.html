@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>practice_task</title>
+  <script src="js/jspsych.js"></script>
+  <script src="js/functions.js"></script>
+  <script src="js/variables.js"></script>
+  <script src="js/custom.css"></script>
+  <script src="js/jspsych-html-keyboard-response.js"></script>
+  <script src="js/jspsych-canvas-keyboard-response.js"></script>
+  <link href="js/jspsych.css" rel="stylesheet" type="text/css"/>
+</head>
+<script>
+
+  // INITIALIZE EMPTY ARRAY FOR TRIAL EVENTS
+  var timeline = [];
+
+  // INITIALIZE VARS FOR VARIOUS TRIAL EVENTS
+
+  // INITIALIZE ENTER SCREEN
+  var enter_trial = {
+    type: "html-keyboard-response",
+    stimulus: "<p style=\"font-size: 20px;color: #000000; position: relative; top: 20px; left: 5px;\"> Please press the <strong> ENTER </strong> key to proceed. </p>",
+    choices: ['Enter'],
+    trial_duration: 2000,
+  };
+
+  // INITIALIZE FIXATION
+  var fix = {
+    type: 'canvas-keyboard-response',
+    stimulus: fixation,
+    trial_duration: fix_dura,
+    choices: jsPsych.NO_KEYS,
+    data: { condition: 'fixation'},
+    on_start: function () {
+      document.body.style.cursor = "none";
+    }
+  };
+
+  // INITIALIZE VARS FOR DEMO OF THE TASK
+  var demo = {
+    type: 'image-keyboard-response',
+    stimulus: 'demo.png',
+    prompt: "<p>Before we proceed to the instructions of the experiment, here is a short demonstration. Here are two examples of two images, each with varying contrast levels, presented on every trial. In the upper example, it is easy to discriminate between the two images based on contrast (brightness) levels. In the lower example, it is more difficult to discriminate between the two images. In each trial, you are required to select one of the two images." +
+            "<br> If you want to choose the image presented on your left, please press the <strong>left arrow </strong> on your keyboard. <br>If you want to choose the image presented on your right, press the <strong>right arrow </strong>on your keyboard.<br>" +
+            " <br> Please press any key to proceed if you have seen the images. </p>",
+  };
+  var lc_lose = {
+    type: 'image-keyboard-response',
+    stimulus: '0.5_green.png',
+    prompt: "<p> After the images are presented to you, you are required to select one of them. Depending on the image you choose in a trial, you will get different types of feedback. On each block of trials, there is a relationship between the contrast (brightness) level of the image and how often you will win 1 point if you choose that image. " +
+            "For example, on some blocks of trials, the image with higher contrast (brightness) is associated with winning 1 point, while in another block of trials, the relationship may be reversed. <br> In the above example, feedback is presented after choosing the lighter image. In this block of trials, the underlying relationship is that the lighter images are often more rewarding. <br> In this case, you would win 1 point on choosing the lighter image more often and 0 points on choosing the darker image. However, <strong> please note </strong> that you will not necessarily win 1 point when choosing the lighter image in this block. That is, there may be trials in a block in which you win 0 points even after choosing the correct image. Please press any key to proceed if you have understood these instructions. </p>",
+  }
+  var lc_win = {
+    type: 'image-keyboard-response',
+    stimulus: '0.5_Red.png',
+    prompt: "<p>  Here is an example of feedback in a trial belonging to a block with the relationship: the lighter image would mostly lead to 0 points. <strong>Please note</strong> that despite this relationship in this block, you may sometimes win 1 point even after choosing the lighter image on certain trials in this block. Thus, you may win 1 point even after choosing the incorrect image on some trials in some blocks. Please press any key to proceed if you have understood the instructions.  </p>",
+  }
+  var hc_win = {
+    type: 'image-keyboard-response',
+    stimulus: '1_Green.png',
+    prompt: "<p>  Here is another example of feedback after choosing the darker image. In this case, you would win 1 point on choosing the darker image because of the relationship: the darker image would mostly lead to 1 point. <strong> Please note </strong> that although choosing the darker image is supposed to yield 1 point, this may not happen in some trials of this block. Please press any key to proceed if you have understood the instructions. </p>",
+  }
+  var hc_lose = {
+    type: 'image-keyboard-response',
+    stimulus: '1_Red.png',
+    prompt: "<p>  Here is another example of feedback after choosing the darker image. <strong> Please note </strong> that although choosing the darker image is supposed to yield 1 point, here you win 0 points. This may happen in some trials of some blocks. Please press any key to proceed if you have understood the instructions. </p>",
+    response_ends_trial: true,
+  }
+  var demo_slider_red = {
+    type: 'image-keyboard-response',
+    stimulus: 'demo_slider_red.png',
+    stimulus_height: 400,
+    stimulus_width: 1100,
+    prompt: "<p>  In the next part of the trial, you will be presented with the <strong> slider </strong> that is displayed above. In this part of the trial, you will be presented with two images of different contrast levels. You will be asked to indicate <strong> the chance (in percent) </strong> with which you think you would win 1 point, if you were to choose the image with the red <strong>border</strong>. You should be able to estimate the chance of winning 1 point after a hypothetical choice, based on the feedback of your previous choices. " +
+            "However, please note that you are <strong> not </strong> allowed to respond with the slider when the border is <strong>red</strong> in color. Please press any key to proceed if you have understood the instructions. </p>",
+    response_ends_trial: true,
+  }
+  var demo_slider_green = {
+    type: 'image-keyboard-response',
+    stimulus: 'demo_slider_green.png',
+    stimulus_height: 400,
+    stimulus_width: 1100,
+    prompt: "<p>  In the next part of the trial, you will be presented with the <strong> slider </strong> that is displayed above. Now, the border changes its color from <strong> red </strong> to <strong>green</strong>. You will be asked to indicate <strong> the chance (in percent) </strong> with which you think you would win 1 point, if you were to choose the image with the border. You should be able to estimate the chance of winning 1 point after a hypothetical choice, based on the feedback of your previous choices. " +
+            "You can indicate your response by clicking on the slider. You can drag through the slider, to adjust your response as you like. Please <strong>respond</strong> only when the border is <strong>green</strong> in color. Remuneration for participating in the study is not possible if you don't respond using the slider. Please press any key to proceed if you have understood the instructions. </p>",
+    response_ends_trial: true,
+  }
+  var demo_enter = {
+    type: 'image-keyboard-response',
+    stimulus: 'enter_trial.png',
+    prompt: "<p>  After responding with the slider, you will be presented with instructions, as shown in the image above. Then, you are required to press the <strong> ENTER </strong> key to proceed to the next trial. Please press any key if you have understood these instructions. </p>",
+    response_ends_trial: true,
+  }
+  var incongruent = {
+    type: 'image-keyboard-response',
+    stimulus: 'incongruent.png',
+    prompt: "<p>  <strong> Please note: </strong>There may be trials where you would win 0 points more often after choosing a certain image and still, you will be asked to estimate the chance of winning 1 point for the same image, with the slider. For instance, in the image above, the brighter image won 0 points but the participant is asked to report the chances of winning 1 point, if the brighter image is chosen. Please press any key if you have understood these instructions. </p>",
+    response_ends_trial: true,
+  }
+
+  // INITIALIZE VARS FOR PRACTICE TASK
+  var prac_block = {
+    type: "html-keyboard-response", stimulus: "<p style=\"font-size: 20px;color: #000000\"> A practice block will begin now. Press any key to start the practice block.</p>",
+  };
+
+  // INITIALIZE SCREEN TO PRESENT PRACTICE BLOCK SCORES
+  var prac_score = {
+    type: 'html-keyboard-response',
+    on_start: function(score){
+      score.total = jsPsych.data.get().last(150).select('correct').sum()
+    },
+    stimulus:function () {
+      var prac_counter = prac_blocks.shift()
+      var points = jsPsych.data.get().last(150).select('correct').sum() // adds all the points earned in the last n (trialcounter) number of trials to present total points at the end of the block.
+      return `<p style=\"font-size: 25px;color: #000000\">You win <strong> ${points} </strong> points in this block. <br> You have completed <strong>${prac_counter}</strong> out of 3 blocks of the practice task. Press a key to proceed forward.</p>`
+    },
+    on_finish: function(data) {
+      data.finalscore = jsPsych.currentTrial().total // final score after each block
+      index = 0 // reset variables for the next block
+      index_missed = 0
+      index_mu = 0
+      action_s0 = 0;
+      action_s1 = 0;
+      s = shuffle(state);
+      s_mu = shuffle(state_mu);
+    }
+  };
+
+  // INITIALIZE FEEDBACK SCREEN
+  var fb = {
+    type: "html-keyboard-response", choices: jsPsych.NO_KEYS, trial_duration: duration,
+    stimulus: function () {
+      var last_trial_correct = jsPsych.data.get().last(1).values()[0].correct;
+      if (last_trial_correct) {
+        return "<p style=\"font-size: 30px;color: #036B03; position: relative; top: 20px; left: -5px;\">You win 1 point!</p>";
+      } else {
+        return "<p style=\"font-size: 30px;color: #C20808; position: relative; top: 20px; left: -5px;\">You win 0 points!</p>"
+      }
+    },
+    on_finish: function(data) {
+      data.index = index_mu // index starts at 0
+      var blocktype = jsPsych.data.get().last(2).values()[0].block
+      if ( blocktype === 1 || blocktype === 2) {
+        if (s_mu[data.index] === 0) { // state that the trial belongs to
+          data.difference = -0.15 // contrast differences for s = 0
+        }
+        else {
+          data.difference = 0.15
+        }
+      }
+      else {
+        if (s_mu[data.index] === 0) { // state that the trial belongs to
+          data.difference = -0.45 // contrast differences for s = 0
+        }
+        else {
+          data.difference = 0.45
+        }
+      }
+
+      data.contrast_left = avgcon + data.difference // calculate the contrast for the left gabor based on this trial's difference
+      data.contrast_right  = avgcon - data.difference
+    }
+  };
+
+  // INITIALIZE NEXT BLOCK SCREEN
+  var nextblock = {
+    type: "html-keyboard-response",
+    stimulus: "<p style=\"font-size: 20px;color: #000000\"> Next block begins now. <br> The relationship between the contrast level of the images and reward may change now as compared to previous blocks. <br> Press a key when you are ready.</p>",
+  };
+
+  // INITIALIZE STIMULUS AND CHOICE SCREEN FOR PERCEPTUAL UNCERTAINTY BLOCKS
+  var perceptual_prac = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'perceptual_lc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(perceptual){
+      document.body.style.cursor = "none";
+      perceptual.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) { // state that the trial belongs to
+        perceptual.action_s0 = action_s0
+        perceptual.difference = randbet(high_min_neg, high_max_neg) // contrast differences for s = 0
+        perceptual.reward = actionleft_100[jsPsych.currentTrial().action_s0] // picks the correct key press for this trial by serially sampling throug the list using action_s0
+        perceptual.a = 0 // reward state i.e. of a = 0, then arrowleft is more profitable and it is vice versa, if a = 1
+        action_s0 = action_s0 + 1; // increase the action_s0 by 1 to pick the next element from the action list for the next trial
+      }
+      else {
+        perceptual.action_s1 = action_s1
+        perceptual.difference = randbet(high_min, high_max)
+        perceptual.reward = actionright_100[jsPsych.currentTrial().action_s1]
+        perceptual.a = 1
+        action_s1 = action_s1 + 1;
+      }
+      perceptual.contrast_left = avgcon + jsPsych.currentTrial().difference // calculate the contrast for the left gabor based on this trial's difference
+      perceptual.contrast_right = avgcon - jsPsych.currentTrial().difference // calculate the contrast for the right gabor based on this trial's difference
+      perceptual.block = 1; // 1 = perceptual, 2 = mixed, 3 = reward
+      perceptual.contrast = 0; // 0 = low contrast, 1 = high contrast
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) { // if the participant's key press is the same as the correct key_press
+        data.correct = true;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      } else { // if the participant's key_press is not the same as correct key_press
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.block = jsPsych.currentTrial().block // 1 = perceptual, 2 = mixed, 3 = reward
+      data.contrast = jsPsych.currentTrial().contrast
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1; // increase the index by 1 so that the next trial, the next state can be chosen from the state array
+      data.state = s[jsPsych.currentTrial().index] // store the state of the trial
+      data.reward = jsPsych.currentTrial().a // store the action for this trial
+    }
+  };
+  var perceptual_prac_1 = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'perceptual_hc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(perceptual_1){
+      document.body.style.cursor = "none";
+      perceptual_1.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) {
+        perceptual_1.action_s0 = action_s0
+        perceptual_1.difference = randbet(high_min_neg, high_max_neg)
+        perceptual_1.reward = actionright_100[jsPsych.currentTrial().action_s0]
+        perceptual_1.a = 1
+        action_s0 = action_s0 + 1;
+      }
+      else {
+        perceptual_1.action_s1 = action_s1
+        perceptual_1.difference = randbet(high_min, high_max)
+        perceptual_1.reward = actionleft_100[jsPsych.currentTrial().action_s1]
+        perceptual_1.a = 0
+        action_s1 = action_s1 + 1;
+      }
+      perceptual_1.contrast_left = avgcon + jsPsych.currentTrial().difference
+      perceptual_1.contrast_right = avgcon - jsPsych.currentTrial().difference
+      perceptual_1.block = 1;
+      perceptual_1.contrast = 1;
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) {
+        data.correct = true;
+        data.stim = 0;
+      } else {
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.block = jsPsych.currentTrial().block;
+      data.contrast = jsPsych.currentTrial().contrast;
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1;
+      data.state = s[jsPsych.currentTrial().index]
+      data.reward = jsPsych.currentTrial().a
+    }
+  };
+
+  // INITIALIZE STIMULUS AND CHOICE SCREEN FOR REWARD UNCERTAINTY BLOCKS
+  var reward_prac = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'reward_lc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(reward){
+      document.body.style.cursor = "none";
+      reward.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) {
+        reward.action_s0 = action_s0
+        reward.difference = randbet(low_min_neg, low_max_neg)
+        reward.reward = actionleft_70[jsPsych.currentTrial().action_s0]
+        reward.a = 0
+        action_s0 = action_s0 + 1;
+      }
+      else {
+        reward.action_s1 = action_s1
+        reward.difference = randbet(low_min, low_max)
+        reward.reward = actionright_70[jsPsych.currentTrial().action_s1]
+        reward.a = 1
+        action_s1 = action_s1 + 1;
+      }
+      reward.contrast_left = avgcon + jsPsych.currentTrial().difference
+      reward.contrast_right = avgcon - jsPsych.currentTrial().difference
+      reward.block = 3
+      reward.contrast = 0
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) {
+        data.correct = true;
+        data.stim = 0;
+      } else {
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.contrast = jsPsych.currentTrial().contrast;
+      data.block = jsPsych.currentTrial().block;
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1;
+      data.state = s[jsPsych.currentTrial().index]
+      data.reward = jsPsych.currentTrial().a
+    }
+  };
+  var reward_prac_1 = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'reward_hc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(reward_1){
+      document.body.style.cursor = "none";
+      reward_1.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) {
+        reward_1.action_s0 = action_s0
+        reward_1.difference = randbet(low_min_neg, low_max_neg)
+        reward_1.reward = actionright_70[jsPsych.currentTrial().action_s0]
+        reward_1.a = 1
+        action_s0 = action_s0 + 1;
+      }
+      else {
+        reward_1.action_s1 = action_s1
+        reward_1.difference = randbet(low_min, low_max)
+        reward_1.reward = actionleft_70[jsPsych.currentTrial().action_s1]
+        reward_1.a = 0
+        action_s1 = action_s1 + 1;
+      }
+      reward_1.contrast_left = avgcon + jsPsych.currentTrial().difference
+      reward_1.contrast_right = avgcon - jsPsych.currentTrial().difference
+      reward_1.block = 3;
+      reward_1.contrast = 1;
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) {
+        data.correct = true;
+        data.stim = 0;
+      } else {
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.contrast = jsPsych.currentTrial().contrast;
+      data.block = jsPsych.currentTrial().block;
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1;
+      data.state = s[jsPsych.currentTrial().index]
+      data.reward = jsPsych.currentTrial().a
+    }
+  };
+
+  // INITIALIZE STIMULUS AND CHOICE SCREEN FOR BOTH UNCERTAINTY BLOCKS
+  var mixed_prac = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'mixed_lc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(mixed){
+      document.body.style.cursor = "none";
+      mixed.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) {
+        mixed.action_s0 = action_s0
+        mixed.difference = randbet(high_min_neg, high_max_neg)
+        mixed.reward = actionleft_70[jsPsych.currentTrial().action_s0]
+        mixed.a = 0
+        action_s0 = action_s0 + 1;
+      }
+      else {
+        mixed.action_s1 = action_s1
+        mixed.difference = randbet(high_min, high_max)
+        mixed.reward = actionright_70[jsPsych.currentTrial().action_s1]
+        mixed.a = 1
+        action_s1 = action_s1 + 1;
+      }
+      mixed.contrast_left = avgcon + jsPsych.currentTrial().difference
+      mixed.contrast_right = avgcon - jsPsych.currentTrial().difference
+      mixed.block = 2;
+      mixed.contrast = 0;
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) {
+        data.correct = true;
+        data.stim = 0;
+      } else {
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.block = jsPsych.currentTrial().block;
+      data.contrast = jsPsych.currentTrial().contrast;
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1;
+      data.state = s[jsPsych.currentTrial().index]
+      data.reward = jsPsych.currentTrial().a
+    }
+  };
+  var mixed_prac_1 = {
+    type: 'canvas-keyboard-multiple-response',
+    stimulus: gabor, // generates the two patches for the trial using the gabor function
+    data: {condition: 'mixed_hc'}, // data stored for this trial
+    choices: keys, response_ends_trial: false, trial_duration: duration,
+    on_start: function(mixed_1){
+      document.body.style.cursor = "none";
+      mixed_1.index = index // index starts at 0
+      if (s[jsPsych.currentTrial().index] === 0) {
+        mixed_1.action_s0 = action_s0
+        mixed_1.difference = randbet(high_min_neg, high_max_neg)
+        mixed_1.reward = actionright_70[jsPsych.currentTrial().action_s0]
+        mixed_1.a = 1
+        action_s0 = action_s0 + 1;
+      }
+      else {
+        mixed_1.action_s1 = action_s1
+        mixed_1.difference = randbet(high_min, high_max)
+        mixed_1.reward = actionleft_70[jsPsych.currentTrial().action_s1]
+        mixed_1.a = 0
+        action_s1 = action_s1 + 1;
+      }
+      mixed_1.contrast_left = avgcon + jsPsych.currentTrial().difference
+      mixed_1.contrast_right = avgcon - jsPsych.currentTrial().difference
+      mixed_1.block = 2;
+      mixed_1.contrast = 1;
+    },
+    on_finish: function (data) {
+      var response = data.response
+      var length = response.length
+      if (data.response[length-1] === jsPsych.currentTrial().reward) {
+        data.correct = true;
+        data.stim = 0;
+      } else {
+        data.correct = false;
+        data.stim = 0; // keeps the stim value at 0 because the participant has not missed a trial
+      }
+      data.contrast = jsPsych.currentTrial().contrast
+      data.block = jsPsych.currentTrial().block
+      data.corr_resp = jsPsych.currentTrial().reward // stores the correct response on this trial
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      data.diff = jsPsych.currentTrial().difference
+      index = index + 1;
+      data.state = s[jsPsych.currentTrial().index]
+      data.reward = jsPsych.currentTrial().a
+    }
+  };
+
+  // INITIALIZE WELCOME SCREEN FOR PARTICIPANTS
+  var welcome = {
+    type: "html-keyboard-response",
+    stimulus: "<p style=\"font-size: 20px;color: #000000\"> Welcome to the study. </p> <p> Please make sure that you are participating in this study in a calm and comfortable environment. Please place your desktop screen at one-arm distance from your eyes. <br> There are instructions at every stage of the study. Please read and understand them carefully. <br> If you are running this study on Safari/Firefox, please exit now and restart the study on any other browser (e.g. Chrome, MS Edge). </p> <p> Press any key to process forward.</p>",
+  };
+
+  // ASK FOR PROLIFIC ID
+  var survey_id = {
+    type: 'survey-text',
+    questions:[
+      {prompt: "Please enter your correct unique Prolific ID here.", name: 'Prolific_ID'}],
+    button_label:'Next',
+  };
+
+
+  var firstblock = {
+    type: "html-keyboard-response",
+    stimulus: "<p style=\"font-size: 20px;color: #000000\"> The first block of trials will begin now. <br> The relationship between the contrast level of the images and reward may change now as compared to previous blocks. <br> Press a key when you are ready.</p>",
+  };
+
+  // INITIALIZE SLIDER SCREEN
+  var mu = { // part of the trial with the slider; congruent slider trial i.e. the most rewarded patch in the trial phase is used for mu estimates
+    type: 'canvas-slider-response', // plugin required to present participants with slider
+    canvas_size: [300, 500], // size of the canvas
+    data: {condition: 'mu_congruent'}, //
+    stimulus: gabor_mu, // canvas object
+    response_ends_trial: true,
+    require_movement: false,
+    trial_duration: 6000,
+    labels: ['0%','25%', '50%', '75%', '100%'],
+    on_start: function(mu) { // variables required for the trial; calculated at the start of the trial.
+      document.body.style.cursor = "auto"; // to hide the cursor
+      var trial_contrast = jsPsych.data.get().last(3).values()[0].contrast // contrast of the patch that is going to be used for mu estimates
+      mu.contrast_left = avgcon + jsPsych.data.get().last(2).values()[0].difference // calculate the contrast for the left gabor based on this trial's difference
+      mu.contrast_right  = avgcon - jsPsych.data.get().last(2).values()[0].difference
+      if (trial_contrast === 0) { // calculate the position of the border to indicate the patch for mu estimate
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu.x = 305; //right patch
+        }
+        else {
+          mu.x = 100; //left patch
+        }
+      }
+      else {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu.x = 100; // left patch
+        }
+        else {
+          mu.x = 305; //right patch
+        }
+      }
+    },
+    prompt: function () { // generates the prompt for the slider depending on the patch that is used for mu estimates
+      var con_left = avgcon + jsPsych.data.get().last(2).values()[0].difference
+      var con_right =  avgcon - jsPsych.data.get().last(2).values()[0].difference
+      var trial_contrast = jsPsych.data.get().last(3).values()[0].contrast
+      if (trial_contrast === 0) {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+      }
+      else {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+      }
+    },
+    on_finish: function (data) { // data stored after the trial is finished
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      index_mu = index_mu + 1; // increase the index_mu for the next trial.
+      data.state = s[jsPsych.currentTrial().index_mu] // state that the patches in the slider phase belonged to
+    }
+  };
+  var mu_wait = { // slider with no prticipant responses allowed for congruent slider trial i.e. the more rewarded patch in the trial phase is used for mu estimates
+    type: 'canvas-slider-response',
+    canvas_size: [300, 500],
+    data: {condition: 'mu_congruent_wait'},
+    stimulus: gabor_mu_wait,
+    response_ends_trial: false,
+    require_movement: true,
+    trial_duration: 1500,
+    labels: ['0%','25%', '50%', '75%', '100%'],
+    on_start: function(mu_wait) {
+      document.body.style.cursor = "auto";
+      var trial_contrast = jsPsych.data.get().last(2).values()[0].contrast
+      mu_wait.contrast_left = avgcon + jsPsych.data.get().last(1).values()[0].difference // calculate the contrast for the left gabor based on this trial's difference
+      mu_wait.contrast_right  = avgcon - jsPsych.data.get().last(1).values()[0].difference
+      if (trial_contrast === 0) {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_wait.x = 305; //right patch
+        }
+        else {
+          mu_wait.x = 100; //left patch
+        }
+      }
+      else {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_wait.x = 100; // left patch
+        }
+        else {
+          mu_wait.x = 305; //right patch
+        }
+      }
+    },
+    on_load: function () {
+      var slider = document.getElementsByTagName('input')[0];
+      slider.disabled = true;
+    },
+    prompt: function () {
+      var con_left = avgcon + jsPsych.data.get().last(1).values()[0].difference
+      var con_right =  avgcon - jsPsych.data.get().last(1).values()[0].difference
+      var trial_contrast = jsPsych.data.get().last(2).values()[0].contrast
+      if (trial_contrast === 0) {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+      }
+      else {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+      }
+    },
+    on_finish: function (data) {
+      data.contrast_left = jsPsych.currentTrial().contrast_left// stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+    }
+  };
+
+  var mu_1 = { // same as mu except incongruent slider trial i.e. the less rewarded patch in the trial phase is used for mu estimates
+    type: 'canvas-slider-response',
+    canvas_size: [300, 500],
+    data: {condition: 'mu_incongruent'},
+    stimulus: gabor_mu,
+    response_ends_trial: true,
+    require_movement: false,
+    trial_duration: 6000,
+    labels: ['0%','25%', '50%', '75%', '100%'],
+    on_start: function(mu_1) {
+      document.body.style.cursor = "auto";
+      var trial_contrast = jsPsych.data.get().last(3).values()[0].contrast
+      mu_1.contrast_left = avgcon + jsPsych.data.get().last(2).values()[0].difference // calculate the contrast for the left gabor based on this trial's difference
+      mu_1.contrast_right  = avgcon - jsPsych.data.get().last(2).values()[0].difference
+      if (trial_contrast === 0) {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_1.x = 100; //left
+        }
+        else {
+          mu_1.x = 305; //right
+        }
+      }
+      else {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_1.x = 305; // right
+        }
+        else {
+          mu_1.x = 100; //left
+        }
+      }
+    },
+    prompt: function () {
+      var con_left = avgcon + jsPsych.data.get().last(2).values()[0].difference
+      var con_right =  avgcon - jsPsych.data.get().last(2).values()[0].difference
+      var trial_contrast = jsPsych.data.get().last(3).values()[0].contrast
+      if (trial_contrast === 0) {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+      }
+      else {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+      }
+    },
+    on_finish: function (data) {
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+      index_mu = index_mu + 1;
+      data.state = s[jsPsych.currentTrial().index_mu]
+    }
+  };
+  var mu_wait_1 = { // slider with no prticipant responses allowed for incongruent slider trial i.e. the less rewarded patch in the trial phase is used for mu estimates
+    type: 'canvas-slider-response',
+    canvas_size: [300, 500],
+    data: {condition: 'mu_incongruent_wait'},
+    stimulus: gabor_mu_wait,
+    response_ends_trial: false,
+    require_movement: true,
+    trial_duration: 1500,
+    labels: ['0%','25%', '50%', '75%', '100%'],
+    on_start: function(mu_wait_1) {
+      document.body.style.cursor = "auto";
+      var trial_contrast = jsPsych.data.get().last(2).values()[0].contrast
+      mu_wait_1.contrast_left = avgcon + jsPsych.data.get().last(1).values()[0].difference // calculate the contrast for the left gabor based on this trial's difference
+      mu_wait_1.contrast_right  = avgcon - jsPsych.data.get().last(1).values()[0].difference
+      if (trial_contrast === 0) {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_wait_1.x = 100; //right
+        }
+        else {
+          mu_wait_1.x = 305; //left
+        }
+      }
+      else {
+        if (jsPsych.currentTrial().contrast_left > jsPsych.currentTrial().contrast_right) {
+          mu_wait_1.x = 305; // left
+        }
+        else {
+          mu_wait_1.x = 100; //right
+        }
+      }
+    },
+    on_load: function () {
+      var slider = document.getElementsByTagName('input')[0];
+      slider.disabled = true;
+    },
+    prompt: function () {
+      var con_left = avgcon + jsPsych.data.get().last(1).values()[0].difference
+      var con_right =  avgcon - jsPsych.data.get().last(1).values()[0].difference
+      var trial_contrast = jsPsych.data.get().last(2).values()[0].contrast
+      if (trial_contrast === 0) {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p>  `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+      }
+      else {
+        if (con_left > con_right) {
+          return `<p> If you choose the image on your <strong> right</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+        else {
+          return `<p> If you choose the image on your <strong> left</strong>, what do you think is the chance of winning a reward? </p> `
+        }
+      }
+    },
+    on_finish: function (data) {
+      data.contrast_left = jsPsych.currentTrial().contrast_left // stores the contrast level of left patch on this trial
+      data.contrast_right = jsPsych.currentTrial().contrast_right // stores the contrast level of right patch on this trial
+    }
+  };
+
+  // RANDOMIZE PRACTICE BLOCK ORDER
+  var prac_rand = jsPsych.randomization.sampleWithReplacement([0,1,2,3],1);
+
+  var trial_perceptual_prac = {timeline: [fix, perceptual_prac, fb, mu_wait, mu, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_perceptual_prac_1 = {timeline: [fix, perceptual_prac_1, fb, mu_wait, mu, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_reward_prac = {timeline: [fix, reward_prac, fb, mu_wait,mu, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_reward_prac_1 = {timeline: [fix, reward_prac_1, fb, mu_wait,mu, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_mixed_prac = {timeline: [fix, mixed_prac, fb, mu_wait,mu, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_mixed_prac_1 = {timeline: [fix, mixed_prac_1, fb, mu_wait,mu, enter_trial], repetitions: 25, randomize_order: false};
+
+  var trial_perceptual_mu_prac_1 = {timeline: [fix, perceptual_prac, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_perceptual_1_mu_prac_1 = {timeline: [fix, perceptual_prac_1, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_reward_mu_prac_1 = {timeline: [fix, reward_prac, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_reward_1_mu_prac_1 = {timeline: [fix, reward_prac_1, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_mixed_mu_prac_1 = {timeline: [fix, mixed_prac, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+  var trial_mixed_1_mu_prac_1 = {timeline: [fix, mixed_prac_1, fb, mu_wait_1, mu_1, enter_trial], repetitions: 25, randomize_order: false};
+
+  var prac_perc_0 = {timeline: [trial_perceptual_prac, prac_score], repetitions: 1};
+  var prac_perc_1 = {timeline: [trial_perceptual_1_mu_prac_1, prac_score], repetitions: 1};
+  var prac_perc_2 = {timeline: [trial_perceptual_prac_1, prac_score], repetitions: 1};
+  var prac_perc_3 = {timeline: [trial_perceptual_mu_prac_1, prac_score], repetitions: 1};
+  var prac_rew_0 = {timeline: [trial_reward_mu_prac_1, prac_score], repetitions: 1};
+  var prac_rew_1 = {timeline: [trial_reward_prac_1, prac_score], repetitions: 1};
+  var prac_rew_2 = {timeline: [trial_reward_1_mu_prac_1, prac_score], repetitions: 1};
+  var prac_rew_3 = {timeline: [trial_reward_prac, prac_score], repetitions: 1};
+  var prac_mix_0 = {timeline: [trial_mixed_prac, prac_score], repetitions: 1};
+  var prac_mix_1 = {timeline: [trial_mixed_1_mu_prac_1, prac_score], repetitions: 1};
+  var prac_mix_2 = {timeline: [trial_mixed_prac_1, prac_score], repetitions: 1};
+  var prac_mix_3 = {timeline: [trial_mixed_mu_prac_1, prac_score], repetitions: 1};
+
+  var prac_perc_array = jsPsych.randomization.shuffle([prac_perc_0, prac_perc_1, prac_perc_2, prac_perc_3]);
+  var prac_rew_array = jsPsych.randomization.shuffle([prac_rew_0, prac_rew_1, prac_rew_2, prac_rew_3]);
+  var prac_mix_array = jsPsych.randomization.shuffle([prac_mix_0, prac_mix_1, prac_mix_2, prac_mix_3]);
+
+  var prac_perc_trial = prac_perc_array[prac_rand];
+  var prac_rew_trial = prac_rew_array[prac_rand];
+  var prac_mix_trial = prac_mix_array[prac_rand];
+
+  var start = {timeline: [welcome, survey_id]};
+  var demo_timeline = {timeline: [demo, lc_lose, lc_win, hc_win, hc_lose, demo_slider_red, demo_slider_green, incongruent, demo_enter]};
+
+
+  timeline.push(start)
+  timeline.push(demo_timeline)
+  timeline.push(prac_block)
+  timeline.push(prac_perc_trial)
+  timeline.push(nextblock)
+  timeline.push(prac_rew_trial)
+  timeline.push(nextblock)
+  timeline.push(prac_mix_trial)
+  jsPsych.init({
+    timeline: timeline,
+  });
+</script>
+</html>

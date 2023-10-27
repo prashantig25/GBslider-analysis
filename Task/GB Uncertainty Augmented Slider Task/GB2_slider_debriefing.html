@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GB2_slider_task</title>
+  <script src="js/jspsych.js"></script>
+  <script src="js/functions.js"></script>
+  <script src="js/variables.js"></script>
+  <script src="js/custom.css"></script>
+  <script src="js/jspsych-html-keyboard-response.js"></script>
+  <script src="js/jspsych-canvas-keyboard-response.js"></script>
+  <link href="js/jspsych.css" rel="stylesheet" type="text/css"/>
+</head>
+<script>
+
+  // INITIALIZE ARRAY FOR TASK EVENTS
+  var timeline = [];
+
+  // INITIALIZE VAR FOR DEBRIEF QUESTIONS
+  var debrief = [
+    {
+      prompt: "I used the slider to indicate the chances of winning 1 point, if I had made the hypothetical choice that was presented. ",
+      options: [
+        "True",
+        "False",
+        "Sometimes",
+      ],
+      required: true,
+      horizontal: false,
+      correct: 1, // which answer is correct?
+    },
+  ]
+
+  var nQuestions = 1  // How many questions should be sampled?
+  var reminder_pages = [];  // initialize an empty list that will collect reminder pages of incorrect responses
+
+  /* DEBRIEF QUIZ */
+  var debriefquiz = {
+    type: "survey-multi-choice",
+    preamble: `
+      <p align="justify">
+    You have reached the end of the study. Please answer this question based on your experience of the task and what you
+    did in the task. Please be as honest as possible. The red * after a question indicates that those questions are compulsory. </p>
+      </div>`,
+    questions: function () {
+      return debrief;
+    },
+    randomize_question_order: false,
+    button_label: "Submit answers",
+    on_start: function () {
+      document.body.style.cursor = "auto";
+      nCorrect = 0;
+    },
+    on_finish: function (data) {
+      data.questions = debrief; // Save questions that were asked
+
+      // Count correct responses
+      var responses = data.response;
+      var i;
+      for (i = 0; i < debrief.length; i++) {
+        var response = responses["Q" + i];
+        var correct =
+                response ===
+                debrief[i]["options"][debrief[i]["correct"]];
+        if (correct) {
+          nCorrect++;
+        }
+      }
+      // DRAW A NEW SAMPLE OF QUESTIONS
+      questionSample = jsPsych.randomization.sampleWithoutReplacement(
+              debrief,
+              nQuestions
+      );
+    },
+  };
+  // PUT THE QUIZ PROCEDURE HERE
+  debriefing = {
+    timeline: [
+      debriefquiz
+    ],
+
+  };
+
+  timeline.push(debriefing)
+  jsPsych.init({
+    timeline: timeline,
+  });
+</script>
+</html>

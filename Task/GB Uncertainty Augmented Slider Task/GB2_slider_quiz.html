@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>quiz</title>
+  <script src="js/jspsych.js"></script>
+  <script src="js/functions.js"></script>
+  <script src="js/variables.js"></script>
+  <script src="js/custom.css"></script>
+  <script src="js/jspsych-html-keyboard-response.js"></script>
+  <script src="js/jspsych-canvas-keyboard-response.js"></script>
+  <link href="js/jspsych.css" rel="stylesheet" type="text/css"/>
+</head>
+<script>
+
+  // INITIALIZE EMPTY ARRAY FOR TASK EVENTS
+  var timeline = [];
+
+  // INITIALIZE QUESTIONS
+  var questions = [
+    {
+      prompt: "Once you have clicked on the slider to respond, how can you use the slider to re-adjust your response to the desired percent level?",
+      options: [
+        "Directly click on the slider corresponding to the desired percent labels. ",
+        "Drag the slider to the desired percent labels.",
+        "Re-adjustment of response is not possible once the slider has been initially clicked.",
+        "Click on the slider and then drag it to a corresponding desired percent label."
+      ],
+      required: true,
+      horizontal: false,
+      correct: 3, // which answer is correct?
+      reminder: `
+      <div style="max-width: 800px">
+      <p style="color:#000000"><strong>Once you have clicked on the slider to respond, how can you use the slider to re-adjust your response to the desired percent level?</strong></p>
+      <p style="color:green"><strong>Correct Answer: Click on the slider and then drag to the desired percent labels.</strong></p>
+      <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+      <p align="justify"> Please click on the slider directly to choose the corresponding percent label below and drag the slider if you want to adjust your response. </p>
+      <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+      `,
+    },
+    {
+      prompt: "The percentages on the slider indicate which of the following?",
+      options: [
+        "Chances of winning 0 points, if you chose the image with the green border.",
+        "Chances of winning 1 point, if you chose the image with the red border.",
+        "Chances of winning 2 points, if you chose the image with the green border.",
+        "Chances of winning 1 point, if you chose the image with the green border."
+      ],
+      required: true,
+      horizontal: false,
+      correct: 3, // which answer is correct?
+      reminder: `
+      <p style="color:#000000"><strong> The percentages on the slider indicate which of the following? </strong></p>
+      <p style="color:green"><strong>Correct Answer: Chances of winning 1 point, if you chose the image with the green border.</strong></p>
+      <p style="color:orangered"><strong>Your answer was incorrect!</strong></p>
+      <p align="justify">The percentages indicate the chances of winning 1 point, if you chose the image with the border.</p>
+      <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+      `,
+    },
+    {
+      prompt: "If you think that the chance of winning 1 point is 70 percent when choosing the image with the green border, to which percent label would you drag the slider to? ",
+      options: [
+        "30%",
+        "60%",
+        "70%",
+      ],
+      required: true,
+      horizontal: false,
+      correct: 2, // which answer is correct?
+      reminder: `
+      <p style="color:#000000"><strong>If you think that the chance of winning 1 point is 70 percent,
+      when choosing the image with the green border, to which percent label would you drag the slider to? </strong></p>
+      <p style="color:green"><strong>Correct Answer: 70%</strong></p>
+      <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+      <p align="justify">If you think that the chance of winning 1 point is 70 percent, please click and drag the slider to the 70% label on the slider. </p>
+      <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+      `,
+    },
+    {
+      prompt: "There may be trials where you win 0 points more often on choosing a certain image and yet, you may be asked to estimate the chances of winning 1 point for the same image using the slider.",
+      options: [
+        "True",
+        "False",
+      ],
+      required: true,
+      horizontal: false,
+      correct: 0, // which answer is correct?
+      reminder: `
+      <p style="color:#000000"><strong>There may be trials where you win 0 points more often on choosing a certain image and yet, you may be asked to estimate the chances of winning 1 point for the same image using the slider.</strong></p>
+      <p style="color:green"><strong>Correct Answer: True</strong></p>
+      <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+      <p align="justify"> Yes, there may be trials where you win 0 points more often on choosing a certain image and still, you may be asked to estimate the chances of winning 1 point for the same image using the slider. </p>
+      <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+      `,
+    },
+    {
+      prompt: "You are allowed to respond using the slider, when the color of the border is",
+      options: [
+        "Red",
+        "Green",
+        "None of the above",
+      ],
+      required: true,
+      horizontal: false,
+      correct: 1, // which answer is correct?
+      reminder: `
+      <p style="color:#000000"><strong>You are allowed to respond using the slider, when the color of the border is</strong></p>
+      <p style="color:green"><strong>Correct Answer: Green</strong></p>
+      <p style="color:#ff4500"><strong>Your answer was incorrect!</strong></p>
+      <p align="justify"> Please respond using the slider only when the border is green in color. </p>
+      <p>Press <strong><em>SPACE BAR</em></strong> to continue.</p>
+      `,
+    }
+  ]
+  // INITIALIZE VARS
+  var nQuestions = 5  // How many questions should be sampled?
+  var nCorrectRequired = 5  // How many correct responses before participant can advance?
+  var reminder_pages = [];  // initialize an empty list that will collect reminder pages of incorrect responses
+  // Define the first question sample (can be a subset of questions, or all, ...)
+  questionSample = jsPsych.randomization.sampleWithoutReplacement(
+          questions,
+          nQuestions
+  );
+
+  // QUIZ
+  var quiz = {
+    type: "survey-multi-choice",
+    preamble: `
+      <p align="justify">
+    Please answer these questions to make sure that you understood the instructions. The red * after a question indicates
+    that those questions are compulsory. You will be provided with feedback if you respond to questions incorrectly. </p>
+      </div>`,
+    questions: function () {
+      return questionSample;
+    },
+    randomize_question_order: false,
+    button_label: "Submit answers",
+    on_start: function () {
+      //document.body.style.cursor = "auto";
+      nCorrect = 0;
+    },
+    on_finish: function (data) {
+      data.questions = questionSample; // Save questions that were asked
+
+      // Count correct responses
+      var responses = data.response;
+      var i;
+      for (i = 0; i < questionSample.length; i++) {
+        var response = responses["Q" + i];
+        var correct =
+                response ===
+                questionSample[i]["options"][questionSample[i]["correct"]];
+        if (correct) {
+          nCorrect++;
+        } else {
+          // Add reminders for wrong answers
+          reminder_pages.push(questionSample[i]["reminder"]);
+        }
+      }
+      // Draw a new sample of questions
+      questionSample = jsPsych.randomization.sampleWithoutReplacement(
+              questions,
+              nQuestions
+      );
+    },
+  };
+
+  // REMINDERS
+  reminders = {
+    type: "instructions",
+    show_page_number: true,
+    page_label: "Reminder",
+    key_forward: " ",
+    pages: function () {
+      return reminder_pages;
+    },
+    on_finish: function () {
+      reminder_pages = [];
+    },
+    //on_start: () => (document.body.style.cursor = "none"),
+  };
+  var correct = {
+    type: 'html-keyboard-response',
+    stimulus: '<p style="color:green; font-size: 30px"><strong> Congratulations!</strong> </p> <br> You responded correctly to all questions. You can now proceed to the task. Please press any key to proceed.</p>',
+  }
+  var if_node = {
+    timeline: [correct],
+    conditional_function: function(){
+      // get the data from the previous trial,
+      // and check which key was pressed
+      if(nCorrect === 5){
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+  quizProcedure = {
+    timeline: [
+      quiz,
+      {
+        timeline: [reminders],
+        conditional_function: function () {
+          return nCorrect < nCorrectRequired;
+        },
+      },
+      if_node,
+    ],
+
+  };
+
+  timeline.push(quizProcedure)
+  jsPsych.init({
+    timeline: timeline,
+  });
+</script>
+</html>
+
+// Reference: https://github.com/moltaire/causality_task/
