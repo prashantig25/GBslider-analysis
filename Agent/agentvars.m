@@ -21,7 +21,7 @@ classdef agentvars < handle
             % the class that are computed based on exisitng static properties of
             % the class.
             if obj.condition == 1 || obj.condition == 2 % condition dependent sensitivity parameter for agent
-                obj.sigma = 0.15;
+                obj.sigma = 0.05;
             else 
                 obj.sigma = 0.0001;
             end
