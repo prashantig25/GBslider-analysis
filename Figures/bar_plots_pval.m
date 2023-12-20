@@ -1,5 +1,5 @@
-function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xticklabs,title_name, ...
-    xlabelname,ylabelname,disp_pval,scatter_dots,dot_size,plot_err,fontsize,linewidth,fontname,varargin)  
+function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xticklabs,title_name, ...
+    xlabelname,ylabelname,disp_pval,scatter_dots,dot_size,plot_err,fontsize,linewidth,fontname,disp_legend,varargin)  
     % bar_plots_pval creates bar plots with multiple bars, single data scatter
     % points, SEM bars, and displays significance stars.
 
@@ -26,12 +26,15 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
         % fontsize: font size for text
         % linewidth: line width for plot
         % fontname: font
+        % disp_legend: whether legend should be displayed
         % varargin{1}: face color for bars
         % varargin{2}: cell array containing bar labels
         % varargin{3}: array with max value for each bar, to be used as y-axis location for significance stars
         % varargin{4}: means of any other dataset
         % varargin{5}: adjusted xlims values
         % varargin{6}: example participant to be highlighted
+        % varargin{7}: whether to use max values or user defined
+        % varargin{3}
 	% ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
     for i = 1:x_groups
@@ -45,11 +48,11 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
     end
 
     % PLOT BARS
-    h = bar(data_plot);
+    h = bar(1:x_groups,data_plot);
     hold on
 
     % CUSTOMIZE BAR COLOR
-    if nargin > 15
+    if nargin > 19
       for b = 1:bars
           h(b).FaceColor = varargin{1}(b,:);
       end
@@ -57,8 +60,11 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
     hold on
 
     % UPDATE LEGEND
-    legend(legend_names,"AutoUpdate","off",'Location','best','Box','off','Color', ...
-        'none','EdgeColor','none')
+    if disp_legend == 1
+        l = legend(legend_names,"AutoUpdate","off",'Location','best','Box','off','Color', ...
+            'none','EdgeColor','none');
+        l.ItemTokenSize = [7,7];
+    end
 
   	% PLOT SINGLE DATA POINTS ON THE BARS, FOR EACH BAR, ACROSS GROUPS ON
     % X-AXIS
@@ -66,21 +72,30 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
         for b = 1:bars
             for i = 1:x_groups
                 scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y(x==i,b),dot_size,"o", ...
-                    'MarkerEdgeColor','k','MarkerFaceColor','auto','XJitter','randn','XJitterWidth',.5)
-                varargin{3}(i) = max(y(x==i,b));
+                    'MarkerEdgeColor',[184, 184, 184]./255,'MarkerFaceColor',[220, 220, 220]./255,'XJitter', ...
+                    'randn','XJitterWidth',.5,'YJitterWidth',1)
+%                 varargin{3}(i) = max(y(x==i,b));
             end
         end
-        if nargin > 20 % EXAMPLE PARTICIPANT SCATTER POINT TO BE HIGHLIGHTED
+        if nargin > 25 % EXAMPLE PARTICIPANT SCATTER POINT TO BE HIGHLIGHTED
             for b = 1:bars
                 for i = 1:x_groups
                     y_group = y(x==i,b);
                     y_single = y_group(varargin{6});
-                    single = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y_single,dot_size*4,"o", ...
+                    single = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y_single,dot_size*2,"o", ...
                         'MarkerEdgeColor','k','MarkerFaceColor',[20, 55, 108]./256,'XJitter','randn','XJitterWidth',.5);
                 end
             end
         end
    end
+    
+
+%    for b = 1:bars
+%         for i = 1:x_groups
+%             varargin{3}(i) = max(y(x==i,b));
+%         end
+%    end
+
 
 	% CALCULATING THE WIDTH FOR EACH GROUP ON X-AXIS
     if plot_err == 1
@@ -95,18 +110,18 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
     end
 
     % ADD MEANS OF ANY OTHER DATASET (e.g., normative agent)
-    if nargin > 18
+    if nargin > 23
         for b = 1:bars
             for i = 1:x_groups
-                s = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), varargin{4}(1,i),dot_size*4, ...
+                s = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), varargin{4}(1,i),dot_size*2, ...
                     "diamond",'MarkerEdgeColor','k','MarkerFaceColor',[158, 188, 226]./256, ...
                     'XJitter','randn','XJitterWidth',.2);
             end
-            if nargin > 20
+            if nargin > 25 && disp_legend == 1
                 l = legend([h single(1) s(1)],legend_names, ...
                     "AutoUpdate","off",'Location','best','Box','off','Color','none','EdgeColor','none');
                 l.ItemTokenSize = [5 5];
-            else
+            elseif disp_legend == 1
                 l = legend([h s(1)],legend_names, ...
                     "AutoUpdate","off",'Location','best','Box','off','Color','none','EdgeColor','none');
                 l.ItemTokenSize = [5 5];
@@ -115,7 +130,7 @@ function bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,x
     end
 
     % ADJUST XLIMS
-    if nargin > 19
+    if nargin > 23
         xlim(varargin{5})
     end
 
