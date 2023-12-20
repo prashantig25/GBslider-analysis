@@ -1,8 +1,12 @@
 function [data_int] = task_agent_int(varargin)
+
     % TASK_AGENT_INT simulates the interaction between task and agent.
-    
+
     % INPUT:
-        % use task-based variables from participant's files
+        % varargin{1}: use task-based variables from participant's files or 
+        % other agent simulations
+        % varargin{2}: use agent-based variables such as action, reward
+        % from other agent simulations
         
     % OUTPUT:
         % data_int: simulated interaction stored in a table
@@ -38,16 +42,21 @@ function [data_int] = task_agent_int(varargin)
             task.contrast_sample();
         else
             task.s_t = varargin{1}.state(i);
-            task.c_t = varargin{1}.diff(i);
-            task.mu = varargin{1}.mu(i);
-            task.condition = varargin{1}.choice_cond(i);
-            agent.condition = varargin{1}.choice_cond(i);       
+            task.c_t = varargin{1}.objective_obs(i);
+            task.mu = varargin{1}.mu(i);     
         end
-        agent.observation_sample(task.c_t);% contrast based observation sampled      
-        agent.decide_e(agent.o_t); % economic decision
-        agent.a_t;
-        task.reward_sample(agent.a_t);% economic choice based reward
-        agent.learn(task.r_t); % update based on reward
+
+        if varargin{2} == 0
+            agent.observation_sample(task.c_t);% contrast based observation sampled      
+            agent.decide_e(agent.o_t); % economic decision
+            task.reward_sample(agent.a_t);% economic choice based reward
+            agent.learn(task.r_t); % update based on reward
+        else
+            agent.o_t = varargin{1}.subjective_obs(i); % observed contrast difference
+            agent.a_t = varargin{1}.action(i); % economic decision
+            task.r_t = varargin{1}.reward(i); % reward
+            agent.learn(task.r_t); % update based on reward
+        end
         if or(and(task.s_t == 0,agent.a_t == 0),and(task.s_t == 1,agent.a_t == 1)) % low contrast patch is set to be correct
                 corr(i) = 1;
         else
@@ -57,7 +66,7 @@ function [data_int] = task_agent_int(varargin)
         if nargin > 0
             contrast(i) = varargin{1}.contrast(i);
             congruence(i) = varargin{1}.congruence(i);            
-            condition(i) = varargin{1}.choice_cond(i);
+            condition(i) = varargin{1}.condition(i);
         end
         
         % STORING SIMULATED VARIABLES
@@ -67,7 +76,6 @@ function [data_int] = task_agent_int(varargin)
         pi_1(i) = agent.pi_1 ;
         pi_0(i) = agent.pi_0;
         e_mu_t(i) = agent.G;
-        e_mu_t(i) = agent.E_mu_t;
         v_a_1(i) = agent.v_a_t(1);
         a(i) = agent.a_t;
         q_0(i) = agent.q_0;

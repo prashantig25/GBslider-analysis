@@ -21,6 +21,7 @@ classdef Agent < agentvars
         q_1 = NaN
         d = NaN % temporary, trial-specific polynomial coefficients
         G = NaN % Gamma factor 
+        d_t = NaN % perceptual decision
         product = ones(1,100)
         mu = repelem(1,100)
         p_mu = linspace(0, 1, 100)
@@ -28,7 +29,6 @@ classdef Agent < agentvars
         u = NaN
         v = NaN
         w = NaN
-%         d_t = NaN % perceptual decision
         p_d_0
         p_d_t
         s0
@@ -39,10 +39,12 @@ classdef Agent < agentvars
         q_1_1
     end
     methods
-        function obj=Agent       
+        function obj=Agent   
+
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
-            % the class.          
+            % the class.    
+
             obj.p_o_giv_u = zeros(1,length(obj.set_o)); % probabilities of observations given contrast differences
             obj.p_o_giv_u_norm = zeros(1,length(obj.set_o)); % normalised probabilities of observations
             obj.mu_for_ev = obj.mu; % contingency parameter
@@ -52,11 +54,11 @@ classdef Agent < agentvars
         function observation_sample(obj,c_t)       
             % observation_sample computes the contrast difference dependent
             % observation. 
-            
+
             % INPUT:
                 % c_t: task generated contrast difference 
                 % obj: current object
-                
+
             % OUTPUT:
                 % o_t: returns observation that is sampled from a normal
                 % distribution with presented contrast difference as mean 
@@ -70,11 +72,11 @@ classdef Agent < agentvars
         function p_s_giv_o(obj, o_t)     
             % p_s_giv_o computes belief state given observation of 
             % contrast difference. 
-            
+
             % INPUT: 
                 % obj: current object
                 % o_t: observed contrast differnece
-                
+
             % OUTPUT: 
                 % pi_0,pi_1: returns the belief state.
           	% COMPUTE CUMULATIVE DISTRIBUTION FUNCTIONS
@@ -86,14 +88,74 @@ classdef Agent < agentvars
             obj.pi_0 = (obj.u - obj.v) / (obj.w - obj.v);
             obj.pi_1 = (obj.w - obj.u) / (obj.w - obj.v);
         end  
+        function decide_p(obj)
+            % decide_p makes a perceptual decision for the categorical agent. 
+
+            % INPUT: 
+                % obj: current object
+
+            % OUTPUT: 
+                % d_t: perceptual decision
+
+            % COMPUTE BELIEF STATES
+            if obj.agent == 0
+                obj.pi_0 = 0.5;
+                obj.pi_1 = 0.5;
+                obj.p_d_0 = 0.5;
+            else
+                obj.p_s_giv_o(obj.o_t);
+                if obj.task_agent_analysis
+                    obj.p_d_0 = norm.cdf(0, obj.o_t, obj.sigma);
+                else
+                    if obj.pi_0 >= obj.pi_1
+                        obj.p_d_0 = 0;
+                    else
+                        obj.p_d_0 = 1;
+                    end
+                end
+
+            % PERCEPTUAL DECISION
+            obj.p_d_t = [obj.p_d_0, 1-obj.p_d_0];
+            obj.d_t = binornd(1, obj.p_d_t(2));
+            end
+        end
+        function cat_bs(obj)
+            % CAT_BS computes the categorical belief states based of
+            % the current perceptual decision.
+
+            % INPUT: 
+                % obj: current object
+
+            % OUTPUT: 
+                % pi_0,pi_1: returns the categorical belief state
+
+            obj.decide_p();
+            if obj.d_t == 0
+                obj.pi_0 = 0;
+                obj.pi_1 = 1;
+            else
+                obj.pi_0 = 1;
+                obj.pi_1 = 0;
+            end
+        end
+        function ev_cat(obj) 
+            % EV_CAT computes expected value for categorical belief states.
+
+            % INPUT:
+                % obj: current object
+
+            obj.cat_bs(); % categorical belief states
+            obj.compute_valence(); % expected values
+        end
         function poly_eval = eval_poly(obj)     
             % poly_eval evaluates the polynomial.
-            
+
             % INPUT:
                 % obj: current object
                 
             % OUTPUT:
                 % poly_eval: evaluated polynomial
+
             poly_int = polyint([obj.c_t, 0]); % anti-derivative of the polynomial
             poly_eval = polyval(poly_int, [0, 1]); % evaluate the polynomial
             poly_eval = diff(poly_eval); % difference of evaluated polynomial
@@ -101,12 +163,13 @@ classdef Agent < agentvars
         function compute_valence(obj)
             % compute_valence computes the expected value of each action
             % based on belief states and contingency parameter. 
-            
+
             % INPUT:
                 % obj: current object
-                
+
             % OUTPUT:
                 % v_a_t: array with action valences
+
             if obj.eval_ana == 1
                 obj.E_mu_t = obj.eval_poly();
             else
@@ -120,24 +183,26 @@ classdef Agent < agentvars
         function softmax(obj)
             % softmax returns choice probabilities based on the computed
             % action values and beta parameter 
-            
+
             % INPUT:
                 % obj: current object
-                
+
             % OUTPUT:
                 % p_a_t: vector with choice probabilities
+
             obj.p_a_t = exp(obj.v_a_t.*obj.beta) / sum(exp(obj.v_a_t.*obj.beta));
         end
        function int_voi = integrate_voi(obj,voi,varargin)
             % integrate_voi returns the integral of a particular variable
             % conditional of contrast difference. 
-            
+
             % INPUT:
                 % obj: current object
                 % voi: 0 is action values, voi = 1 is polynomial updates.
-                
+
             % OUTPUT:
                 % int_voi: array with polynomial updates
+
             obj.r_t = varargin{1}; % access the first varargin because the only additional input is r_t
             voi_matrix = NaN(length(obj.set_o), 2); % initialize voi matrix
             obj.p_o_giv_u = normpdf(obj.set_o, obj.o_t, obj.sigma); % observation probabilities
@@ -160,14 +225,15 @@ classdef Agent < agentvars
         end
         function decide_e(obj, o_t) 
             % decide_e makes an economic decision based for the agent and 
-            % uses softmax policy to make a choice for the agent
-            
+            % uses softmax policy to make a choice for the agent.
+
             % INPUT:
                 % obj: current object
                 % o_t: observed contrast difference
-                
+
             % OUTPUT:
                 % a_t: economic decision
+
             if obj.agent == 0 % random decision agent
                 obj.v_a_t = [0.5, 0.5];
                 obj.p_a_t = [0.5, 0.5];  
@@ -179,6 +245,8 @@ classdef Agent < agentvars
                     obj.p_s_giv_o(o_t); % Compute belief state based on direct observations
                     obj.compute_valence(); % action valences based on direct observations
                 end 
+            elseif obj.agent == 2 % categorical agent
+                obj.ev_cat();
             end
             if obj.agent ~= 0 
                 % for all agents except 0, use the softmax decision policy
@@ -190,24 +258,26 @@ classdef Agent < agentvars
         function r_t = compute_action_dep_rew(obj, r_t) 
             % compute_action_dep_rew recodes task generated reward 
             % contingent on action. 
-            
+
             % INPUT: 
                 % obj: current object
                 % r_t: task generated reward
-                
+
             % OUTPUT:
                 % r_t: agent recoded reward
+
             r_t = r_t + (obj.a_t *((-1) .^ (2 + r_t)));
         end
         function compute_q(obj,r_t)
             % compute_q computes q_0 and q_1 for the polynomial update.
-            
+
             % INPUT: 
                 % obj: current object
                 % r_t: task generated reward
-                
+
             % OUTPUT:
                 % q_0,q_1: fractions for polynomial update
+
             obj.t = length(obj.c_t) + 1; % degree of polynomial
             obj.r_t = obj.compute_action_dep_rew(r_t); % recode reward to get action contingent reward
             if obj.eval_ana == 1
@@ -226,15 +296,31 @@ classdef Agent < agentvars
                 obj.q_1 = obj.q_1_num ;
             end
         end
+        function q_a2(obj,r_t)
+            % q_a2 computes q values for polynomial updates of categorical
+            % agent.
+
+            % INPUTS:
+                % obj: current object
+                % r_t: task generated reward
+
+            % OUTPUT:
+                % q_0,q_1: fractions for polynomial update
+
+            obj.cat_bs();
+            obj.compute_q(r_t);
+        end
         function update_coefficients(obj)
+
             % update_coefficients updates the prior probability using the
             % evaluated polynomials.
-            
+
             % INPUT:
                 % obj: current object
-                
+
             % OUTPUT:
                 % c_t: updated coefficient
+
             obj.d = zeros(1,obj.t);
             obj.d(end) = obj.q_0 * obj.c_t(end);  % update last element
             for n = 0:(obj.t - 3)
@@ -246,13 +332,14 @@ classdef Agent < agentvars
         function learn(obj,r_t)
             % learn updates the q-values to help the agent learn and
             % update contingency parameter.
-            
+
             % INPUT:
                 % obj: current object
                 % r_t: task generated reward
-                
+
             % OUTPUT:
                 % G: updated contingency parameter
+
             if obj.agent == 0
                 obj.G = 0.5;
             elseif obj.agent == 1
@@ -269,6 +356,9 @@ classdef Agent < agentvars
                     obj.update_coefficients(); % update coefficients   
                     obj.G = obj.eval_poly();
                 end
+            elseif obj.agent == 2 % updating q values for categorical agent
+                obj.q_a2(r_t); % compute q-values
+                obj.update_coefficients(); % update the values
             end
        end
    end

@@ -1,15 +1,15 @@
 function  [sim_data] = simulations(varargin)
-    % simulations runs agent simulations for multiple blocks of the task.
+    % SIMULATIONS runs agent simulations for multiple blocks of the task.
 
     % INPUT:
         % varargin: could use task-based variables from participant's files to
         % simulate agent choices and learning
-
+        
     % OUTPUT:
         % sim_data: table with simulated data
+
     % INITIALIZATION OF REQUIRED CLASSES
     task = Task();
-
     n_blocks = task.B; % number of blocks
     
     % PRE-ALLOCATE TABLE TO STORE SIMULATED DATA
