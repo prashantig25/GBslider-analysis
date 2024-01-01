@@ -63,7 +63,7 @@ rsq_partial = [lm_pe.Rsquared.Adjusted; lm_pe_condiff.Rsquared.Adjusted;
     lm_pe_pesign.Rsquared.Adjusted]; % r-square for partial models
 partial_rsq = NaN(3,1);
 for i = 1:3
-    partial_rsq(i,1) = compute_partialrsq(rsq_partial(i),rsq_full);
+    partial_rsq(i,1) = abs(compute_partialrsq(rsq_partial(i),rsq_full));
 end
 %% INITIALISE TILE LAYOUT
 
@@ -119,4 +119,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure4_int1.png', '-dpng', '-r600') 
+print(fig, 'figure4_int2.png', '-dpng', '-r600') 
