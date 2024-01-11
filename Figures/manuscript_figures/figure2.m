@@ -19,14 +19,18 @@ screen_height = 2;
 linewidth_screens = 0.7; % line width for screens
 fontsize_title = 9; % font size for plot titles
 linewidth_axes = 0.5; % line width for axes
-font_size = 6;
+font_size = 6; % font size
+fontsize_label = 12; % font size for subplot labels
 
 % load all required data
 load("ecoperf_mix.mat","ecoperf_mix") % economic performance
 load("ecoperf_perc.mat","ecoperf_perc")
 load("ecoperf_rew.mat","ecoperf_rew")
-load("mean_curves.mat","mean_curves") % learning
+load("mean_curves.mat","mean_curves") % learning across trials for each condition
 load("sem_curves.mat","sem_curves")
+load("mix_curves_study2.mat","mix_curve"); % learning in a block for each condition
+load("perc_curves_study2.mat","perc_curve");
+load("rew_curves_study2.mat","rew_curve");
 %% INITIALISE TILE LAYOUT
 
 figure
@@ -35,7 +39,8 @@ t = tiledlayout(3,4);
 t.TileSpacing = 'compact';
 t.Padding = 'compact';
 ax3 = nexttile(3,[2 2]);
-ax5 = nexttile(9,[1 2]);
+ax5 = nexttile(9,[1 1]);
+ax10 = nexttile(10,[1 1]);
 ax12 = nexttile(12,[1,1]);
 ax11 = nexttile(11,[1,1]);
 ax1 = nexttile(1,[2,2]);
@@ -206,12 +211,13 @@ box off
 axis off
 %% PLOT CONDITIONS
 
-pos = ax5.Position;
-ax5_new = axes('Units', 'Normalized', 'Position', pos);
+position_change = [0, 0.03, 0, 0];
+new_pos = change_position(ax5,position_change);
+ax5_new = axes('Units', 'Normalized', 'Position', new_pos);
 box(ax5_new, 'on');
 delete(ax5);
 
-title('Uncertainty','FontWeight','normal',FontName=font_name,Parent=gca,FontSize=fontsize_title)
+title('Uncertainty','FontWeight','normal',FontName=font_name,Parent=gca,FontSize=font_size)
 axis([0 1 0 1])
 set(ax5_new,'Color','none')
 axis off
@@ -222,17 +228,17 @@ xline(0.33)
 xline(0.66)
 
 % ADD TEXT BOXES
-all_strings = {'Both','Perceptual','Reward','0.7         0.3','0.9         0.1',...
-    '0.7         0.3'}; % string for each text box
+all_strings = {'Both','Perceptual','Reward','0.7     0.3','0.9     0.1',...
+    '0.7     0.3'}; % string for each text box
 num_strings = 6; % number of strings
-text_xpos = [0.07, 0.395, 0.73, 0.71, 0.38, 0.05]; % x-position
+text_xpos = [0.07, 0.395, 0.73, 0.73, 0.39, 0.05]; % x-position
 text_ypos = [0.8, 0.8, 0.8, 0.15, 0.15, 0.15]; % y-posisiton
 box_width = 0.2; % text box width
 box_height = 0.15; % text box height
 for n = 1:num_strings
     string = all_strings(n);
     position = [text_xpos(n) text_ypos(n) box_width box_height];
-    annotate_textbox(ax5_new,position,string,font_name,fontsize_trial, ...
+    annotate_textbox(ax5_new,position,string,font_name,font_size-0.5, ...
         horz_align,vert_align,bg_color,face_alpha,edge_color);
 end
 %% DESCRIPTIVE PLOTS
@@ -255,10 +261,10 @@ lg_curves(x,mean_curves./100,sem_curves./100,colors_name,legend_names,title_name
 xlim([1,25])
 set(gca,'color','none','FontName',font_name,'FontSize',font_size,'LineWidth',linewidth_axes)
 
-new_pos = change_position(ax11,position_change);
-ax11_new = axes('Units', 'Normalized', 'Position', new_pos);
-box(ax11_new, 'on');
-delete(ax11);
+new_pos = change_position(ax10,position_change);
+ax10_new = axes('Units', 'Normalized', 'Position', new_pos);
+box(ax10_new, 'on');
+delete(ax10);
 
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS
 y = [ecoperf_mix;ecoperf_perc;ecoperf_rew;];
@@ -289,8 +295,36 @@ mean_sd = mean(mean_sd,2);
 % PLOT CHOICE DATA
 bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
     legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name) 
-set(gca,'color','none','FontName','Arial','FontSize',6,'YLim',[0.5,1],'LineWidth',0.5)
+set(gca,'color','none','FontName',font_name,'FontSize',font_size,'YLim',[0.5,1],'LineWidth',linewidth_axes)
 
+new_pos = change_position(ax11,position_change);
+ax11_new = axes('Units', 'Normalized', 'Position', new_pos);
+box(ax11_new, 'on');
+delete(ax11);
+
+% SLIDER UPDATES ACROSS SUBJECTS
+mix_avg = nanmean(mix_curve,2); % mean across trials
+perc_avg = nanmean(perc_curve,2);
+rew_avg = nanmean(rew_curve,2);
+y = [mix_avg;perc_avg;rew_avg;];
+mix_subjs = nanmean(mix_avg,1); % mean across participants
+perc_subjs = nanmean(perc_avg,1);
+rew_subjs = nanmean(rew_avg,1);
+mu_subjs = [mix_subjs, perc_subjs, rew_subjs];
+
+% SEM ACROSS SUBJECTS
+mix_sd = nanstd(mix_avg,1)/sqrt(num_subjs);
+perc_sd = nanstd(perc_avg,1)/sqrt(num_subjs);
+rew_sd = nanstd(rew_avg,1)/sqrt(num_subjs);
+mu_sd = [mix_sd; perc_sd;rew_sd;];
+
+% FIGURE PROPERTIES
+title_name = {'Reported \mu parameter'}; % figure title
+
+% PLOT CHOICE DATA
+bar_plots(y,mu_subjs.',mu_sd,num_subjs,length(mu_subjs),length(legend_names), ...
+    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name) 
+set(gca,'color','none','FontName',font_name,'FontSize',font_size,'YLim',[50,100],'LineWidth',linewidth_axes)
 %% ADD EXTERNAL PNGs
 
 patch_dim = 0.035;
@@ -303,11 +337,11 @@ for n = 1:num_pngs
     hold on
 end
 
-patch_dim = 0.05;
-pos_y = 0.19; pos_x = 0.07;
+patch_dim = 0.03;
+pos_y = 0.22; pos_x = 0.065;
 image_png = {'lowcon_patch.png','lowcon_patch.png','lowcon_patch.png','lowcon_patch.png','highcon_patch.png','lowcon_patch.png',};
 num_pngs = 6;
-adjust_x = 0.07;
+adjust_x = 0.032;
 for n = 1:num_pngs
     axes('pos',[pos_x pos_y patch_dim patch_dim]);
     imshow(image_png{n});
@@ -326,8 +360,35 @@ for n = 1:num_pngs
     hold on
     pos_x = pos_x + adjust_x;
 end
+
+%% SUBPLOT LABELS
+
+ax1_pos = ax1_new.Position;
+adjust_x = -0.06;
+adjust_y = ax1_pos(4) - 0.01;
+[label_x,label_y] = change_plotlabel(ax1_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'a','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+[label_x,label_y] = change_plotlabel(ax3_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'b','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+ax5_pos = ax5_new.Position;
+adjust_y = ax5_pos(4) - 0.01;
+adjust_x = -0.06;
+[label_x,label_y] = change_plotlabel(ax5_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'c','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+[label_x,label_y] = change_plotlabel(ax10_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'd','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+[label_x,label_y] = change_plotlabel(ax11_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'e','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+[label_x,label_y] = change_plotlabel(ax12_new,adjust_x,adjust_y);
+annotation("textbox",[label_x label_y .05 .05],'String', ...
+    'f','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
 %% SAVE AS PNG
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'fig2_13.png', '-dpng', '-r600') 
+print(fig, 'fig2_14.png', '-dpng', '-r600') 
