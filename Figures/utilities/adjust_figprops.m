@@ -1,6 +1,6 @@
 function adjust_figprops(axes,font_name,font_size,line_width,varargin)
     
-    % adjust_figprops adjusts various figure or tile properties.
+    % ADJUST_FIGPROPS adjusts various figure or tile properties.
     
     % INPUTS:
         % axes: current axes
