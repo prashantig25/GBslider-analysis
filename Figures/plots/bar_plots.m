@@ -23,6 +23,7 @@ function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xtickl
         % linewidth: line width for plot
         % fontname: font
         % varargin{1}: face color for bars
+        
     % ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
     for i = 1:x_groups
@@ -39,10 +40,14 @@ function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xtickl
     h = bar(data_plot);
     hold on
 
-    % IF INPUT CONTAINS COLOR ARRAY FOR BARS, CHANGE FACE COLOR
+    % IF INPUT CONTAINS COLOR ARRAY FOR BARS, CHANGE FACE COLOR, EDGE
+    % COLOR, LINE WIDTH, FACE ALPHA
     if nargin > 12
         for b = 1:bars
             h(b).FaceColor = varargin{1}(b,:);
+            h(b).EdgeColor = varargin{1}(b,:);
+            h(b).LineWidth = 1;
+            h(b).FaceAlpha = 0.5;
         end
     end
     hold on

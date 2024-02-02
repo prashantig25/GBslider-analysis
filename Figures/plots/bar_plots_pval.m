@@ -34,7 +34,7 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
         % varargin{5}: adjusted xlims values
         % varargin{6}: example participant to be highlighted
         % varargin{7}: whether to use max values or user defined
-        % varargin{3}
+
 	% ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
     for i = 1:x_groups
@@ -51,10 +51,13 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
     h = bar(1:x_groups,data_plot);
     hold on
 
-    % CUSTOMIZE BAR COLOR
+    % CUSTOMIZE BAR APPEARANCE
     if nargin > 19
       for b = 1:bars
           h(b).FaceColor = varargin{1}(b,:);
+          h(b).EdgeColor = varargin{1}(b,:);
+          h(b).LineWidth = 1;
+          h(b).FaceAlpha = 0.5;
       end
     end
     hold on
@@ -73,7 +76,7 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
             for i = 1:x_groups
                 scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y(x==i,b),dot_size,"o", ...
                     'MarkerEdgeColor',[184, 184, 184]./255,'MarkerFaceColor',[220, 220, 220]./255,'XJitter', ...
-                    'randn','XJitterWidth',.5,'YJitterWidth',1)
+                    'randn','XJitterWidth',0.2,'YJitterWidth',0.2)
 %                 varargin{3}(i) = max(y(x==i,b));
             end
         end
@@ -88,13 +91,6 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
             end
         end
    end
-    
-
-%    for b = 1:bars
-%         for i = 1:x_groups
-%             varargin{3}(i) = max(y(x==i,b));
-%         end
-%    end
 
 
 	% CALCULATING THE WIDTH FOR EACH GROUP ON X-AXIS
@@ -113,7 +109,7 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
     if nargin > 23
         for b = 1:bars
             for i = 1:x_groups
-                s = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), varargin{4}(1,i),dot_size*2, ...
+                s = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), varargin{4}(1,i),dot_size*4, ...
                     "diamond",'MarkerEdgeColor','k','MarkerFaceColor',[158, 188, 226]./256, ...
                     'XJitter','randn','XJitterWidth',.2);
             end
@@ -152,6 +148,6 @@ function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xtic
     if disp_pval == 1
         labels = varargin{2};
         text(xt, varargin{3},labels, 'HorizontalAlignment','center', ['' ...
-            'VerticalAlignment'],'bottom','FontSize',10,'FontWeight','bold')
+            'VerticalAlignment'],'bottom','FontSize',6,'FontWeight','normal')
     end
 end
