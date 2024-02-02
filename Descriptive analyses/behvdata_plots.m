@@ -333,6 +333,8 @@ ylabelname = {'Mean economic performance'}; % name for y-axis title
 x = 1:t; % number of trials in a block
 
 % PLOT FIGURE
+figure
+hold on
 lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,xlabelname,ylabelname)
 
 %% SAVE DATA
