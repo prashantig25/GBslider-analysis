@@ -1,9 +1,7 @@
-%% INITIALISE VARS
-
 clc
 clearvars
 
-% general vars for plot
+% INITIALISE VARS
 colors_manuscript; % colors for plot
 font_name = 'Arial'; % font name
 font_size = 6; % font size
@@ -20,7 +18,7 @@ bg_color = 'none'; % background color for textbox
 face_alpha = 0; % face alpha for textbox
 edge_color = 'none';
 
-% agent related vars
+% AGENT RELATED VARS
 contrast_diff = [0.08,0.02]; % contrast difference levels
 sigma = [0.06,0.06]; % perceptual sensitivity of agent
 colors_pu = [low_PU; high_PU]; % colors for low and high perceptual uncertainty data
@@ -72,34 +70,29 @@ xlim = [-0.3 0.3];
 ylim = [0 17];
 hold on
 adjust_figprops(ax1_new,font_name,font_size,line_width,xlim,ylim);
-title_obj = title('Observation probability','FontWeight','normal','Units','normalized');
+title('Observation probability','FontWeight','normal','Units','normalized');
 xlabel({'Contrast difference'})
 l = legend('','Low PU','','High PU','Location','best','Color','none', ...
     'EdgeColor','none','AutoUpdate','off','FontSize',5);
 l.ItemTokenSize = [5, 5];
 set(ax1_new,'YColor','none');
 
-% ADD TEXT BOXES
-position = [.1 5 .2 .2]; % position for textbox
-string = 'State 1'; % string for textbox
-annotate_textbox(ax1_new,position,string,font_name,font_size, ...
-    'Left',vert_align,bg_color,face_alpha,edge_color)
-
-position = [-0.35 5 .2 .2];
-string = 'State 0';
-annotate_textbox(ax1_new,position,string,font_name,font_size, ...
-    'Left',vert_align,bg_color,face_alpha,edge_color)
-
-position = [0.33 13 .19 .09];
-string = 'Presented contrast difference';
-bg_color = [210, 210, 210]./255;
-annotate_textbox(ax1_new,position,string,font_name,font_size, ...
-    horz_align,'Top',bg_color,face_alpha,edge_color,linewidth_box)
-
-position = [-0.25 22 0.5 0];
-string = tile_title;
-annotate_textbox(ax1_new,position,string,font_name,10, ...
-    horz_align,vert_align,bg_color,face_alpha,edge_color,linewidth_box)
+% ADD TEXTBOXES
+all_strings = {'State 1','State 0',...
+    'Presented contrast difference',tile_title};
+num_strings = 4;
+text_xpos = [0.1,-0.35,0.33,-0.25];
+text_ypos = [5,5,13,22];
+box_width = [0.2, 0.2, 0.19, 0.5];
+box_height = [0.2, 0.2, 0.09, 0];
+horzaligns = {'Left','Left',horz_align,horz_align};
+vertaligns = {vert_align,vert_align,'Top',vert_align};
+for n = 1:num_strings
+    string = all_strings{n};
+    position = [text_xpos(n) text_ypos(n) box_width(n) box_height(n)];
+    annotate_textbox(ax1_new,position,string,font_name,font_size, ...
+        horzaligns{n},vertaligns{n},bg_color,face_alpha,edge_color);
+end
 
 % ADD ARROWS
 ar = annotation('arrow','LineWidth',linewidth_arrow,'HeadLength',headlength_arrow,'Color','k');
@@ -133,11 +126,15 @@ delete(ax2);
 % PLOT BAR
 hold on
 b = bar([pi_0_high(1) pi_1_high(1);pi_0_high(2) pi_1_high(2)], ...
-    'BarLayout','grouped','FaceColor','flat');
+    'BarLayout','grouped','FaceColor','flat',FaceAlpha=0.7,LineWidth=1);
 b(1).CData(1,:) = colors_pu(1,:);
 b(2).CData(1,:) = colors_pu(1,:);
+
 b(1).CData(2,:) = colors_pu(2,:);
 b(2).CData(2,:) = colors_pu(2,:);
+
+b(1).EdgeColor(1,:) = colors_pu(1,:);
+b(2).EdgeColor(1,:) = colors_pu(1,:);
 hatchfill2(b(1),'single','HatchAngle',45,'HatchDensity',25);
 
 % ADJUST FIGURE PROPERTIES
@@ -192,18 +189,23 @@ ax3_new = axes('Units', 'Normalized', 'Position', new_pos);
 box(ax3_new, 'on');
 delete(ax3);
 
-% compute expected values
+% COMPUTE EVa
 v_a_0 = (pi_0_high - pi_1_high) * mu + pi_1_high; 
 v_a_1 = (pi_1_high - pi_0_high) * mu + pi_0_high;         
 v_a_t = [v_a_0; v_a_1]; % concatenate action valences
 
 % PLOT BARS
 hold on
-b = bar([v_a_t(1,1),v_a_t(2,1); v_a_t(1,2),v_a_t(2,2)],'BarLayout','grouped','FaceColor','flat');
+b = bar([v_a_t(1,1),v_a_t(2,1); v_a_t(1,2),v_a_t(2,2)],'BarLayout', ...
+    'grouped','FaceColor','flat',FaceAlpha=0.7,LineWidth=1);
 b(1).CData(1,:) = colors_pu(1,:);
 b(2).CData(1,:) = colors_pu(1,:);
+
 b(1).CData(2,:) = colors_pu(2,:);
 b(2).CData(2,:) = colors_pu(2,:);
+
+b(1).EdgeColor(1,:) = colors_pu(1,:);
+b(2).EdgeColor(1,:) = colors_pu(1,:);
 hatchfill2(b(1),'single','HatchAngle',45,'HatchDensity',25);
 
 % ADJUST FIGURE PROPERTIES
@@ -281,12 +283,12 @@ l1.ItemTokenSize = [5, 5];
 box off
 %% PLOT LEARNING CURVES
 
-% for normative agent
+% FOR NORMATIVE AGENT
 data_normative = readtable("data_model_ag1.xlsx");
 data_normative = data_normative(data_normative.condition == 2,:);
 data_normative = data_normative(26:50,:);
 
-% for categorical learning
+% FOR CATEGORICAL AGENT
 data_categorical = readtable("agent2_learning.xlsx");
 data_categorical = data_categorical(1:25,:);
 
@@ -299,12 +301,12 @@ delete(ax5);
 % PLOT
 hold on
 s1 = scatter(trial,data_normative.reward,'filled','MarkerEdgeColor', ...
-    dots_edges,'SizeData',15,'MarkerFaceColor',gray_dots);
+    dots_edges,'SizeData',15,'MarkerFaceColor',gray_dots,'LineWidth',1);
 hold on
-s3 = plot(trial,data_normative.mu,"Color",'k','LineStyle','-','LineWidth',linewidth_line);
+p1 = plot(trial,data_normative.mu,"Color",'k','LineStyle','-','LineWidth',linewidth_line);
 hold on
-s4 = plot(trial,data_categorical.mu,"Color",light_gray,'LineStyle','-','LineWidth',linewidth_line);
-l = legend([s1 s3 s4],'Reward','Reported \mu (normative)', ...
+p2 = plot(trial,data_categorical.mu,"Color",light_gray,'LineStyle','-','LineWidth',linewidth_line);
+l = legend([s1 p1 p2],'Reward','Reported \mu (normative)', ...
     'Reported \mu (categorical)','EdgeColor','none','Color','none','Location','best');
 l.ItemTokenSize = [5 5];
 title('Relationship between reported \mu and estimation uncertainty','FontWeight','normal')
@@ -315,7 +317,7 @@ ylim = [0.4 1.1];
 xlim = [1 25];
 adjust_figprops(ax5_new,font_name,font_size,line_width,xlim,ylim);
 box(ax5_new,'off')
-%% import any external pngs
+%% IMPORT EXTERNAL PNGs
 
 axes('pos',[.335 .92 .02 .02]);
 imshow('lowcon_patch.png');
