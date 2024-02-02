@@ -21,6 +21,7 @@ fontsize_title = 9; % font size for plot titles
 linewidth_axes = 0.5; % line width for axes
 font_size = 6; % font size
 fontsize_label = 12; % font size for subplot labels
+line_style = '-';
 
 % load all required data
 load("ecoperf_mix.mat","ecoperf_mix") % economic performance
@@ -31,6 +32,8 @@ load("sem_curves.mat","sem_curves")
 load("mix_curves_study2.mat","mix_curve"); % learning in a block for each condition
 load("perc_curves_study2.mat","perc_curve");
 load("rew_curves_study2.mat","rew_curve");
+load("ecoperf.mat","ecoperf"); % mean economic performance
+load("esterror.mat","esterror"); % mean estimation error
 %% INITIALISE TILE LAYOUT
 
 figure
@@ -44,7 +47,6 @@ ax10 = nexttile(10,[1 1]);
 ax12 = nexttile(12,[1,1]);
 ax11 = nexttile(11,[1,1]);
 ax1 = nexttile(1,[2,2]);
-
 %% PLOT TRIAL PROCEDURE
 
 % axes position adjustments
@@ -110,6 +112,7 @@ for n = 1:num_strings
         horzalign_trial,vertalign_trial,bg_color,face_alpha,edge_color);
 end
 
+% ADD FEEDBACK TEXT
 fb1 = annotation("textbox",'LineWidth',1.5,'String', ...
     'You win 1 point!','FontSize',fontsize_trial,'LineStyle','none', ...
     'Color',fb_green,'FontName','Arial','FontWeight','bold', ...
@@ -119,6 +122,26 @@ fb1.Position = [6.8 6.2 .07 .1];
 set(gca, 'Color', 'None')
 box off
 axis off
+
+% CREATE CONDITIONS TABLE
+line([5.3 11],[9.7 9.7],'LineWidth',0.5,'Color','k')
+line([7 7],[10.5 8.3],'LineWidth',0.5,'Color','k')
+line([9 9],[10.5 8.3],'LineWidth',0.5,'Color','k')
+
+% ADD TEXT BOXES
+all_strings = {'Both','Perceptual','Reward','0.7     0.3','0.9     0.1',...
+    '0.7     0.3'}; % string for each text box
+num_strings = 6; % number of strings
+text_xpos = [6, 7.9, 10, 6, 7.9, 10]; % x-position
+text_ypos = [10, 10, 10, 8.5, 8.5, 8.5]; % y-posisiton
+box_width = 0.2; % text box width
+box_height = 0.15; % text box height
+for n = 1:num_strings
+    string = all_strings(n);
+    position = [text_xpos(n) text_ypos(n) box_width box_height];
+    annotate_textbox(ax1_new,position,string,font_name,font_size-0.5, ...
+        horz_align,vert_align,bg_color,face_alpha,edge_color);
+end
 %% PLOT S-A-R CONTINGENCY
 
 pos = ax3.Position;
@@ -134,24 +157,39 @@ line([0 1], [0.89 0.89],'Color','k','LineWidth',linewidth_axes);
 % ADD TEXTBOXES
 all_strings = {'State 0','State 1'};
 num_strings = 2;
-text_xpos = [0.2, 0.65];
+text_xpos = [0.23, 0.68];
 text_ypos = [0.86, 0.86];
 statebox_width = 0.1;
 for n = 1:num_strings
     string = all_strings(n);
     position = [text_xpos(n) text_ypos(n) statebox_width statebox_width];
-    annotate_textbox(ax3_new,position,string,font_name,fontsize_trial, ...
+    annotate_textbox(ax3_new,position,string,font_name,font_size, ...
         horz_align,vert_align,bg_color,face_alpha,edge_color);
 end
 
 all_strings = {'Right stronger','Left stronger'};
-text_xpos = text_xpos - 0.05;
+text_xpos = text_xpos - 0.08;
 text_ypos = text_ypos - 0.06;
+box_width = 0.25; 
+box_height = 0.08;
 for n = 1:num_strings
     string = all_strings(n);
-    position = [text_xpos(n) text_ypos(n) 0.25 0.08];
-    annotate_textbox(ax3_new,position,string,font_name,fontsize_trial, ...
+    position = [text_xpos(n) text_ypos(n) box_width box_height];
+    annotate_textbox(ax3_new,position,string,font_name,font_size, ...
         horz_align,vert_align,bg_color,face_alpha,edge_color);
+end
+
+all_strings = {'Left   Right','Left   Right','μ = 0.9','μ = 0.9','0.9     0.1','0.1     0.9'};
+num_strings = 6;
+text_xpos = [0.15, 0.6, 0.15, 0.6, 0.15, 0.6, 0.15, 0.6];
+text_ypos = [0.5, 0.5, 0.36, 0.36, 0.27, 0.27, 0.73, 0.73];
+edge_colors = {'k','k','none','none','k','k'};
+bg_colors = {bg_color, bg_color, [238, 238, 238]/256, [238, 238, 238]/256, bg_color, bg_color};
+for n = 1:num_strings
+    string = all_strings(n);
+    position = [text_xpos(n) text_ypos(n) box_width box_height];
+    annotate_textbox(ax3_new,position,string,font_name,font_size, ...
+        horz_align,vert_align,bg_colors{n},face_alpha,edge_colors{n},linewidth_axes,line_style);
 end
 
 % ADD ROTATED TEXT BOXES
@@ -161,7 +199,7 @@ allstrings = {{'Economic', 'decision'},{'Contigency' 'parameter'},{'', 'Stimulus
 num_strings = 3;
 for n = 1:num_strings
     txt = text(xpos,ypos(n),allstrings{1,n});
-    txt.FontSize = fontsize_trial;
+    txt.FontSize = font_size;
     txt.FontWeight = 'normal';
     txt.Rotation = 90;
     txt.LineStyle = 'none';
@@ -169,85 +207,45 @@ for n = 1:num_strings
     txt.HorizontalAlignment = horz_align;
 end
 
-t1 = annotation("textbox",[0.15,0.5,0.25,0.08],'LineWidth',0.5,'String', ...
-    'Left   Right','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca,VerticalAlignment='middle');
+% annotation("textbox",[0.15,0.73,0.25,0.08],'LineWidth',0.5,'String', ...
+%     '','FontSize',font_size,'LineStyle','-','Color','k','FontName','Arial', ...
+%     'HorizontalAlignment','center',Parent=gca)
+% 
+% annotation("textbox",[0.6,0.73,0.25,0.08],'LineWidth',0.5,'String', ...
+%     '','FontSize',font_size,'LineStyle','-','Color','k','FontName','Arial', ...
+%     'HorizontalAlignment','center',Parent=gca)
 
-
-t2 = annotation("textbox",[0.6 0.5,0.25,0.08],'LineWidth',0.5,'String', ...
-    'Left   Right','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca,VerticalAlignment='middle');
-
-annotation("textbox",[0.22,0.36,0.1,0.047],'LineWidth',1.5,'String', ...
-    'μ = 0.9','FontSize',6,'LineStyle','none','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center','EdgeColor','k','BackgroundColor',[238, 238, 238]/256, ...
-    'VerticalAlignment','middle','FaceAlpha',0.7,Parent=gca)
-
-annotation("textbox",[0.67,0.36,0.1,0.047],'LineWidth',1.5,'String', ...
-    'μ = 0.9','FontSize',6,'LineStyle','none','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center','EdgeColor','k','BackgroundColor',[238, 238, 238]/256, ...
-    'VerticalAlignment','middle','FaceAlpha',0.7,Parent=gca)
-
-annotation("textbox",[0.15,0.27,0.25,0.08],'LineWidth',0.5,'String', ...
-    '0.9     0.1','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca)
-
-annotation("textbox",[0.6,0.27,0.25,0.08],'LineWidth',0.5,'String', ...
-    '0.1     0.9','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca)
-
-annotation("textbox",[0.15,0.73,0.25,0.08],'LineWidth',0.5,'String', ...
-    '','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca)
-
-annotation("textbox",[0.6,0.73,0.25,0.08],'LineWidth',0.5,'String', ...
-    '','FontSize',7,'LineStyle','-','Color','k','FontName','Arial', ...
-    'HorizontalAlignment','center',Parent=gca)
-
-a1 = annotation('arrow',[0.5 0.5],[0.6 0.4],'LineWidth',0.7,'Color',[128,128,128]./255,'LineStyle','-','HeadLength',headlength_arrow);
+a1 = annotation('arrow',[0.5 0.5],[0.6 0.4],'LineWidth',0.7,'Color', ...
+    [128,128,128]./255,'LineStyle','-','HeadLength',headlength_arrow);
 a1.Parent = gca;
 set(gca, 'Color', 'None','FontName','Arial')
 box off
 axis off
-%% PLOT CONDITIONS
-
-position_change = [0, 0.03, 0, 0];
-new_pos = change_position(ax5,position_change);
-ax5_new = axes('Units', 'Normalized', 'Position', new_pos);
-box(ax5_new, 'on');
-delete(ax5);
-
-title('Uncertainty','FontWeight','normal',FontName=font_name,Parent=gca,FontSize=font_size)
-axis([0 1 0 1])
-set(ax5_new,'Color','none')
-axis off
-
-% CREATE BOX
-yline(0.75)
-xline(0.33)
-xline(0.66)
-
-% ADD TEXT BOXES
-all_strings = {'Both','Perceptual','Reward','0.7     0.3','0.9     0.1',...
-    '0.7     0.3'}; % string for each text box
-num_strings = 6; % number of strings
-text_xpos = [0.07, 0.395, 0.73, 0.73, 0.39, 0.05]; % x-position
-text_ypos = [0.8, 0.8, 0.8, 0.15, 0.15, 0.15]; % y-posisiton
-box_width = 0.2; % text box width
-box_height = 0.15; % text box height
-for n = 1:num_strings
-    string = all_strings(n);
-    position = [text_xpos(n) text_ypos(n) box_width box_height];
-    annotate_textbox(ax5_new,position,string,font_name,font_size-0.5, ...
-        horz_align,vert_align,bg_color,face_alpha,edge_color);
-end
 %% DESCRIPTIVE PLOTS
- 
+
 position_change = [0, 0.03, 0, 0];
 new_pos = change_position(ax12,position_change);
 ax12_new = axes('Units', 'Normalized', 'Position', new_pos);
 box(ax12_new, 'on');
 delete(ax12);
+
+% PLOT EST. ERROR vs. ECOPERF
+scatter(esterror,ecoperf,"filled","o","MarkerEdgeColor", ...
+'k',"MarkerFaceColor",binned_dots,"MarkerFaceAlpha",0.5,'SizeData',20)
+l = lsline;
+l.Color = 'k';
+l.LineWidth = linewidth_axes;
+ylabel('Mean econmic performance')
+xlabel("Mean estimation error")
+lsline
+title(strcat("\rho = ",{' '},num2str(round(corr(esterror,ecoperf),2))) + newline + "P < 0.001",'FontWeight','normal')
+set(gca,'color','none','FontName',font_name,'FontSize',font_size,'LineWidth',linewidth_axes)
+ 
+position_change = [0, 0.03, 0, 0];
+new_pos = change_position(ax11,position_change);
+ax11_new = axes('Units', 'Normalized', 'Position', new_pos);
+box(ax11_new, 'on');
+delete(ax11);
 
 % PLOT SLIDER DATA
 colors_name = [mix;perc;rew]; % colors for plot lines
@@ -261,10 +259,10 @@ lg_curves(x,mean_curves./100,sem_curves./100,colors_name,legend_names,title_name
 xlim([1,25])
 set(gca,'color','none','FontName',font_name,'FontSize',font_size,'LineWidth',linewidth_axes)
 
-new_pos = change_position(ax10,position_change);
-ax10_new = axes('Units', 'Normalized', 'Position', new_pos);
-box(ax10_new, 'on');
-delete(ax10);
+new_pos = change_position(ax5,position_change);
+ax5_new = axes('Units', 'Normalized', 'Position', new_pos);
+box(ax5_new, 'on');
+delete(ax5);
 
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS
 y = [ecoperf_mix;ecoperf_perc;ecoperf_rew;];
@@ -297,10 +295,10 @@ bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ..
     legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name) 
 set(gca,'color','none','FontName',font_name,'FontSize',font_size,'YLim',[0.5,1],'LineWidth',linewidth_axes)
 
-new_pos = change_position(ax11,position_change);
-ax11_new = axes('Units', 'Normalized', 'Position', new_pos);
-box(ax11_new, 'on');
-delete(ax11);
+new_pos = change_position(ax10,position_change);
+ax10_new = axes('Units', 'Normalized', 'Position', new_pos);
+box(ax10_new, 'on');
+delete(ax10);
 
 % SLIDER UPDATES ACROSS SUBJECTS
 mix_avg = nanmean(mix_curve,2); % mean across trials
@@ -338,7 +336,7 @@ for n = 1:num_pngs
 end
 
 patch_dim = 0.03;
-pos_y = 0.22; pos_x = 0.065;
+pos_y = 0.85; pos_x = 0.24;
 image_png = {'lowcon_patch.png','lowcon_patch.png','lowcon_patch.png','lowcon_patch.png','highcon_patch.png','lowcon_patch.png',};
 num_pngs = 6;
 adjust_x = 0.032;
@@ -372,6 +370,7 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 [label_x,label_y] = change_plotlabel(ax3_new,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'b','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
+
 ax5_pos = ax5_new.Position;
 adjust_y = ax5_pos(4) - 0.01;
 adjust_x = -0.06;
@@ -391,4 +390,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'fig2_14.png', '-dpng', '-r600') 
+print(fig, 'fig2_15.png', '-dpng', '-r600') 
