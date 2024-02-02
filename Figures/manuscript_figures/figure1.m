@@ -26,7 +26,7 @@ ax5 = nexttile(5, [1,2]);
 %% H1: low perceptual uncertainty
 
 % CHANGE AXES POSITION
-position_change = [0, -0.05, 0, 0.015];
+position_change = [0, -0.05, 0, 0.015]; % adjusted position
 new_pos = change_position(ax1,position_change);
 ax1_new = axes('Units', 'Normalized', 'Position', new_pos);
 box(ax1_new, 'on');
@@ -133,7 +133,7 @@ up_lowPU = pe * 0.4;
 up_midPU = pe * 0.25;
 up = [up_highPU;up_lowPU;up_midPU;zeros(5,1).';pe;];
 linestyles = {':',':',':','-','-',};
-linewidths = [1.5,1.5,1.5,0.5,0.5,];
+linewidths = [1.5,1.5,1.5,0.5,0.5];
 linecolors = {high_PU,low_PU,mid_PU,'k','k',};
 
 % PLOT
@@ -264,8 +264,6 @@ set(gca,'XColor', 'none','YColor','none')
 
 png_width = 0.04;
 png_height = 0.04;
-% xpos = [0.115,0.32,0.115,0.32];
-% ypos = [0.79,0.79,0.515,0.515];
 ypos = [0.39,0.67];
 xpos = 0.24;
 image_pngs = 'man.png';
