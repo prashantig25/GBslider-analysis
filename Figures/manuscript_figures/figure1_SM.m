@@ -7,19 +7,17 @@ font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
 
 % INITIALISE VARS
-load("betas_abs.mat","betas_all"); betas_subjs = betas_all; % participant betas
-load("betas_abs_agent.mat","betas_all"); betas_agent = betas_all; % agent betas
-load("betas_signed.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-
-load("p_vals_abs.mat","p_vals"); % p-vals from ttest
-data_subjs = readtable("lr_data.xlsx"); % participant lr data
+load("betas_abs_recoding_wo_rewunc.mat","betas_all"); betas_subjs = betas_all; % participant betas
+load("betas_signed_recoding_wo_rewunc.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
+load("pvals_abs_recoding_wo_rewunc.mat","p_vals"); % p-vals from ttest
+data_subjs = readtable("data_recoding_signed.xlsx"); % participant lr data
 id_subjs = unique(data_subjs.run_id); % subject IDs
 num_subjs = length(id_subjs); % number of subjects
-example_participant = 80; % example participant
-num_vars = 7; % number of coefficients
+example_participant = 92; % example participant
+num_vars = 5; % number of coefficients
 weight_y_n = 0; % weighted regression
 fontsize_label = 12; % font size for subplot labels
-model3 = 'up ~ pe + pe:contrast_diff + pe:congruence + pe:subj_est_unc + pe:reward_unc + pe:pe_sign + pe:salience';
+model3 = 'up ~ pe + pe:contrast_diff + pe:congruence + pe:pe_sign + pe:salience';
 mdl = model3; % which regression model
 pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_unc','subj_est_unc' ...
         ,'reward','mu','pe_sign','pu'}; % cell array with names of predictor variables
@@ -28,9 +26,10 @@ cat_vars = {'salience','congruence','condition','reward_unc','pe_sign'}; % cell 
 %% INITIALISE TILE LAYOUT
 
 figure
-set(gcf,'Position',[100 100 700 400])
+set(gcf,'Position',[100 100 600 400])
 t = tiledlayout(2,9);
 t.TileSpacing = 'compact';
+t.Padding = 'compact';
 ax3 = nexttile(7,[1 1]);
 ax4 = nexttile(8,[1 1]);
 ax5 = nexttile(9,[1 1]);
@@ -143,12 +142,13 @@ title(strcat({'\rho = '},{' '},num2str(round(corr_coeff,2)),{' '},{'n.s.'}), ...
 %% PLOT BETA COEFFICIENTS
 
 % INITIALISE VARS FOR PLOTTING COEFFICIENTS
-regressors = [1,2,7]; % regressors that need to be plotted
+regressors = [1,2,5]; % regressors that need to be plotted
 axes_old = [ax3,ax4,ax5]; % names of old axes
-ylim_lower = [-0.4,-0.15,-0.4]; % lower y-axis limit for each regressor
-ylim_upper = [1.2,0.4,1]; % upper y-axis limit for each regressor
+position_change = [0, 0, 0, -0.01]; % position changes for each axes
+ylim_lower = [-0.4,-0.15,-0.2]; % lower y-axis limit for each regressor
+ylim_upper = [1.2,0.4,0.6]; % upper y-axis limit for each regressor
 xlabelname = {''}; % x-axis label
-ylabelname = {'Fixed LR','Belief states adapted LR','Confirmation bias adapted LR'}; % y-axis label name for each regressor
+ylabelname = {'Fixed LR','Belief-states adapted LR','Confirmation bias adapted LR'}; % y-axis label name for each regressor
 disp_pval = 0; % if p-val stars should be displayed on top of bars
 scatter_dots = 1; % if single participant data should be scattered on top of bar
 dot_size = 5; % scatter dot size
@@ -161,26 +161,25 @@ y_label = 1; % if p-val stars to be displayed, initialise y-axis location
 for r = 1:length(regressors)
 
     % INITIALISE AXES
-    axes_old(r) = nexttile(r+6,[1,1]);
+    axes_old(r) = nexttile(6+r,[1 1]);
     
     % GET MEAN AND SEM FOR BETAS
     selected_regressors = regressors(r);
-    [mean_avg,mean_sd,coeffs_subjs] = prepare_betas(betas_all,selected_regressors,num_subjs);
+    [mean_avg,mean_sd,coeffs_subjs] = prepare_betas(betas_subjs,selected_regressors,num_subjs);
     
     % GET STARS FOR CORRESPONDING REGRESSOR'S P-VALUES
     bar_labels = {'*'};
-    pstars = pvals_stars(p_vals,selected_regressors,bar_labels);
+    pstars = pvals_stars(p_vals,selected_regressors,bar_labels,0);
     title_name = pstars;
     colors_name = barface_green;
    
-    agent_means = mean(betas_agent,1);
-    agent_means = agent_means(selected_regressors);
+    agent_means = NaN;
     
     hold on
     h = bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
         length(selected_regressors),1,{'Empirical data','Example participant'}, ...
         xticks,xticklabs,title_name,xlabelname,ylabelname(r),disp_pval,scatter_dots, ...
-        dot_size,plot_err,font_size,linewidth_plot,font_name,disp_legend(r),colors_name, ...
+        dot_size,plot_err,5.5,linewidth_plot,font_name,disp_legend(r),colors_name, ...
         bar_labels,y_label,agent_means,[0.5,1.5],example_participant);
     h.BarWidth = 0.4; 
     ylim_vals = [ylim_lower(r) ylim_upper(r)];
@@ -195,13 +194,14 @@ ax6 = nexttile(13,[1,3]);
 box(ax6,"off");
 
 % GET VARS
-pe_condiff_abs = betas_subjs(:,2);
-pe_condiff_signed = betas_signed(:,2);
+pe_condiff_abs = betas_subjs(:,2); % absolute LR
+pe_condiff_signed = betas_signed(:,2); % signed LR
 
 % PLOT
 hold on
-scatter(pe_condiff_abs,pe_condiff_signed,'MarkerEdgeColor',[184, 184, 184]./255,'MarkerFaceColor',[220, 220, 220]./255 ...
-    ,'SizeData',20,'XJitterWidth',0.5,'YJitterWidth',0.5)
+scatter(pe_condiff_abs,pe_condiff_signed,'MarkerEdgeColor',[184, 184, 184]./255, ...
+    'MarkerFaceColor',[220, 220, 220]./255 ...
+    ,'SizeData',25,'XJitterWidth',0.5,'YJitterWidth',0.5)
 ls = lsline;
 ls.Color = 'k';
 xlabel('BS adapted absolute LR')
@@ -212,7 +212,6 @@ set(gca,'LineWidth',line_width)
 %% INTERACTION PLOTS
 
 % EXAMPLE PARTICIPANT
-i = 80; % example participant
 data = data_subjs;
 tbl = table(abs(data.pe_actual_corr(and(data.run_id == id_subjs(i),data.pe_actual_corr ~= 0))), ...
     abs(data.up_actual_corr(and(data.run_id == id_subjs(i),data.pe_actual_corr ~= 0))),...
@@ -233,7 +232,7 @@ tbl = table(abs(data.pe_actual_corr(and(data.run_id == id_subjs(i),data.pe_actua
 ax7 = nexttile(10,[1,3]);
 box(ax7,"off");
 
-% PLOT
+% PLOT INTERACTION
 hold on
 h = plotInteraction(lm,'contrast_diff','pe','predictions');
 h(3).Color = low_PU;
@@ -253,7 +252,7 @@ box off
 ax8 = nexttile(16,[1,3]);
 box(ax8,"off");
 
-% PLOT
+% PLOT INTERACTION
 h = plotInteraction(lm,'pe_sign','pe','predictions');
 h(2).Color = 'k';
 h(1).Color = light_gray;
@@ -273,7 +272,7 @@ adjust_x = - 0.06;
 adjust_y = ax1_pos(4);
 
 all_axes = [ax1,ax2,ax3,ax6,ax7,ax8];
-subplot_labels = {'a','b','c','d','e','f'};
+subplot_labels = {'a','b','c','e','d','f'};
 for i = 1:6
     [label_x,label_y] = change_plotlabel(all_axes(i),adjust_x,adjust_y);
     annotation("textbox",[label_x label_y .05 .05],'String', ...
@@ -283,4 +282,4 @@ end
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure4_absolute6.png', '-dpng', '-r600') 
+print(fig, 'figure4_absolute8.png', '-dpng', '-r600') 
