@@ -36,9 +36,14 @@ binned_dots = [186, 225, 218]./255;
 barface_green = [100, 119, 104]./255;
 
 color_screen = [211,211,211]/255; % gray for trial screen
-
 pu_box = [178, 207, 204]./255; % green for pu boxes
-
 gray_arrow = [0.5 0.5 0.5 0.85]; % gray for arrows
-
 fb_green = [34,139,34]/255; % green for feedback text
+
+lowsal_colors = [210, 226, 227]/255; % light green
+highsal_colors = [118, 140, 141]/255; % dark green
+
+fits_colors = [117, 159, 199]/255; % light blue
+darkblue_muted = [37, 84, 156]/255;
+
+blue_colormap = [darkblue_muted; fits_colors; cream_dots];

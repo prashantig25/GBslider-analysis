@@ -15,6 +15,7 @@ function annotate_textbox(gca,position,string,font_name,font_size, ...
         % face_alpha: alpha of bg_color
         % edge_color: color for box edge
         % varargin{1}: line width
+        % varargin{2}: line style
 
     text1 = annotation("textbox");
     text1.Parent = gca;
@@ -29,5 +30,6 @@ function annotate_textbox(gca,position,string,font_name,font_size, ...
     text1.EdgeColor = edge_color;    
     if ~isempty(varargin)
         text1.LineWidth = varargin{1};
+        text1.LineStyle = varargin{2};
     end
 end
