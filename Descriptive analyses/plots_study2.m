@@ -181,10 +181,6 @@ for i = 1:num_subjs
 end
 
 ecoperf_cond_cont = [ecoperf_mix,ecoperf_perc,ecoperf_rew];
-
-% RUN REQUIRED SIGNIFICANCE TESTS
-[p,tbl,stats] = anova1(ecoperf_cond);
-[h,p,ci,stats] = ttest(ecoperf_cond(:,1),ecoperf_cond(:,3));
 %% get subjective estimate of contingency parameter
 
 % COMPUTE SUBJECTIVE CONTINGENCY PARAMETER FOR INCONGRUENT BLOCKS
@@ -223,9 +219,9 @@ ylabelname = {'Economic performance'}; % y-axis label name
 colors_name = [c4_4;c3_4]; % bar colors
 
 % CREATE FIGURE
-% figure
-% bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
-%     legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name)  
+figure
+bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
+    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name)  
 
 % SALIENCE BIAS
 salience_bias_mix = ecoperf_mix(:,2)-ecoperf_mix(:,1);
@@ -321,11 +317,6 @@ perc_mean = nanmean(perc_curve,2);
 rew_mean = nanmean(rew_curve,2);
 
 mean_curves = [mix_mean,perc_mean,rew_mean;];
-
-% RUN REQUIRED SIGNIFICANCE TESTS
-[p,tbl,stats] = anova1(mean_curves);
-[h,p,ci,stats] = ttest(mix_mean,rew_mean);
-
 %% SAVE DATA
 
 writetable(data_all,strcat(save_dir,'\study2.xlsx'));
