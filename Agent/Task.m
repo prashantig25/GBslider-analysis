@@ -54,10 +54,10 @@ classdef Task <taskvars
             % OUTPUT:
                 % c_t: state dependent contrast difference
 
-                p_cs_giv_s = obj.p_cs(:, obj.s_index);  % contrast differences conditional on state
-                s_cs_giv_s = mnrnd(1, p_cs_giv_s, 1); % sample contrast difference
-                i_cs_giv_s = find(s_cs_giv_s>0); % index of sampled contrast difference
-                obj.c_t = obj.C(i_cs_giv_s);  % select contrast difference according to index
+            p_cs_giv_s = obj.p_cs(:, obj.s_index);  % contrast differences conditional on state
+            s_cs_giv_s = mnrnd(1, p_cs_giv_s, 1); % sample contrast difference
+            i_cs_giv_s = find(s_cs_giv_s>0); % index of sampled contrast difference
+            obj.c_t = obj.C(i_cs_giv_s);  % select contrast difference according to index
         end
         function reward_sample(obj,a_t)
 

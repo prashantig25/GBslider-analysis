@@ -103,11 +103,11 @@ classdef Agent < agentvars
                 obj.pi_1 = 0.5;
                 obj.p_d_0 = 0.5;
             else
-                obj.p_s_giv_o(obj.o_t);
+                obj.p_s_giv_o(obj.o_t); % compute belief states
                 if obj.task_agent_analysis
                     obj.p_d_0 = norm.cdf(0, obj.o_t, obj.sigma);
                 else
-                    if obj.pi_0 >= obj.pi_1
+                    if obj.pi_0 >= obj.pi_1 % get perceptual decision
                         obj.p_d_0 = 0;
                     else
                         obj.p_d_0 = 1;
@@ -167,7 +167,7 @@ classdef Agent < agentvars
             % INPUT:
                 % obj: current object
 
-            % OUTPUT:
+            % OUTPUT:Ac
                 % v_a_t: array with action valences
 
             if obj.eval_ana == 1
@@ -311,7 +311,6 @@ classdef Agent < agentvars
             obj.compute_q(r_t);
         end
         function update_coefficients(obj)
-
             % update_coefficients updates the prior probability using the
             % evaluated polynomials.
 
