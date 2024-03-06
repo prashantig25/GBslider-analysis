@@ -6,12 +6,9 @@ classdef lr_analysis_obj < lr_vars
             % the class that are computed based on exisitng static properties of
             % the class.
             obj.data = readtable(obj.filename);
-            obj.h_vals = nan(1,obj.num_vars);
-            obj.p_vals = nan(1,obj.num_vars); 
-            obj.t_vals = nan(1,obj.num_vars);
         end
 
-        function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,varargin)
+        function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
             % linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
@@ -20,6 +17,8 @@ classdef lr_analysis_obj < lr_vars
                 % obj: current object
                 % tbl: table with predictor vars data 
                 % varargin{1}: weights
+                % fit_fn: function to be used, adjust if using mock fitlm
+                % for unit testing
 
             % OUTPUT:
                 % betas: array containing beta value for each predictor by fitlm
@@ -29,10 +28,10 @@ classdef lr_analysis_obj < lr_vars
                 % lm: fitted model
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
             if obj.weight_y_n == 1
-                lm = fitlm(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
+                lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
                     'CategoricalVars',obj.cat_vars,'Weights',varargin{1});
             else
-                lm = fitlm(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
+                lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
                     'CategoricalVars',obj.cat_vars);
             end
         
@@ -46,10 +45,10 @@ classdef lr_analysis_obj < lr_vars
             coeffs_name = lm.CoefficientNames;
         end
 
-        function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj)
+        function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
             % get_coeffs fits the linear regression model by running non-weighted
-            % and weighted regressions to get the beta coefficients along with
-            % significance testing for the betas.
+            % and weighted regressions to get the beta coefficients across
+            % subjects
 
             % INPUT:
                 % obj: current object
@@ -60,11 +59,10 @@ classdef lr_analysis_obj < lr_vars
                 % residuals_reg: residuals from fitting the model
                 % coeffs_name: cell array with the model generated coefficients
                 % name
-                % h_vals: h-values from significance testing
-                % p_vals: p-values from significance testing
                 % posterior_up_subjs: posterior predicted updates by model
+                % fit_fn: function to be used, adjust if using mock fitlm
             % SET VARIABLES TO RUN THE FUNCTION
-            id_subjs = unique(obj.data.run_id);
+            id_subjs = unique(obj.data.id);
             
             % INITIALISE VARIABLES
             betas_all = NaN(length(obj.num_subjs),obj.num_vars);
@@ -77,50 +75,38 @@ classdef lr_analysis_obj < lr_vars
                 obj.data.up = abs(obj.data.up);
             end
             
-            % FIT THE MODEL TO GET RESIDUALS 
+            % FIT THE MODEL TO GET RESIDUALS (non-weighted)
             for i = 1:obj.num_subjs
-                obj.weight_y_n = 0;
-                data_subject = obj.data(obj.data.run_id == id_subjs(i),:);
+                obj.weight_y_n = 0; % non-weighted
+                data_subject = obj.data(obj.data.id == id_subjs(i),:); % single-subject data
                 tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.norm_subjest,data_subject.pe_sign,...
+                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','subj_est_unc','pe_sign'});
-                [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl);
+                    ,'reward_unc','pe_sign','salience_choice'});
+                [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn);
                 obj.res_subjs = [obj.res_subjs; residuals_reg, repelem(id_subjs(i),length(residuals_reg)).'];
             end
             
             % WEIGHTED REGRESSION USING RESIDUALS
             if obj.weighted == 1
-                [wt_subjs] = weights_general(obj.data, obj.res_subjs);
+                obj.weight_y_n = 1;
+                [wt_subjs] = weights_general(obj.data, obj.res_subjs); % get weights
                 wt_subjs(:,2) = obj.res_subjs(:,2);
                 for i = 1:obj.num_subjs
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
-                    data_subject = obj.data(obj.data.run_id == id_subjs(i),:);
+                    data_subject = obj.data(obj.data.id == id_subjs(i),:);
                     tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.norm_subjest,data_subject.pe_sign,...
+                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','subj_est_unc','pe_sign'}); 
-                    [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,weights_subj);
+                    ,'reward_unc','pe_sign','salience_choice'}); 
+                    [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj);
                     betas_all(i,:) = betas(2:end);
                     rsquared_full(i,1) = rsquared;
                     [post_up] = obj.posterior_up(tbl,betas);
                     posterior_update = post_up;
                     posterior_up_subjs = [posterior_up_subjs; posterior_update];
                 end
-            end
-            
-            if obj.weighted == 1
-                h = nan(1,obj.num_vars);
-                p = nan(1,obj.num_vars); 
-                t = nan(1,obj.num_vars);
-                for i = 1:obj.num_vars
-                    [h(1,i),p(1,i),~,stats] = ttest(betas_all(:,i));
-                    t(1,i) = stats.tstat;
-                end
-                obj.h_vals = h;
-                obj.p_vals = p;
-                obj.t_vals = t;
-            end
+            end            
         end
 
         function [post_up] = posterior_up(obj,tbl,betas)
@@ -139,19 +125,19 @@ classdef lr_analysis_obj < lr_vars
             post_up = zeros(height(tbl),1);
             var_array = NaN(height(tbl),length(obj.var_names));
         
-            % GET X VARS FOR Y_POST = X.*BETA + ERROR
+            % GET TRIAL-BASED VALUES FOR PREDICTOR VARS FOR Y_POST = X.*BETA + ERROR
             for v = 1:length(obj.var_names)
                 var_array(:,v) = tbl.(obj.var_names{v});
             end
         
             % CALCULATE Y_POST
-            post_up(:,1) = post_up(:,1) + betas(1);
+            post_up(:,1) = post_up(:,1) + betas(1); % add intercept
             for b = 2:length(betas)
-                    if b == 2
-                        post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,b-1);
-                    else
-                        post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,1).*var_array(:,b-1);
-                    end
+                if b == 2
+                    post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,b-1); % main effect of PE
+                else
+                    post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,1).*var_array(:,b-1); % interaction effect
+                end
             end
         end
     end
