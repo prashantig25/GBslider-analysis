@@ -11,7 +11,7 @@ num_blocks = 4; % number of blocks per condition
 total_blocks = 12; % total number of blocks per subject
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\clean_scripts\Behaviour\Data\Study2"; 
+behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\raw\BIDS\main_study"; 
 save_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\descriptive\study2";
 
 % ARRAY WITH SUBJECT IDS
@@ -26,129 +26,12 @@ subj_ids = [139	143	145	146	151	157	159	160	162	163	164	165	174	176	181	192	198,
 num_subjs = length(subj_ids);
 data_all = []; % empty table to merge all subjects data
 for i = 1:length(subj_ids)
-    data_subj_choice = readtable(strcat(behv_dir,'\',num2str(subj_ids(i)),".xlsx"),"Sheet","choice"); % read each subject's file for choice data
-    data_subj_mu = readtable(strcat(behv_dir,'\',num2str(subj_ids(i)),".xlsx"),"Sheet","mu"); % read each subject's file for reported mu
-    data_choice = table(data_subj_choice.run_id,data_subj_choice.state,data_subj_choice.rt,data_subj_choice.response, ... % extract only important data
-        data_subj_choice.condition,data_subj_choice.contrast_left,data_subj_choice.contrast_right,...
-        data_subj_choice.corr_resp,data_subj_choice.correct,'VariableNames',...
-        {'id','state','rt','response','condition','contrast_left','contrast_right' ...
-        ,'correct response','correct'});
-    data_mu = table(data_subj_mu.rt,data_subj_mu.response, ... % extract only important data
-        data_subj_mu.condition,'VariableNames',{'rt_mu','response_mu','condition_mu'});
-    data_choice.mu = data_mu.response_mu;
-    data_choice.condition_mu = data_mu.condition_mu;
-
-    data_all = [data_all;data_choice];
-    if height(data_choice) > 300
-        disp(height(data_choice))
-    end
+    tsv_file = fullfile(behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
+        strcat('sub_',num2str(subj_ids(i)),".tsv")); % path and file name for TSV file
+    data_table = readtable(tsv_file, "FileType","text",'Delimiter', '\t'); % read
+    data_all = [data_all; data_table]; % merge all subjects data
 end
 
-%% clean the data by multiple keypresses and rts
-
-% EXTRACT LAST KEYPRESS FROM MULTIPLE KEYPRESSES
-for i =1:height(data_all)
-    multi_keypress = string(data_all.response(i));
-    multi_keypress = strsplit(multi_keypress,',');
-    if length(multi_keypress) > 1
-        multi_keypress_char = convertStringsToChars(multi_keypress(end));
-        multi_keypress_char(isletter(multi_keypress_char)==0)=[];
-        data_all.response_str(i) = convertCharsToStrings(multi_keypress_char);
-    else
-        multi_keypress_char = convertStringsToChars(multi_keypress);
-        multi_keypress_char(isletter(multi_keypress_char)==0)=[];
-        data_all.response_str(i) = convertCharsToStrings(multi_keypress_char);
-    end
-end
-
-% CONVERT RESPONSE TO ACTION TO FIT FRAMEWORK OF a = 0, a = 1
-for i =1:height(data_all)
-    if strcmp(data_all.response_str(i),'arrowleft') == 1
-        data_all.choice(i) = 0;
-    elseif strcmp(data_all.response_str(i),'arrowright') == 1
-        data_all.choice(i) = 1;
-    end
-end
-%% add trial and block numbers
-
-% ADD TRIAL NUMBERS
-trials = 1:t; % array with trial numbers
-trials = repmat(trials.',total_blocks,1); % repeat for all blocks
-trials_all = repmat(trials,num_subjs,1); % repeat for all subjects
-data_all.trials = trials_all; % add data to the table
-
-% ADD BLOCK NUMBERS
-blocks = zeros(total_blocks*t,1); % initialise array for block number 
-c = 1;
-for b = 1:total_blocks
-    blocks(c:b*t,1) = repelem(b,t,1); % repeat block numbers for all trials
-    c = c+t;
-end
-blocks_all = repmat(blocks,num_subjs,1); % repeat for each subject
-data_all.blocks = blocks_all; % add to table
-
-%% get conditions and contrast levels
-
-% CHECK IF TRIAL BELONGS TO LOW/HIGH CONTRAST BLOCK
-for i = 1:height(data_all)
-    if strcmp(data_all.condition(i),'mixed_lc') == 1 || strcmp(data_all.condition(i),'perceptual_lc') == 1 || strcmp(data_all.condition(i),'reward_lc') == 1
-        data_all.contrast(i) = 0;
-    elseif strcmp(data_all.condition(i),'mixed_hc') == 1 || strcmp(data_all.condition(i),'perceptual_hc') == 1 || strcmp(data_all.condition(i),'reward_hc') == 1
-        data_all.contrast(i) = 1;
-    end
-end
-
-% ADD CONDITION NAME FOR ALL TRIALS IN A BLOCK
-for i = 1:height(data_all)
-    if data_all.trials(i) ~= 1
-        data_all.condition(i) = data_all.condition(i-1);
-    else
-        data_all.condition(i) = data_all.condition(i+1);
-    end
-end
-
-% REPLACE CONDITION NAMES
-for i = 1:height(data_all)
-    if strcmp(data_all.condition(i),'mixed_lc') == 1 || strcmp(data_all.condition(i),'mixed_hc') == 1
-        data_all.choice_cond(i) = 1;
-    elseif strcmp(data_all.condition(i),'perceptual_lc') == 1 || strcmp(data_all.condition(i),'perceptual_hc') == 1 
-        data_all.choice_cond(i) = 2;
-    elseif strcmp(data_all.condition(i),'reward_lc') == 1 || strcmp(data_all.condition(i),'reward_hc') == 1 
-        data_all.choice_cond(i) = 3;
-    end
-end
-
-% CHECK IF TRIAL IS CONGRUENT OR INCONGRUENT
-for i = 1:height(data_all)
-    if strcmp(data_all.condition_mu(i),'mu_congruent') == 1 
-        data_all.congruence(i) = 1;
-    elseif strcmp(data_all.condition_mu(i),'mu_incongruent') == 1
-        data_all.congruence(i) = 0;
-    end
-end
-
-% COMPUTE CONTRAST DIFFERENCE
-for i = 1:height(data_all)
-    data_all.con_diff_choice(i) = abs(data_all.contrast_left(i) - data_all.contrast_right(i));
-end
-%% check if participant chose the more rewarding option in a trial
-
-% ECONOMIC PERFORMANCE ON A TRIAL
-for i = 1:height(data_all)
-    if data_all.contrast(i) == 0
-        if data_all.state(i) == data_all.choice(i)
-            data_all.ecoperf(i) = 1;
-        else
-            data_all.ecoperf(i) = 0;
-        end
-    else
-        if data_all.state(i) == data_all.choice(i)
-            data_all.ecoperf(i) = 0;
-        else
-            data_all.ecoperf(i) = 1;
-        end
-    end
-end
 %% calculate economic performance
 
 % ACROSS CONDITIONS
@@ -157,7 +40,7 @@ ecoperf_cond = NaN(num_subjs,num_cond);
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS, FOR EACH CONDITION
 for i = 1:num_subjs
     for c = 1:num_cond
-        ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.choice_cond == c)));
+        ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.ID == subj_ids(i),data_all.choice_cond == c)));
     end
 end
 
@@ -167,7 +50,7 @@ ecoperf_cont = NaN(num_subjs,num_cont);
 % MEAN ECONOMIC PERFORMANCE ACROSS SUBJECTS, FOR EACH LOW/HIGH CONTRAST
 for i = 1:num_subjs
     for c = 1:num_cont
-        ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.contrast == c-1)));
+        ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.ID == subj_ids(i),data_all.contrast == c-1)));
     end
 end
 
@@ -177,7 +60,7 @@ ecoperf_perc = NaN(num_subjs,num_cont);
 ecoperf_rew = NaN(num_subjs,num_cont);
 
 for i = 1:num_subjs
-    data_subj_choice = data_all(data_all.id == subj_ids(i),:);
+    data_subj_choice = data_all(data_all.ID == subj_ids(i),:);
     for c = 1:num_cont
         ecoperf_mix(i,c) = mean(data_subj_choice.ecoperf(and(data_subj_choice.contrast == c-1,data_subj_choice.choice_cond == 1)));
         ecoperf_perc(i,c) = mean(data_subj_choice.ecoperf(and(data_subj_choice.contrast == c-1,data_subj_choice.choice_cond == 2)));
@@ -228,7 +111,7 @@ colors_name = [c4_4;c3_4]; % bar colors
 % CREATE FIGURE
 figure
 bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
-    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name)  
+    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,6,1,'Arial',colors_name)  
 
 % SALIENCE BIAS
 salience_bias_mix = ecoperf_mix(:,2)-ecoperf_mix(:,1);
@@ -273,7 +156,7 @@ perc_curve = NaN(num_subjs,t);
 rew_curve = NaN(num_subjs,t);
 
 for i = [1:num_subjs] % exclude participant 21 because unbalanced blocks
-    data_subj_choice = data_all(data_all.id==subj_ids(i),:); % for each subject
+    data_subj_choice = data_all(data_all.ID==subj_ids(i),:); % for each subject
     uni_mix = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==1)); % block number for condition = 1
     uni_perc = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==2)); % block number for condition = 2
     uni_rew = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==3)); % block number for condition = 3
@@ -331,6 +214,6 @@ save(strcat(save_dir,'\ecoperf_mix'));
 save(strcat(save_dir,'\ecoperf_perc'));
 save(strcat(save_dir,'\ecoperf_rew'));
 
-save(strcat(save_dir,'\mix_curve'));s
+save(strcat(save_dir,'\mix_curve'));
 save(strcat(save_dir,'\perc_curve'));
 save(strcat(save_dir,'\rew_curve'));

@@ -22,7 +22,7 @@ num_blocks = 4; % number of blocks per condition
 total_blocks = 16; % total number of blocks per subject
 
 % CHANGE DATA DIRECTORY ACCORDINGLY
-behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\clean_scripts\Behaviour\Data\Study1"; 
+behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\raw\BIDS\pilot_study"; 
 save_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\descriptive\study1";
 
 % MERGE ALL SUBJECT DATA
@@ -34,148 +34,11 @@ subj_ids = [11:17,19:22,24,26:33,36,37,42,46,48,51,53,54,56,58,59,61,62,...
 num_subjs = length(subj_ids);
 data_all = []; % empty table to merge all subjects data
 for i = 1:length(subj_ids)
-    data_subj = readtable(strcat(behv_dir,'\',num2str(subj_ids(i)),".xlsx"),"Sheet","Sheet1"); % read each subject's file
-    data_tbl = table(data_subj.run_id,data_subj.state,data_subj.rt,data_subj.response, ... % extract only important data
-        data_subj.condition,data_subj.contrast_left,data_subj.contrast_right,...
-        data_subj.corr_resp,data_subj.correct,data_subj.reward,data_subj.choice,'VariableNames',...
-        {'id','state','rt','response','condition','contrast_left','contrast_right' ...
-        ,'correct response','correct','reward','choice'});
-    data_all = [data_all;data_tbl];
+    tsv_file = fullfile(behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
+        strcat('sub_',num2str(subj_ids(i)),".tsv")); % path and file name for TSV file
+    data_table = readtable(tsv_file, "FileType","text",'Delimiter', '\t'); % read
+    data_all = [data_all; data_table]; % merge all subjects data
 end
-
-%% clean the data by removing missed and practice trials
-
-% REMOVE MISSED TRIALS
-data_all(isnan(data_all.response),:) = [];
-
-% REMOVE PRACTICE BLOCKS
-data_all(strcmp(data_all.condition,"lowcon"),:) = [];
-data_all(strcmp(data_all.condition,"highcon"),:) = [];
-
-%% add trial and block numbers
-
-% ADD TRIAL NUMBER
-trials = 1:t; % array with trial number array
-trials = repmat(trials.',total_blocks,1); % repeat it for the total number of blocks in the task
-trials_all = repmat(trials,num_subjs,1); % repeat for all subjects
-data_all.trials = trials_all; % add to table
-
-% ADD BLOCK NUMBER
-blocks = zeros(total_blocks*t,1); % initialise matrix for block nums
-c = 1;
-for b = 1:total_blocks
-    % repeat block number for all trials in a block 
-    blocks(c:b*t,1) = repelem(b,t,1);
-    c = c+t;
-end
-blocks_all = repmat(blocks,num_subjs,1); % repeat block num matrix for all subjects
-data_all.blocks = blocks_all; % add to table
-
-% ADD CONDITION NAME TO REPEATED TRIALS WHICH PARTICIPANTS MISSED
-for i = 1:height(data_all)
-    if data_all.trials(i) ~= 1
-        data_all.condition(i) = data_all.condition(i-1);
-    else
-        data_all.condition(i) = data_all.condition(i+1);
-    end
-end
-
-%% prepare and recode to calculate ecoperf
-
-% RECORDING MORE REWARDING OPTION TO FIT AGENT'S a = 0 or a = 1
-for i = 1:height(data_all)
-    if data_all.("correct response")(i) == 37
-        data_all.corr_resp(i) = 0;
-    else
-        data_all.corr_resp(i) = 1;
-    end
-end
-
-% CHECK IF LOW CONTRAST PATCH IS THE MORE REWARDING OPTION 
-% IF s = a, LOW CONTRAST PATCH IS MORE REWARDING 
-for i = 1:height(data_all)
-    if data_all.state(i) == data_all.corr_resp(i)
-        data_all.ecoperf_lc(i) = 1;
-    else
-        data_all.ecoperf_lc(i) = 0;
-    end
-end
-
-% CHECK IF HIGH CONTRAST PATCH IS THE MORE REWARDING OPTION 
-% IF s ~= a, HIGH CONTRAST PATCH IS MORE REWARDING
-for i = 1:height(data_all)
-    if data_all.state(i) == data_all.corr_resp(i)
-        data_all.ecoperf_hc(i) = 0;
-    else
-        data_all.ecoperf_hc(i) = 1;
-    end
-end
-
-% COMPUTE PROBABILITY OF TRIALS WHERE HIGH CONTRAST PATCH IS MORE REWARDING
-ecoperf_mat = NaN(num_subjs,16);
-for i = 1:num_subjs
-    for b = 1:total_blocks
-        ecoperf_mat(i,b) = nanmean(data_all.ecoperf_hc(and(data_all.id == subj_ids(i),data_all.blocks==b)));
-    end
-end
-
-% CHECK IF BLOCK IS HIGH OR LOW CONTRAST 
-contrast_bl = NaN(num_subjs,total_blocks); % initialise matrix for contrast of each block
-for i = 1:num_subjs
-    for b = 1:total_blocks
-        if ecoperf_mat(i,b) > 0.5
-            contrast_bl(i,b) = 1;
-        else
-            contrast_bl(i,b) = 0;
-        end
-    end
-end
-
-% REPEAT THE CONTRAST OF EACH BLOCK AND EACH SUBJECT
-contrast_all = [];
-for i = 1:num_subjs
-    contrast_subj = [];
-    for b = 1:total_blocks
-        contrast = repelem(contrast_bl(i,b),t,1); % repeat for all trials in a block
-        contrast_subj = [contrast_subj; contrast];
-    end
-    contrast_all = [contrast_all; contrast_subj];
-end
-
-data_all.contrast = contrast_all; % add to table 
-
-% BASED ON BLOCK'S CONTRAST, CHECK PARTICIPANT HAS CHOSEN THE MORE
-% REWARDING OPTION 
-for i = 1:height(data_all)
-    if data_all.contrast(i) == 0
-        if data_all.state(i) == data_all.choice(i)
-            data_all.ecoperf(i) = 1;
-        else
-            data_all.ecoperf(i) = 0;
-        end
-    else
-        if data_all.state(i) == data_all.choice(i)
-            data_all.ecoperf(i) = 0;
-        else
-            data_all.ecoperf(i) = 1;
-        end
-    end
-end
-
-% REPLACE CONDITION STRINGS WITH CONDITION NUMBERS
-for i = 1:height(data_all)
-    if strcmp(data_all.condition(i),'HH') == 1
-        data_all.condition_int(i) = 1; % "both-uncertainties condition"
-    elseif strcmp(data_all.condition(i),'HL') == 1
-        data_all.condition_int(i) = 2; % "perceptual uncertainty condition"
-    elseif strcmp(data_all.condition(i),'LH') == 1
-        data_all.condition_int(i) = 3; % "reward uncertainty condition"
-    elseif strcmp(data_all.condition(i),'LL') == 1
-        data_all.condition_int(i) = 4; % "no uncertainty condition"
-    else
-    end
-end
-
 %% calculate economic performance
 
 % ACROSS CONDITIONS
@@ -184,7 +47,7 @@ ecoperf_cond = NaN(num_subjs,num_cond);
 % MEAN ECONOMIC PERFORMANCE FOR EACH CONDITION
 for i = 1:num_subjs
     for c = 1:num_cond
-        ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.condition_int == c)));
+        ecoperf_cond(i,c) = mean(data_all.ecoperf(and(data_all.ID == subj_ids(i),data_all.condition_int == c)));
     end
 end
 
@@ -194,7 +57,7 @@ ecoperf_cont = NaN(num_subjs,num_cont);
 % MEAN ECONOMIC PERFORMANCE FOR EACH CONTRAST
 for i = 1:num_subjs
     for c = 1:num_cont
-        ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.id == subj_ids(i),data_all.contrast == c-1)));
+        ecoperf_cont(i,c) = mean(data_all.ecoperf(and(data_all.ID == subj_ids(i),data_all.contrast == c-1)));
     end
 end
 
@@ -206,12 +69,12 @@ ecoperf_ll = NaN(num_subjs,num_cont);
 
 % MEANS FOR EACH CONDITION, ACROSS CONTRASTS
 for i = 1:num_subjs
-    data_subj = data_all(data_all.id == subj_ids(i),:);
+    data_subj = data_all(data_all.ID == subj_ids(i),:);
     for c = 1:num_cont
-        ecoperf_hh(i,c) = mean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 1)));
-        ecoperf_hl(i,c) = mean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 2)));
-        ecoperf_lh(i,c) = mean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 3)));
-        ecoperf_ll(i,c) = mean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 4)));
+        ecoperf_hh(i,c) = nanmean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 1)));
+        ecoperf_hl(i,c) = nanmean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 2)));
+        ecoperf_lh(i,c) = nanmean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 3)));
+        ecoperf_ll(i,c) = nanmean(data_subj.ecoperf(and(data_subj.contrast == c-1,data_subj.condition_int == 4)));
     end
 end
 ecoperf_cond_cont = [ecoperf_hh,ecoperf_hl,ecoperf_lh,ecoperf_ll];
@@ -244,7 +107,7 @@ colors_name = [c4_4;c3_4]; % colors for bars,
 % CREATE FIGURE
 figure
 bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
-    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name)  
+    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,6,1,'Arial',colors_name)  
 
 % CALCULATE SALIENCE BIAS 
 salience_bias_hh = ecoperf_hh(:,2)-ecoperf_hh(:,1);
@@ -281,7 +144,7 @@ colors_name = [neutral]; % colors for bar
 % CREATE FIGURE
 figure
 bar_plots(y,mean_avg,mean_sd,num_subjs,length(mean_avg),length(legend_names), ...
-    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,colors_name)  
+    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,6,1,'Arial',colors_name)  
 
 % INITIALISE ARRAYS FOR SINGLE TRIAL ECONOMIC PERFORMANCE
 hh_curve = NaN(num_subjs,t);
@@ -290,7 +153,7 @@ lh_curve = NaN(num_subjs,t);
 ll_curve = NaN(num_subjs,t);
 
 for i = [1:9,11:93] % exclude participant 21 because unbalanced blocks
-    data_subj = data_all(data_all.id==subj_ids(i),:);
+    data_subj = data_all(data_all.ID==subj_ids(i),:);
     uni_mix = unique(data_subj.blocks(data_subj.condition_int==1));
     uni_perc = unique(data_subj.blocks(data_subj.condition_int==2));
     uni_rew = unique(data_subj.blocks(data_subj.condition_int==3));
