@@ -1,0 +1,87 @@
+{
+	"ID": {
+		"LongName": "ID",
+		"Description": "ID Numbers",
+		"Units": "integers"
+	},
+	"choice": {
+		"LongName": "Choice",
+		"Description": "Economic choice",
+		"Units": "integers",
+		"levels": [
+				"0: Left",
+				"1: Right"
+		]
+	},
+	"rt": {
+		"LongName": "rt",
+		"Description": "Reaction times",
+		"Units": "integers"
+	},
+	"trials": {
+		"LongName": "trials",
+		"Description": "Trial number",
+		"Units": "integers"
+	},
+	"blocks": {
+		"LongName": "blocks",
+		"Description": "Block number",
+		"Units": "integers"
+	},
+	"correct": {
+		"LongName": "correct",
+		"Description": "Task-generated reward",
+		"Units": "integer"
+	},
+	"contrast": {
+		"LongName": "congruence",
+		"Description": "Slider trial type",
+		"levels": [
+				"0: Incongruent trial",
+				"1: Congruent trial"
+		]
+	},
+	"choice_cond": {
+		"LongName": "Condition",
+		"Description": "Uncertainty condition for block",
+		"levels": [
+				"1: Both",
+				"2: Perceptual",
+				"3: Reward",
+				"4: No"
+		]
+	},
+	"state": {
+		"LongName": "s",
+		"Description": "State of the trial",
+		"levels": [
+				"0: Left stronger",
+				"1: Right stronger"
+		]
+	},
+	"contrast_left": {
+		"LongName": "contrast_left",
+		"Description": "Contrast level of left patch",
+		"Units": "integer"
+	},
+	"contrast_right": {
+		"LongName": "contrast_right",
+		"Description": "Contrast level of right patch",
+		"Units": "integer"
+	},
+	"diff": {
+		"LongName": "con_diff_choice",
+		"Description": "Contrast differences between two gabor patches",
+		"Units": "integer"
+	},
+	"ecoperf": {
+		"LongName": "ecoperf",
+		"Description": "More rewarding choice on that trial",
+		"Units": "integer"
+	},
+	"mu": {
+		"LongName": "mu",
+		"Description": "Slider response",
+		"Units": "integer"
+	}
+}
