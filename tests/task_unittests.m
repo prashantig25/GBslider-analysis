@@ -3,12 +3,11 @@ classdef task_unittests < matlab.unittest.TestCase
     % various functions used to generate task-based variables for the agent.
 
     methods(Test)
- 
         function test_constructormethods(obj)
-
+            %
             % test_constructormethods tests the output for all the
             % constructor methods within object Task().
-
+            %
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.C = linspace(-0.1,0.1,20);
@@ -31,9 +30,10 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_statesample(obj)
+            %
             % test_statesample function tests the state_sample function
             % from the Task() object.
-            
+            %
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.Theta = 0.5;
@@ -64,9 +64,10 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_contrastsample(obj)
+            %
             % test_contrastsample function tests the contrast_sample function
             % from the Task() object.
-
+            %
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.s_index = 1;
@@ -85,9 +86,10 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_rewardsample(obj)
+            %
             % test_rewardsample function tests the reward_sample function
             % from the Task() object.
-
+            %
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.state_sample();

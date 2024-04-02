@@ -1,9 +1,13 @@
 classdef preprocess_unittests < matlab.unittest.TestCase
-
+    % PREPROCESS_UNITTESTS is a collection of functions to run unit tests on
+    % various functions used for data preprocessing.
     methods(Test)
 
         function test_flipmu(obj)
-
+            %
+            % test_flipmu function tests the flip_mu function
+            % from the preprocess_LR() object.
+            %
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -22,7 +26,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeactiondeprew(obj)
-
+            %
+            % test_computeactiondeprew function tests the compute_action_dep_rew
+            % function from the preprocess_LR() object.
+            %
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -47,7 +54,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computemu(obj)
-
+            %
+            % test_computemu function tests the compute_mu
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -78,7 +88,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computestatedeppe(obj)
-
+            %
+            % test_computestatedeppe function tests the compute_state_dep_pe
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -117,7 +130,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeconfirm(obj)
-
+            %
+            % test_computeconfirm function tests the compute_confirm
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -153,7 +169,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removeconditions(obj)
-
+            %
+            % test_removeconditions function tests the removed_cond
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10; % number of trials on which the test needs to be run on
@@ -177,7 +196,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computenormalise(obj)
-
+            %
+            % test_computenormalise function tests the compute_normalise
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10;
@@ -198,7 +220,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeru(obj)
-
+            %
+            % test_computeru function tests the compute_ru
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10;
@@ -223,8 +248,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addvars(testCase)
-            % Test adding a single column to an empty table
-
+            %
+            % test_addvars function tests the add_vars
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  % Replace YourClass with the actual class name
             num_trials = 10;
@@ -241,8 +268,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removezerope(testCase)
-            % Test removing trials with PE = 0 from a table with zero PEs
-
+            %
+            % test_removezerope function tests the remove_zero_pe
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;
@@ -257,8 +286,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsplithalf(testCase)
-            % Test for adding split half variable
-
+            %
+            % test_addsplithalf function tests the add_splithalf
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;
@@ -273,8 +304,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsaliencechoice(testCase)
-            % Test for adding variable whether the salient choice was made
-
+            %
+            % test_addsaliencechoice function tests the add_saliencechoice
+            % function from the preprocess_LR() object.
+            %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;

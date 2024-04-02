@@ -1,14 +1,13 @@
 classdef LR_unittests < matlab.unittest.TestCase
     % LR_UNITTESTS is a collection of functions to run unit tests on
     % various functions used to fit a linear regression model.
-
     methods(Test)
 
         function test_linearfit(obj)
-
+            %
             % test_linearfit runs a unit test on linear_fit within object
             % lr_analysis_obj().
-
+            %
             % INITIALIZE VARS
             LR_obj = lr_analysis_obj(); % object
             tbl = table; % empty table for regressors
@@ -43,10 +42,10 @@ classdef LR_unittests < matlab.unittest.TestCase
         end
 
         function test_posterior_up(obj)
-
+            %
             % test_posteriou_up runs a unit test on posterior_up within object
             % lr_analysis_obj().
-
+            %
             % INITIALIZE VARS
             LR_obj = lr_analysis_obj();
             tbl = table;
@@ -79,10 +78,10 @@ classdef LR_unittests < matlab.unittest.TestCase
         end
 
         function test_get_coeffs(obj)
-
+            %
             % test_get_coeffs runs a unit test on get_coeffs within object
             % lr_analysis_obj().
-
+            %
             % INITIALIZE VARS   
             LR_obj = lr_analysis_obj();
             LR_obj.absolute_analysis = 0; % whether the test should be run on absolute or relative analysis

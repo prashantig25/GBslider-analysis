@@ -1,13 +1,14 @@
 function lm_mock = fitlm_mock(tbl, ~)
-    % fitlm_mock is mock version of MATLAB's fitlm.
-    
+    %
+    % function fitlm_mock is mock version of MATLAB's fitlm.
+    %
     % INPUTS:
-        % tbl: table to be fit to the linear model.
-        % mdl: linear model
-
+    % tbl: table to be fit to the linear model.
+    % mdl: linear model
+    %
     % OUTPUT:
-        % lm: mock linear model
-    
+    % lm: mock linear model
+    %
     rng(123)
     num_coeffs = 6; 
     coefficients = randn(num_coeffs, 1);

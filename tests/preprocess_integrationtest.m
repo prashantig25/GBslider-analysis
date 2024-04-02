@@ -1,5 +1,6 @@
 classdef preprocess_integrationtest < matlab.unittest.TestCase
-
+    % PREPROCESS_INTEGRATIONTEST is an integration test for
+    % various functions used for data pre-processing.
     methods(Test)
         
         function test_integration(obj)
