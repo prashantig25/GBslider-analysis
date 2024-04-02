@@ -2,30 +2,34 @@ classdef lr_analysis_obj < lr_vars
 % LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
     methods
         function obj = lr_analysis_obj()
+            %
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
+            %
             obj.data = readtable(obj.filename);
         end
 
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
+            %
             % linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
-
+            %
             % INPUT:
-                % obj: current object
-                % tbl: table with predictor vars data 
-                % varargin{1}: weights
-                % fit_fn: function to be used, adjust if using mock fitlm
-                % for unit testing
-
+            % obj: current object
+            % tbl: table with predictor vars data
+            % varargin{1}: weights
+            % fit_fn: function to be used, adjust if using mock fitlm
+            % for unit testing
+            %
             % OUTPUT:
-                % betas: array containing beta value for each predictor by fitlm
-                % rsquared: rsquared after fitting mdl to the data
-                % residuals: residuals after fitting mdl to the data
-                % coeffs_name: cell array containing name of all regressors
-                % lm: fitted model
+            % betas: array containing beta value for each predictor by fitlm
+            % rsquared: rsquared after fitting mdl to the data
+            % residuals: residuals after fitting mdl to the data
+            % coeffs_name: cell array containing name of all regressors
+            % lm: fitted model
+            %
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
             if obj.weight_y_n == 1
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
@@ -46,21 +50,23 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
+            %
             % get_coeffs fits the linear regression model by running non-weighted
             % and weighted regressions to get the beta coefficients across
             % subjects
-
+            %
             % INPUT:
-                % obj: current object
-
+            % obj: current object
+            %
             % OUTPUT:
-                % betas_all: betas for all regressors
-                % rsqaured_full: r-squared values for each participant
-                % residuals_reg: residuals from fitting the model
-                % coeffs_name: cell array with the model generated coefficients
-                % name
-                % posterior_up_subjs: posterior predicted updates by model
-                % fit_fn: function to be used, adjust if using mock fitlm
+            % betas_all: betas for all regressors
+            % rsqaured_full: r-squared values for each participant
+            % residuals_reg: residuals from fitting the model
+            % coeffs_name: cell array with the model generated coefficients
+            % name
+            % posterior_up_subjs: posterior predicted updates by model
+            % fit_fn: function to be used, adjust if using mock fitlm
+            %
             % SET VARIABLES TO RUN THE FUNCTION
             id_subjs = unique(obj.data.id);
             
@@ -83,6 +89,15 @@ classdef lr_analysis_obj < lr_vars
                     data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'});
+                if obj.pupil == 1
+                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
+                    data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
+                    normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
+                    normalise_zero_one(data_subject.fb_tonic).',...
+                    'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                    ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
+                end
                 [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn);
                 obj.res_subjs = [obj.res_subjs; residuals_reg, repelem(id_subjs(i),length(residuals_reg)).'];
             end
@@ -99,6 +114,15 @@ classdef lr_analysis_obj < lr_vars
                     data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'}); 
+                    if obj.pupil == 1
+                        tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                            data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
+                            data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
+                            normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
+                            normalise_zero_one(data_subject.fb_tonic).',...
+                            'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                            ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
+                    end
                     [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj);
                     betas_all(i,:) = betas(2:end);
                     rsquared_full(i,1) = rsquared;
@@ -110,17 +134,19 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [post_up] = posterior_up(obj,tbl,betas)
+            %
             % posterior_up calculates the posterior updated predicted by the model
-            % given the pe and other task/computational vars. 
-
+            % given the pe and other task/computational vars.
+            %
             % INPUT:
-                % obj: current object
-                % tbl: table contatining all vars including pe, task/computational
-                % vars such as contrast difference and so on
-                % betas: beta values by the model
-
+            % obj: current object
+            % tbl: table contatining all vars including pe, task/computational
+            % vars such as contrast difference and so on
+            % betas: beta values by the model
+            %
             % OUTPUT:
-                % post_up: posterior update predicted by the model
+            % post_up: posterior update predicted by the model
+            %
             % INITIALISE OUTPUT AND OTHER VARS
             post_up = zeros(height(tbl),1);
             var_array = NaN(height(tbl),length(obj.var_names));
