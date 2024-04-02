@@ -8,7 +8,7 @@ classdef preprocess_vars < handle
         space = 0; % if analysis is being run for space task data
         online = 1; % if analysis is being run on online dataset
         removed_cond = 3 % experimental condition number that is to be excluded during analysis
-        num_subjs = 20; % number of participants
+        num_subjs = 98; % number of participants
         absolute_lr = 0; % if analysis should be fit to absolute UPs and absolute PEs 
         data % table with behavioural data
         mu % reported contingency parameter/reward probability
