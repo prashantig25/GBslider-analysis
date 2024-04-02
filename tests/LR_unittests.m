@@ -94,13 +94,14 @@ classdef LR_unittests < matlab.unittest.TestCase
             LR_obj.data.congruence = randi([0, 1],num_trials*LR_obj.num_subjs,1);
             LR_obj.data.contrast = randi([0, 1],num_trials*LR_obj.num_subjs,1);
             LR_obj.data.pe_sign = randi([0, 1],num_trials*LR_obj.num_subjs,1);
-            LR_obj.data.condition = randi([0, 1],num_trials*LR_obj.num_subjs,1);
+            LR_obj.data.choice_cond = randi([0, 1],num_trials*LR_obj.num_subjs,1);
             LR_obj.data.reward_unc = randi([0, 1],num_trials*LR_obj.num_subjs,1);
-            LR_obj.data.id = [repelem(1,num_trials,1);repelem(2,num_trials,1)];
+            LR_obj.data.ID = [repelem(1,num_trials,1);repelem(2,num_trials,1)];
+            LR_obj.data.salience_choice = randi([0, 1],num_trials*LR_obj.num_subjs,1);
             [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = LR_obj.get_coeffs(@fitlm_mock);
 
             % EXPECTED
-            expected_id_subjs = unique(LR_obj.data.id);
+            expected_id_subjs = unique(LR_obj.data.ID);
             expected_betas_all = NaN(length(LR_obj.num_subjs),LR_obj.num_vars);
             expected_rsquared_full = NaN(length(LR_obj.num_subjs),1);
             expected_posterior_up_subjs = [];
@@ -112,9 +113,9 @@ classdef LR_unittests < matlab.unittest.TestCase
 
             for i = 1:LR_obj.num_subjs
                 LR_obj.weight_y_n = 0;
-                data_subject = LR_obj.data(LR_obj.data.id == expected_id_subjs(i),:);
+                data_subject = LR_obj.data(LR_obj.data.ID == expected_id_subjs(i),:);
                 tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'});
                 [~,~,expected_residuals_reg,~,~] = LR_obj.linear_fit(tbl,@fitlm_mock);
@@ -127,9 +128,9 @@ classdef LR_unittests < matlab.unittest.TestCase
                 wt_subjs(:,2) = expected_res_subjs(:,2);
                 for i = 1:LR_obj.num_subjs
                     weights_subj = wt_subjs(wt_subjs(:,2) == expected_id_subjs(i));
-                    data_subject = LR_obj.data(LR_obj.data.id == expected_id_subjs(i),:);
+                    data_subject = LR_obj.data(LR_obj.data.ID == expected_id_subjs(i),:);
                     tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'}); 
                     [expected_betas,expected_rsquared,expected_residuals_reg,expected_coeffs_name,~] = LR_obj.linear_fit(tbl,@fitlm_mock,weights_subj);
