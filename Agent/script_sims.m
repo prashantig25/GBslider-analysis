@@ -13,7 +13,7 @@ congruence = []; % store congruence level for each trial
 condition = 1; % experimental condition; change accordingly in agentvars and taskvars
 %% RUN SIMULATIONS
 
-[simulations] = run_simulations(num_sims,num_blocks,simulations); % run simulations
+[simulations] = run_simulations(num_sims,num_blocks,simulations); % use run simulations function
 for n = 1:num_blocks % add task-based variables 
     contrast = [contrast; repelem(contrast_vars(n),num_trials,1);];
     congruence = [congruence; repelem(congruence_vars(n),num_trials,1)];
