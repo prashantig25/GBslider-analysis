@@ -2,7 +2,7 @@ clc
 clearvars
 
 % PREPARE DATA
-data = readtable("study1.xlsx"); % load
+data = readtable("study1.txt"); % load
 all_cond = 1; % whether all conditions to be considered for regression
 if all_cond == 0
     data(data.choice_cond == 3,:) = []; % remove condition, if neccesary
@@ -24,7 +24,7 @@ end
 
 % FIT MODEL
 num_blocks = 16; % number of blocks
-subj_id = unique(data.id); % subject IDs
+subj_id = unique(data.ID); % subject IDs
 mdl = 'ecoperf ~ pu + reward_unc + contrast'; % model
 num_vars = 3; % number of variables
 block_data = NaN(num_blocks,num_vars); % store block wise task variables and economic performance
@@ -37,7 +37,7 @@ weight_y_n = 0; % non-weighted regression
 betas_all = NaN(length(subj_id),num_vars);
 
 for i = 1:length(subj_id)
-    data_subj = data(data.id == subj_id(i),:);
+    data_subj = data(data.ID == subj_id(i),:);
     for b = 1:num_blocks % get task-based variables and economic performance for each block
         data_blocks = data_subj(data_subj.blocks == b,:);
         block_data(b,1) = unique(data_blocks.reward_unc);
