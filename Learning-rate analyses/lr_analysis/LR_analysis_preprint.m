@@ -28,7 +28,7 @@ preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
 writetable(preprocess_obj.data,'preprocessed_data.xlsx');
 
 % SAVE FILES SEPARATELY FOR GROUPED REGRESSION
-grouped = 1; % 1 if files need to be saved separately for grouped regression
+grouped = 0; % 1 if files need to be saved separately for grouped regression
 if grouped == 1
     data = readtable("preprocessed_data.xlsx");
     writetable(data(data.splithalf == 1,:),'preprocessed_subj_split1.xlsx');
