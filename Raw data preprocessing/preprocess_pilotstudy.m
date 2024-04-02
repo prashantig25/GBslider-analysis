@@ -14,7 +14,6 @@ clc
 clearvars 
 
 % INITIALISE ALL REQUIRED VARS
-colors; % all colors required for plotting figures
 t = 25; % number of trials in a block
 num_cond = 4; % number of conditions in the task
 num_cont = 2; % number of contrast levels in the task
@@ -22,8 +21,9 @@ num_blocks = 4; % number of blocks per condition
 total_blocks = 16; % total number of blocks per subject
 
 % CHANGE DATA DIRECTORY ACCORDINGLY
-behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\raw\BIDS\pilot_study"; 
-save_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\descriptive\study1";
+behv_dir = "DATA\pilot_study"; 
+save_dir = "saved_files\study1";
+mkdir(save_dir);
 
 % MERGE ALL SUBJECT DATA
 subj_ids = [11:17,19:22,24,26:33,36,37,42,46,48,51,53,54,56,58,59,61,62,...
@@ -80,14 +80,14 @@ end
 ecoperf_cond_cont = [ecoperf_hh,ecoperf_hl,ecoperf_lh,ecoperf_ll];
 %% SAVE DATA
 
-writetable(data_all,strcat(save_dir,"\study1.xlsx"));
+writetable(data_all,fullfile(save_dir,"study1.txt"));
 
-save(strcat(save_dir,'\ecoperf_hh')); 
-save(strcat(save_dir,'\ecoperf_hl'));
-save(strcat(save_dir,'\ecoperf_lh'));
-save(strcat(save_dir,'\ecoperf_ll'));
+save(fullfile(save_dir,'ecoperf_hh.mat')); 
+save(fullfile(save_dir,'ecoperf_hl,mat'));
+save(fullfile(save_dir,'ecoperf_lh.mat'));
+save(fullfile(save_dir,'ecoperf_ll.mat'));
 
-save(strcat(save_dir,'\hh_curve')); 
-save(strcat(save_dir,'\hl_curve'));
-save(strcat(save_dir,'\lh_curve'));
-save(strcat(save_dir,'\ll_curve'));
+save(fullfile(save_dir,'hh_curve.mat')); 
+save(fullfile(save_dir,'hl_curve.mat'));
+save(fullfile(save_dir,'lh_curve.mat'));
+save(fullfile(save_dir,'ll_curve.mat'));

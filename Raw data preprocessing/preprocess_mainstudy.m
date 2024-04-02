@@ -3,7 +3,6 @@ clc
 clearvars 
 
 % INITIALISE REQUIRED VARIABLES
-colors; % all colors required for plotting figures
 t = 25; % number of trials in a block
 num_cond = 3; % number of conditions in the task
 num_cont = 2; % number of contrast levels in the task
@@ -11,8 +10,9 @@ num_blocks = 4; % number of blocks per condition
 total_blocks = 12; % total number of blocks per subject
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\raw\BIDS\main_study"; 
-save_dir = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\MAT files\descriptive\study2";
+behv_dir = "DATA\main_study"; 
+save_dir = "saved_files\study2";
+mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
 subj_ids = [139	143	145	146	151	157	159	160	162	163	164	165	174	176	181	192	198,...	
@@ -84,11 +84,12 @@ data_all.mu = data_all.mu./100;
 
 %% SAVE DATA
 
-writetable(data_all,strcat(save_dir,'\study2.xlsx'));
-save(strcat(save_dir,'\ecoperf_mix'));
-save(strcat(save_dir,'\ecoperf_perc'));
-save(strcat(save_dir,'\ecoperf_rew'));
+writetable(data_all,fullfile(save_dir,'study2.txt'));
 
-save(strcat(save_dir,'\mix_curve'));
-save(strcat(save_dir,'\perc_curve'));
-save(strcat(save_dir,'\rew_curve'));
+save(fullfile(save_dir,'ecoperf_mix.mat'));
+save(fullfile(save_dir,'ecoperf_perc.mat'));
+save(fullfile(save_dir,'ecoperf_rew.mat'));
+
+save(fullfile(save_dir,'mix_curve.mat'));
+save(fullfile(save_dir,'perc_curve.mat'));
+save(fullfile(save_dir,'rew_curve.mat'));
