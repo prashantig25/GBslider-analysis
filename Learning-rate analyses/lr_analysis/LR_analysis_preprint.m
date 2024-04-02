@@ -40,6 +40,6 @@ lr_analysis = lr_analysis_obj();
 [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = lr_analysis.get_coeffs(@fitlm);
 
 % SAVE DATA 
-save("betas_abs","betas_all"); % save betas as betas_all if running signed analysis
+save("betas_abs","betas_all"); % save betas as betas_signed if running signed analysis
 save("rsquared_wo_rewunc_obj.mat","rsquared_full"); % save r-squared values
 save("posterior_up_wo_rewunc_obj.mat","posterior_up_subjs"); % save posterior updates
