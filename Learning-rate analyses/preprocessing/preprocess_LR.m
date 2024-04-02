@@ -27,7 +27,7 @@ classdef preprocess_LR < preprocess_vars
             obj.recoded_reward = NaN(height(obj.data),1);
             obj.mu_t = NaN(height(obj.data),1);
             obj.mu_t_1 = NaN(height(obj.data),1);
-            if ~ismember('Trials',obj.data.Properties.VariableNames)
+            if ~ismember('trials',obj.data.Properties.VariableNames)
                 obj.data.trials = obj.data.trial;
             end
         end
