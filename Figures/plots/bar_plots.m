@@ -1,29 +1,30 @@
 function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xticklabs,title_name, ...
-    xlabelname,ylabelname,fontsize,linewidth,fontname,varargin)   
-    % bar_plots creates bar plots with multiple bars, single data scatter
+    xlabelname,ylabelname,fontsize,linewidth,fontname,varargin) 
+    %
+    % function bar_plots creates bar plots with multiple bars, single data scatter
     % points, and SEM bars.
-
+    %
     % INPUTS:
-        % y: array with single data points with size n x b where n is
-        % number of data points and b is number of bars.
-        % mean_all: mean across single data points with size n x b where n
-        % is number of groups on x-axis and b is the number of bars.
-        % SEM_all: SEM across single data points with size n x b where n
-        % is number of groups on x-axis and b is the number of bars.
-        % n: number of single data points for each group on x-axis.
-        % x_groups: number of groups to be plotted on x-axis.
-        % bars: number of bars.
-        % legend_names: cell array containing legend for bars.
-        % xticks: array of tick numbers for x-axis
-        % xticklabs: cell array with tick label for x-axis
-        % title_name: cell array containing name of the plot
-        % xlabelname: cell array containing label for x-axis
-        % ylabelname: cell array containing label for y-axis
-        % fontsize: font size for text
-        % linewidth: line width for plot
-        % fontname: font
-        % varargin{1}: face color for bars
-        
+    % y: array with single data points with size n x b where n is
+    % number of data points and b is number of bars.
+    % mean_all: mean across single data points with size n x b where n
+    % is number of groups on x-axis and b is the number of bars.
+    % SEM_all: SEM across single data points with size n x b where n
+    % is number of groups on x-axis and b is the number of bars.
+    % n: number of single data points for each group on x-axis.
+    % x_groups: number of groups to be plotted on x-axis.
+    % bars: number of bars.
+    % legend_names: cell array containing legend for bars.
+    % xticks: array of tick numbers for x-axis
+    % xticklabs: cell array with tick label for x-axis
+    % title_name: cell array containing name of the plot
+    % xlabelname: cell array containing label for x-axis
+    % ylabelname: cell array containing label for y-axis
+    % fontsize: font size for text
+    % linewidth: line width for plot
+    % fontname: font
+    % varargin{1}: face color for bars
+    %
     % ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
     for i = 1:x_groups
@@ -60,7 +61,7 @@ function bar_plots(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xtickl
     % X-AXIS
     for b = 1:bars
         for i = 1:x_groups
-            scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y(x==i,b),5,"o", ...
+            scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), y(x==i,b),10,"o", ...
                 'MarkerEdgeColor','k','MarkerFaceColor','auto','XJitter', ...
                 'randn','XJitterWidth',.2)
         end

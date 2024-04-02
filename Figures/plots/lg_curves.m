@@ -1,8 +1,8 @@
 function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name, ...
     xlabelname,ylabelname,fontsize,linewidth,fontname)
-    % lg_curves PLOTS MEAN OF DATA ACROSS PARTICIPANTS, ACROSS TRIALS IN A
-    % BLOCK.
 
+    % function lg_curves plots mean of data across participants, across trials in a block.
+    %
     % INPUTS:
         % x: array containing trial numbers in a block for x-axis
         % mean_curves: mean, across subjects, for each trial in a block
@@ -15,7 +15,7 @@ function lg_curves(x,mean_curves,sem_curves,colors_name,legend_names,title_name,
         % fontsize: font size of the text
         % linewidth: line width of the plot
         % fontname: font of the text
-
+    %  
     figure
     hold on
     
