@@ -13,11 +13,11 @@ classdef taskvars < handle
     end
     methods
         function obj = taskvars
-            %
+            
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
-            %
+            
             obj.C = linspace(obj.kappa_min,obj.kappa_max,20); % generate contrast difference
             if obj.condition == 1 || obj.condition == 3 % condition dependent contingency parameter
                 obj.mu = 0.7;

@@ -17,11 +17,11 @@ classdef agentvars < handle
     end 
     methods
         function obj = agentvars
-            %
+            
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
-            %
+            
             if obj.condition == 1 || obj.condition == 2 % condition dependent sensitivity parameter for agent
                 obj.sigma = 0.03;
             else 
