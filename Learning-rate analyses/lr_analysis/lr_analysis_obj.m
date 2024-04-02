@@ -2,34 +2,34 @@ classdef lr_analysis_obj < lr_vars
 % LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
     methods
         function obj = lr_analysis_obj()
-            %
+            
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
-            %
+            
             obj.data = readtable(obj.filename);
         end
 
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
-            %
+            
             % linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
             %
             % INPUT:
-            % obj: current object
-            % tbl: table with predictor vars data
-            % varargin{1}: weights
-            % fit_fn: function to be used, adjust if using mock fitlm
-            % for unit testing
+                % obj: current object
+                % tbl: table with predictor vars data
+                % varargin{1}: weights
+                % fit_fn: function to be used, adjust if using mock fitlm
+                % for unit testing
             %
             % OUTPUT:
-            % betas: array containing beta value for each predictor by fitlm
-            % rsquared: rsquared after fitting mdl to the data
-            % residuals: residuals after fitting mdl to the data
-            % coeffs_name: cell array containing name of all regressors
-            % lm: fitted model
-            %
+                % betas: array containing beta value for each predictor by fitlm
+                % rsquared: rsquared after fitting mdl to the data
+                % residuals: residuals after fitting mdl to the data
+                % coeffs_name: cell array containing name of all regressors
+                % lm: fitted model
+            
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
             if obj.weight_y_n == 1
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
@@ -68,7 +68,7 @@ classdef lr_analysis_obj < lr_vars
             % fit_fn: function to be used, adjust if using mock fitlm
             %
             % SET VARIABLES TO RUN THE FUNCTION
-            id_subjs = unique(obj.data.id);
+            id_subjs = unique(obj.data.ID);
             
             % INITIALISE VARIABLES
             betas_all = NaN(length(obj.num_subjs),obj.num_vars);
@@ -84,9 +84,9 @@ classdef lr_analysis_obj < lr_vars
             % FIT THE MODEL TO GET RESIDUALS (non-weighted)
             for i = 1:obj.num_subjs
                 obj.weight_y_n = 0; % non-weighted
-                data_subject = obj.data(obj.data.id == id_subjs(i),:); % single-subject data
+                data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                 tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'});
                 if obj.pupil == 1
@@ -109,9 +109,9 @@ classdef lr_analysis_obj < lr_vars
                 wt_subjs(:,2) = obj.res_subjs(:,2);
                 for i = 1:obj.num_subjs
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
-                    data_subject = obj.data(obj.data.id == id_subjs(i),:);
+                    data_subject = obj.data(obj.data.ID == id_subjs(i),:);
                     tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                     'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                     ,'reward_unc','pe_sign','salience_choice'}); 
                     if obj.pupil == 1
