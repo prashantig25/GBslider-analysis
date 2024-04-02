@@ -25,7 +25,7 @@ preprocess_obj.add_vars(preprocess_obj.data.confirm_rew,'pe_sign'); % confirmati
 preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
 
 % SAVE PREPROCESSED FILE
-writetable(preprocess_obj.data,'preprocessed_subj.xlsx');
+writetable(preprocess_obj.data,'preprocessed_data.xlsx');
 
 % SAVE FILES SEPARATELY FOR GROUPED REGRESSION
 grouped = 1; % 1 if files need to be saved separately for grouped regression
