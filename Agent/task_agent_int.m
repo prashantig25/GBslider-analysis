@@ -1,10 +1,10 @@
 function [data_int] = task_agent_int()
-
-    % TASK_AGENT_INT simulates the interaction between task and agent.
-        
+    %
+    % task_agent_int simulates the interaction between task and agent.
+    %
     % OUTPUT:
-        % data_int: simulated interaction stored in a table
-
+    % data_int: simulated interaction stored in a table
+    %
     % INTIALIZATION OF REQUIRED CLASSES
     task = Task();
     agent = Agent();
