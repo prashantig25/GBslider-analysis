@@ -3,7 +3,7 @@ clearvars
 
 % LOAD DATA
 load('betas_signed_wo_rewunc_obj.mat','betas_all'); % betas from lr analysis model
-data = readtable("preprocessed_subj.xlsx"); % get choice performance
+data = readtable("preprocessed_data.xlsx"); % get choice performance
 
 % INITIALISE VARS
 num_subjs = 98; % number of subjects
