@@ -2,16 +2,16 @@ clc
 clearvars
 
 % LOAD DATA
-load('betas_signed_wo_rewunc_obj.mat','betas_all'); % betas from lr analysis model
+load('betas_signed.mat','betas_all'); % betas from lr analysis model
 data = readtable("preprocessed_data.xlsx"); % get choice performance
 
 % INITIALISE VARS
 num_subjs = 98; % number of subjects
 ecoperf = NaN(num_subjs,1); % initialised array for economic performance
 esterror = NaN(num_subjs,1); % initialised array for estimation error
-id_subjs = unique(data.id); % subject IDs
-save_mat = 1; % set to 1, if data needs to be saved for plotting
-abs_esterror = 0; % set to 1, if analysis needs to be done for absolute estimation error
+id_subjs = unique(data.ID); % subject IDs
+save_mat = 0; % set to 1, if data needs to be saved for plotting
+abs_esterror = 1; % set to 1, if analysis needs to be done for absolute estimation error
 num_vars = 5; % number of variables
 num_vars_partial = 4; % number of variables for partial R2
 pred_vars = {'pe','pe__condiff','pe__salience','pe__congruence','pe__rewunc','pe__pesign'}; % predictor variables
@@ -48,8 +48,8 @@ end
 
 % GET ECONOMIC PERFORMANCE & EST. ERROR
 for i = 1:num_subjs
-    ecoperf(i,:) = nanmean(data.ecoperf(data.id == id_subjs(i)));
-    esterror(i,:) = nanmean(data.est_error(data.id == id_subjs(i)));
+    ecoperf(i,:) = nanmean(data.ecoperf(data.ID == id_subjs(i)));
+    esterror(i,:) = nanmean(data.est_error(data.ID == id_subjs(i)));
 end
 
 % NORMALISE ALL COEFFICIENTS
