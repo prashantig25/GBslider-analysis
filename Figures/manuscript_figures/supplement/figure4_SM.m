@@ -1,12 +1,14 @@
 clc
 clearvars
-colors_manuscript; % colors for the plot
+
 line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_axes = 0.5; % line width for plot lines
 fontsize_label = 12; % fontsize for subplot labels
 dot_size = 10;
+[~,~,~,~,~,~,~,~,~,~,~,~,~,barface_green,...
+    ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
 load("rsquared_wo_rewunc_obj.mat","rsquared_full"); % r-squared values

@@ -1,13 +1,15 @@
 %% INITIALISE GENERAL PLOT VARS
 clc
 clearvars
-colors_manuscript; % colors for plot
+
 linewidth_line = 1.5; % linewidth for plot lines
 line_width = 0.5; % linewidth for axes
 font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
+[~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
+
 load("lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
 load("partialrsq_signed.mat","partial_rsq"); % partial R2 values
 

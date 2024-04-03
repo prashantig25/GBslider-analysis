@@ -1,11 +1,13 @@
 clc
 clearvars
-colors_manuscript; % colors for the plot
+
 line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
 fontsize_label = 12; % font size for subplot labels
+[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
+    ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
 load("betas_signed_wo_rewunc_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis

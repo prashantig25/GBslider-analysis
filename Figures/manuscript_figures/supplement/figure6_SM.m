@@ -1,11 +1,12 @@
 clc
 clearvars
-colors_manuscript;
 
 linewidth_line = 1.5; % linewidth for plot lines
 line_width = 0.5; % linewidth for axes
 font_name = 'Arial'; % font name
 font_size = 6; % font size
+[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
+    ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALIZE VARS
 load("betas_abs_split0.mat","betas_all"); betas_split0_abs = betas_all; % betas from absolute analysis for splithalf group 0 

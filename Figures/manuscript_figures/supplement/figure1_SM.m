@@ -1,13 +1,15 @@
 clc
 clearvars
-colors_manuscript; % colors for the plot
+
 line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
-save_csv = 1; % if figure caption needs any stats input, then save
+save_csv = 0; % if figure caption needs any stats input, then save
 save_figures = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
     "overleaf_folder_organisation\stats\figures"; % path to save
+[~,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,light_gray,binned_dots,barface_green,...
+    ~,~,dim_gray,~,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
 load("betas_abs_wo_rewunc_obj.mat","betas_all"); betas_subjs = betas_all; % participant betas from absolute analysis

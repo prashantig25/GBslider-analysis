@@ -1,15 +1,17 @@
 clc
 clearvars
-colors_manuscript; % colors for the plot
+
 line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
 linewidth_axes = 0.5; % line width for axes
 fontsize_label = 12; % font size for subplot labels
+[~,~,~,~,~,~,~,~,~,~,gray_dots,~,~,barface_green,...
+    ~,dots_edges,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-data_subjs = readtable("preprocessed_subj.xlsx"); % single-trial updates, prediction errors
+data_subjs = readtable("preprocessed_data.xlsx"); % single-trial updates, prediction errors
 num_subjs = 98; % number of subjects
 %%
 

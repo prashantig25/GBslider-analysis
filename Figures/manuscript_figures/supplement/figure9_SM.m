@@ -2,7 +2,6 @@
 clc
 clearvars
 
-colors_manuscript; % colors for plot
 linewidth_line = 1.5; % linewidth for plot lines
 line_width = 0.5; % linewidth for axes
 linewidth_single = 0.05;
@@ -12,6 +11,8 @@ xlim_vals = [0 1]; % x limits
 ylim_vals = [0 1.2]; % y limits
 num_subjs = 98; % number of subjects
 num_conds = 4; % number of condition
+[~,~,~,~,~,~,~,~,~,~,~,~,~,barface_green,reg_color,~,~,~,~] = colors_rgb(); % colors
+
 load("ecoperf_hh.mat"); % economic performance for pilot study for both uncertainties condition
 load("ecoperf_hl.mat"); % perceptual condition
 load("ecoperf_lh.mat"); % reward condition
