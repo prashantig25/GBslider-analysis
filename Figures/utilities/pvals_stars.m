@@ -1,17 +1,17 @@
 function bar_labels = pvals_stars(p_vals,selected_regressors,bar_labels,stars)
-    %
+    
     % function pval_stars creates a cell-array with stars, according to p-values.
     %
     % INPUTS:
-    % p_vals: array with p-values
-    % selected_regressors: indices for selected regressors
-    % bar_labels: initialised cell-array for stars
-    % stars: 1 if stars need to be plotted, 0 if p-values need to be
-    % directly plotted
+    %   p_vals: array with p-values
+    %   selected_regressors: indices for selected regressors
+    %   bar_labels: initialised cell-array for stars
+    %   stars: 1 if stars need to be plotted, 0 if p-values need to be
+    %   directly plotted
     %
     % OUTPUT:
-    % bar_labels: cell-array with stars
-    %
+    %   bar_labels: cell-array with stars
+    
     p_vals_regressor = p_vals(:,selected_regressors); % p-values for required regressors
     if stars == 1 % stars to indicate significance
         for i = 1:numel(bar_labels)

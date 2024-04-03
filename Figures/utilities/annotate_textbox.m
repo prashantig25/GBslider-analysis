@@ -1,22 +1,22 @@
 function annotate_textbox(gca,position,string,font_name,font_size, ...
     horz_align,vert_align,bg_color,face_alpha,edge_color,varargin)
-    %
+    
     % function annotate_textbox adds a textbox and customises it in a figure.
     %
     % INPUTS:
-    % gca: current axes
-    % position: textbox position
-    % string: text string
-    % font_name: font for string
-    % font_size: font size
-    % horz_align: horizontal alignment
-    % vert_align: vertical alignment
-    % bg_color: background color
-    % face_alpha: alpha of bg_color
-    % edge_color: color for box edge
-    % varargin{1}: line width
-    % varargin{2}: line style
-    %
+    %   gca: current axes
+    %   position: textbox position
+    %   string: text string
+    %   font_name: font for string
+    %   font_size: font size
+    %   horz_align: horizontal alignment
+    %   vert_align: vertical alignment
+    %   bg_color: background color
+    %   face_alpha: alpha of bg_color
+    %   edge_color: color for box edge
+    %   varargin{1}: line width
+    %   varargin{2}: line style
+    
     text1 = annotation("textbox");
     text1.Parent = gca;
     text1.Position = position;
