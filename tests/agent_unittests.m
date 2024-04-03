@@ -4,10 +4,10 @@ classdef agent_unittests < matlab.unittest.TestCase
     methods(Test)
 
         function test_constructormethods(obj)
-            %
+            
             % test_constructormethods tests the output for all the
             % constructor methods within object Agent().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
 
@@ -30,10 +30,10 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_observation_sample(obj)
-            %
+            
             % test_observationsample function tests the observation_sample function
             % from the Task() object.
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             contrast_diff = 0.1; % set contrast difference
@@ -54,9 +54,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_p_s_giv_o(obj)
-            %
+            
             % test_p_s_giv_o runs unit tests on p_s_giv_o().
-            %
+            
             % INTIALIZE VARS
             agent = Agent();
         
@@ -94,9 +94,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_decide_p(obj)
-            %
+            
             % test_decide_p runs unit tests on decide_p().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.sigma = 0.0001; % no perceptual uncertainty
@@ -117,9 +117,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_cat_bs(obj)
-            %
+            
             % test_cat_bs runs unit tests on cat_bs().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.sigma = 0.0001; % no perceptual uncertainty
@@ -141,9 +141,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_eval_poly(obj)
-            %
+            
             % test_eval_poly runs unit tests on eval_poly().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.c_t = [2 3];
@@ -159,9 +159,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_compute_valence(obj)
-            %
+            
             % test_compute_valence runs unit tests for compute_valence().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.pi_0 = 1; % set belief state
@@ -178,9 +178,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_softmax(obj)
-            %
+            
             % test_softmax runs unit tests for softmax().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.v_a_t = [0.8,0.2]; % initialize EVs 
@@ -196,9 +196,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_decide_e(obj)
-            %
+            
             % test_decide_e runs unit tests on the decide_e().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.sigma = 0.00001; % set high perceptual sensitivity
@@ -235,10 +235,10 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_compute_action_dep_rew(obj)
-            %
+            
             % test_compute_action_dep_rew runs unit tests on
             % compute_action_dep_rew().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             r = 1; % set task-generated reward
@@ -254,9 +254,9 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_compute_q(obj)
-            %
+            
             % test_compute_q runs unit tests on compute_q().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.pi_0 = 1; 
@@ -281,10 +281,10 @@ classdef agent_unittests < matlab.unittest.TestCase
         end
 
         function test_update_coefficients(obj)
-            %
+            
             % test_update_coefficients runs unit tests on
             % update_coefficients().
-            %
+            
             % INITIALIZE VARS
             agent = Agent();
             agent.c_t = [2 3];

@@ -4,15 +4,15 @@ classdef task_unittests < matlab.unittest.TestCase
 
     methods(Test)
         function test_constructormethods(obj)
-            %
+            
             % test_constructormethods tests the output for all the
             % constructor methods within object Task().
-            %
+            
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.C = linspace(-0.1,0.1,20);
+            task.condition = 1;
             task.mu = 0.7;
-            task;
 
             % COMPUTE EXPECTED OUTPUTS
             expected_p_cs = NaN(length(task.C), 2); 
@@ -30,10 +30,10 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_statesample(obj)
-            %
+            
             % test_statesample function tests the state_sample function
             % from the Task() object.
-            %
+            
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.Theta = 0.5;
@@ -64,17 +64,17 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_contrastsample(obj)
-            %
+            
             % test_contrastsample function tests the contrast_sample function
             % from the Task() object.
-            %
+            
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.s_index = 1;
             task.C = linspace(-0.1,0.1,20); 
             task.contrast_sample();
             
-            % COMPUTE EXPTED OUTPUTS
+            % COMPUTE EXPECTED OUTPUTS
             expected_condiff = 0.1; % expected upper limit of contrast difference
             expected_length = 1; % expected length of contrast difference
 
@@ -86,10 +86,10 @@ classdef task_unittests < matlab.unittest.TestCase
         end
 
         function test_rewardsample(obj)
-            %
+            
             % test_rewardsample function tests the reward_sample function
             % from the Task() object.
-            %
+            
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.state_sample();

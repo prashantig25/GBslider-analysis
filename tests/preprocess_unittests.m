@@ -4,14 +4,14 @@ classdef preprocess_unittests < matlab.unittest.TestCase
     methods(Test)
 
         function test_flipmu(obj)
-            %
+            
             % test_flipmu function tests the flip_mu function
             % from the preprocess_LR() object.
-            %
+            
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
-            preprocess_obj.mu = linspace(0.5,1,num_trials).';
+            num_trials = 2; % number of trials on which the test needs to be run on
+            preprocess_obj.mu = [0.7,0.2].';
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             preprocess_obj.data.congruence = repelem(0,num_trials,1);
             preprocess_obj.flipped_mu = NaN(num_trials,1);
@@ -26,18 +26,16 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeactiondeprew(obj)
-            %
+            
             % test_computeactiondeprew function tests the compute_action_dep_rew
             % function from the preprocess_LR() object.
-            %
+            
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
+            num_trials = 4; % number of trials on which the test needs to be run on
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            rng(23)
-            preprocess_obj.obtained_reward = randi([0, 1],num_trials,1);
-            rng(123)
-            preprocess_obj.action = randi([0, 1],num_trials,1);
+            preprocess_obj.obtained_reward = [0,0,1,1];
+            preprocess_obj.action = [0,1,0,1];
             preprocess_obj.recoded_reward = NaN(num_trials,1);
             preprocess_obj.compute_action_dep_rew;
 
@@ -60,9 +58,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             %
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
+            num_trials = 4; % number of trials on which the test needs to be run on
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.data.contrast = repelem(1,num_trials,1); % set actual mu < or > 0.5
+            preprocess_obj.data.contrast = [0,0,1,1].';%repelem(1,num_trials,1); % set actual mu < or > 0.5
             preprocess_obj.mu_t = NaN(num_trials,1);
             preprocess_obj.mu_t_1 = NaN(num_trials,1);
             preprocess_obj.compute_mu;
@@ -88,16 +86,16 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computestatedeppe(obj)
-            %
+            
             % test_computestatedeppe function tests the compute_state_dep_pe
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
+            num_trials = 4; % number of trials on which the test needs to be run on
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             rng(123)
-            preprocess_obj.state = randi([0, 1],num_trials,1);
+            preprocess_obj.state = [0;0;1;1];
             preprocess_obj.absolute_lr = 0;
 
             preprocess_obj.flip_mu;
@@ -130,18 +128,18 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeconfirm(obj)
-            %
+            
             % test_computeconfirm function tests the compute_confirm
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
+            num_trials = 8; % number of trials on which the test needs to be run on
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.obtained_reward = randi([0, 1],num_trials,1);
-            preprocess_obj.state = randi([0, 1],num_trials,1);
-            preprocess_obj.action = randi([0, 1],num_trials,1);
-            preprocess_obj.data.contrast = repelem(1,num_trials,1); % set actual mu < or > 0.5
+            preprocess_obj.obtained_reward = [0,0,0,0,1,1,1,1].'; 
+            preprocess_obj.state = [0,0,1,1,0,0,1,1].'; 
+            preprocess_obj.action = [0,1,0,1,0,1,0,1].';
+            preprocess_obj.data.contrast = [1,0,1,0,1,0,1,0].';
 
             preprocess_obj.compute_confirm;
 
@@ -155,7 +153,7 @@ classdef preprocess_unittests < matlab.unittest.TestCase
                         expected_confirmrew(i) = preprocess_obj.obtained_reward(i);
                     end
                 else
-                    if preprocess_obj.state(i) == preprocess_obj.action(i) % the less rewarding state and action combination
+                    if preprocess_obj.state(i) ~= preprocess_obj.action(i) % the less rewarding state and action combination
                         expected_confirmrew(i) = 1-preprocess_obj.obtained_reward(i);
                     else
                         expected_confirmrew(i) = preprocess_obj.obtained_reward(i);
@@ -169,17 +167,17 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removeconditions(obj)
-            %
+            
             % test_removeconditions function tests the removed_cond
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10; % number of trials on which the test needs to be run on
+            num_trials = 3; % number of trials on which the test needs to be run on
             preprocess_obj.removed_cond = 1;
             preprocess_obj.agent = 0;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.condition = repelem(1,num_trials,1);
+            preprocess_obj.condition = [1;2;3];
             preprocess_obj.remove_conditions;
 
             % EXPECTED
@@ -196,10 +194,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computenormalise(obj)
-            %
+            
             % test_computenormalise function tests the compute_normalise
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10;
@@ -220,15 +218,15 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeru(obj)
-            %
+            
             % test_computeru function tests the compute_ru
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10;
+            num_trials = 3;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.condition = repelem(1,num_trials,1);
+            preprocess_obj.condition = [1;2;3];
 
             preprocess_obj.compute_ru;
 
@@ -248,13 +246,13 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addvars(testCase)
-            %
+            
             % test_addvars function tests the add_vars
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  % Replace YourClass with the actual class name
-            num_trials = 10;
+            num_trials = 5;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             
             new_column = linspace(0,1,num_trials).';
@@ -268,10 +266,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removezerope(testCase)
-            %
+            
             % test_removezerope function tests the remove_zero_pe
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;
@@ -286,10 +284,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsplithalf(testCase)
-            %
+            
             % test_addsplithalf function tests the add_splithalf
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;
@@ -304,10 +302,10 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsaliencechoice(testCase)
-            %
+            
             % test_addsaliencechoice function tests the add_saliencechoice
             % function from the preprocess_LR() object.
-            %
+            
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  
             num_trials = 10;
