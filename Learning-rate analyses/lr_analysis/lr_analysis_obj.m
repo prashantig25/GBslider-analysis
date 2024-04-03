@@ -12,23 +12,23 @@ classdef lr_analysis_obj < lr_vars
 
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
             
-            % linear_fit fits a linear regression model to the updates as a
+            % function linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
             %
             % INPUT:
-                % obj: current object
-                % tbl: table with predictor vars data
-                % varargin{1}: weights
-                % fit_fn: function to be used, adjust if using mock fitlm
-                % for unit testing
+            %   obj: current object
+            %   tbl: table with predictor vars data
+            %   varargin{1}: weights
+            %   fit_fn: function to be used, adjust if using mock fitlm
+            %   for unit testing
             %
             % OUTPUT:
-                % betas: array containing beta value for each predictor by fitlm
-                % rsquared: rsquared after fitting mdl to the data
-                % residuals: residuals after fitting mdl to the data
-                % coeffs_name: cell array containing name of all regressors
-                % lm: fitted model
+            %   betas: array containing beta value for each predictor by fitlm
+            %   rsquared: rsquared after fitting mdl to the data
+            %   residuals: residuals after fitting mdl to the data
+            %   coeffs_name: cell array containing name of all regressors
+            %   lm: fitted model
             
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
             if obj.weight_y_n == 1
@@ -50,23 +50,23 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
-            %
-            % get_coeffs fits the linear regression model by running non-weighted
+            
+            % function get_coeffs fits the linear regression model by running non-weighted
             % and weighted regressions to get the beta coefficients across
             % subjects
             %
             % INPUT:
-            % obj: current object
+            %   obj: current object
             %
             % OUTPUT:
-            % betas_all: betas for all regressors
-            % rsqaured_full: r-squared values for each participant
-            % residuals_reg: residuals from fitting the model
-            % coeffs_name: cell array with the model generated coefficients
-            % name
-            % posterior_up_subjs: posterior predicted updates by model
-            % fit_fn: function to be used, adjust if using mock fitlm
-            %
+            %   betas_all: betas for all regressors
+            %   rsqaured_full: r-squared values for each participant
+            %   residuals_reg: residuals from fitting the model
+            %   coeffs_name: cell array with the model generated coefficients
+            %   name
+            %   posterior_up_subjs: posterior predicted updates by model
+            %   fit_fn: function to be used, adjust if using mock fitlm
+            
             % SET VARIABLES TO RUN THE FUNCTION
             id_subjs = unique(obj.data.ID);
             
@@ -134,19 +134,19 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [post_up] = posterior_up(obj,tbl,betas)
-            %
-            % posterior_up calculates the posterior updated predicted by the model
+            
+            % function posterior_up calculates the posterior updated predicted by the model
             % given the pe and other task/computational vars.
             %
             % INPUT:
-            % obj: current object
-            % tbl: table contatining all vars including pe, task/computational
-            % vars such as contrast difference and so on
-            % betas: beta values by the model
+            %   obj: current object
+            %   tbl: table contatining all vars including pe, task/computational
+            %   vars such as contrast difference and so on
+            %   betas: beta values by the model
             %
             % OUTPUT:
-            % post_up: posterior update predicted by the model
-            %
+            %   post_up: posterior update predicted by the model
+            
             % INITIALISE OUTPUT AND OTHER VARS
             post_up = zeros(height(tbl),1);
             var_array = NaN(height(tbl),length(obj.var_names));
