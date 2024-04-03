@@ -1,41 +1,42 @@
 function h = bar_plots_pval(y,mean_all,SEM_all,n,x_groups,bars,legend_names,xticks,xticklabs,title_name, ...
     xlabelname,ylabelname,disp_pval,scatter_dots,dot_size,plot_err,fontsize,linewidth,fontname,disp_legend,varargin)  
-    %
+    
     % function bar_plots_pval creates bar plots with multiple bars, single data scatter
     % points, SEM bars, and displays significance stars.
     %
     % INPUTS:
-    % y: array with single data points with size n x b where n is
-    % number of data points and b is number of bars.
-    % mean_all: mean across single data points with size n x b where n
-    % is number of groups on x-axis and b is the number of bars.
-    % SEM_all: SEM across single data points with size n x b where n
-    % is number of groups on x-axis and b is the number of bars.
-    % n: number of single data points for each group on x-axis.
-    % x_groups: number of groups to be plotted on x-axis.
-    % bars: number of bars.
-    % legend_names: cell array containing legend for bars.
-    % xticks: array of tick numbers for x-axis
-    % xticklabs: cell array with tick label for x-axis
-    % title_name: cell array containing name of the plot
-    % xlabelname: cell array containing label for x-axis
-    % ylabelname: cell array containing label for y-axis
-    % disp_pval: if significance stars should be displayed
-    % scatter_dots: if single data scatter points to be plotted
-    % dot_size: specify size of single data scatter points
-    % plot_err: if errorbar needs to be plotted
-    % fontsize: font size for text
-    % linewidth: line width for plot
-    % fontname: font
-    % disp_legend: whether legend should be displayed
-    % varargin{1}: face color for bars
-    % varargin{2}: cell array containing bar labels
-    % varargin{3}: array with max value for each bar, to be used as y-axis location for significance stars
-    % varargin{4}: means of any other dataset
-    % varargin{5}: adjusted xlims values
-    % varargin{6}: example participant to be highlighted
-    % varargin{7}: whether to use max values or user defined
-    %
+    %   y: array with single data points with size n x b where n is
+    %   number of data points and b is number of bars.
+    %   mean_all: mean across single data points with size n x b where n
+    %   is number of groups on x-axis and b is the number of bars.
+    %   SEM_all: SEM across single data points with size n x b where n
+    %   is number of groups on x-axis and b is the number of bars.
+    %   n: number of single data points for each group on x-axis.
+    %   x_groups: number of groups to be plotted on x-axis.
+    %   bars: number of bars.
+    %   legend_names: cell array containing legend for bars.
+    %   xticks: array of tick numbers for x-axis
+    %   xticklabs: cell array with tick label for x-axis
+    %   title_name: cell array containing name of the plot
+    %   xlabelname: cell array containing label for x-axis
+    %   ylabelname: cell array containing label for y-axis
+    %   disp_pval: if significance stars should be displayed
+    %   scatter_dots: if single data scatter points to be plotted
+    %   dot_size: specify size of single data scatter points
+    %   plot_err: if errorbar needs to be plotted
+    %   fontsize: font size for text
+    %   linewidth: line width for plot
+    %   fontname: font
+    %   disp_legend: whether legend should be displayed
+    %   varargin{1}: face color for bars
+    %   varargin{2}: cell array containing bar labels
+    %   varargin{3}: array with max value for each bar, to be used as y-axis 
+    %   location for significance stars
+    %   varargin{4}: means of any other dataset
+    %   varargin{5}: adjusted xlims values
+    %   varargin{6}: example participant to be highlighted
+    %   varargin{7}: whether to use max values or user defined
+    
 	% ARRAY CONTAINING X-AXIS GROUP NUMBER FOR EACH DATA POINT
     x = [];
     for i = 1:x_groups
