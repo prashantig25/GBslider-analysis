@@ -2,7 +2,6 @@ clc
 clearvars
 
 % INITIALISE VARS
-colors_manuscript; % colors for plot
 font_name = 'Arial'; % font name
 font_size = 6; % font size
 horz_align = 'center'; % horizontal alignment for text
@@ -17,6 +16,8 @@ bs_string = "BS-modulated computations";
 bg_color = 'none'; % background color for textbox
 face_alpha = 0; % face alpha for textbox
 edge_color = 'none'; % edge color for text box
+[~,high_PU,mid_PU,low_PU,color_screen,~,~,~,~,~,gray_dots,light_gray,~,~,...
+    ~,dots_edges,~,~,gray_arrow] = colors_rgb(); % colors
 
 % AGENT RELATED VARS
 contrast_diff = [0.08,0.02]; % contrast difference levels
@@ -363,4 +364,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'agent_normative7.png', '-dpng', '-r600') 
+print(fig, 'agent.png', '-dpng', '-r600') 

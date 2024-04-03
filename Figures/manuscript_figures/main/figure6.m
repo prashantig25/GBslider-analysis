@@ -1,7 +1,9 @@
 %% INITIALISE VARS
 clc
 clearvars
-colors_manuscript; % colors for plot
+
+[~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,~,...
+    reg_color,dots_edges,~,~,~] = colors_rgb(); % colors
 
 % LOAD DATA
 load("lm_signed_esterror_signed_lr.mat","lm"); % estimated model fit to signed estimation errors

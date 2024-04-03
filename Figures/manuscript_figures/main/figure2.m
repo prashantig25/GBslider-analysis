@@ -2,7 +2,6 @@
 
 clc
 clearvars
-colors_manuscript; % colors for plot
 linewidth_arrow = 0.5; % arrow width
 headlength_arrow = 5; % arrow headlength
 fontsize_trial = 7.5; % font size
@@ -22,7 +21,9 @@ linewidth_axes = 0.5; % line width for axes
 linewidth_box = 0.25; % line width for boxes
 font_size = 6; % font size
 fontsize_label = 12; % font size for subplot labels
-line_style = '-'; % line ttyle
+line_style = '-'; % line style
+[~,~,~,~,color_screen,fb_green,darkblue_muted,mix,perc,rew,~,~,~,~,...
+    ~,~,~,~,~] = colors_rgb(); % colors
 
 % load all required data
 load("ecoperf_mix.mat","ecoperf_mix") % economic performance
@@ -415,4 +416,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'fig2_20.png', '-dpng', '-r600') 
+print(fig, 'task.png', '-dpng', '-r600') 

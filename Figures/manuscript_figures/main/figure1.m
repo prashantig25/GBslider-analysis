@@ -8,12 +8,9 @@ font_name = 'Arial'; % font
 font_size = 6; % font size
 horz_align = 'center'; % horizontal alignment for text
 vert_align = 'middle'; % vertical alignment for text
-colors_manuscript; % colors
-face_alpha = 0; % face alpha for boxes
 headlength_arrow = 4; % head length for arrow
 fontsize_label = 12; % font size for subplot labels
-gray_gradient = [213, 213, 213]./255; % gray for gradient
-white_gradient = [250, 250, 250]./255; % white for gradient
+[pu_box,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,~,~,~,~,~,~,~,gray_arrow] = colors_rgb(); % colors
 %% INITIALISE TILE LAYOUT
 
 figure("Position",[150,150,350,350])
@@ -34,24 +31,20 @@ ax1_new = axes('Units', 'Normalized', 'Position', new_pos); % new position
 box(ax1_new, 'on'); % box on
 delete(ax1); % delete old axis
 axis([0 10 0 10]); % axis limits
-set(ax1_new, 'YTick', [], 'XTick', []); % remove tick labels
+set(ax1_new, 'YTick', [], 'XTick', [],'Color','none'); % remove tick labels
 hold on
 
-% ADD TITLE
+% ADD TITLEs
 h1 = sgtitle('H1: Perceptual uncertainty drives speed of learning');
 h1.FontName = font_name;
 h1.FontSize = font_size;
 h1.FontWeight = 'bold';
 
-% CREATE BOX AND ADD SHADING
-drawShadedRectangle([0 10],[0 10],gray_gradient,white_gradient,gray_gradient,[0 0 0])
-brighten(.9); % alpha
-
 % ADD TEXT BOXES
-all_strings = {'Distinct belief states (BS)','','Perception','Reward','State 0','State 1'};
+all_strings = {'Distinct belief states (BS)','','Perception','Reward','State 0: pretzel','State 1: baguette'};
 num_strings = 6; % number of strings
-text_xpos = [0,3.9,1.1,0.8,1.4,6.7]; % x-position
-text_ypos = [9,2,4.2,0.5,7.5,7.5]; % y-posiition
+text_xpos = [0,3.9,0.9,0.6,1.3,6.7]; % x-position
+text_ypos = [9,2,4,0.5,7.5,7.5]; % y-posiition
 box_width = [10, 2, 2, 2,2,2]; % box width
 box_height = [1, 1, 1, 1, 1 1]; % box height
 bg_color = {pu_box,'none','none','none','none','none'}; % background color
@@ -66,13 +59,9 @@ for n = 1:num_strings
     hold on
 end
 
-% ADD RECTANGLE
-r1 = rectangle('Position',[1 5.2 8 3.4]);
-r1.LineWidth = 0.01;
-
 a1 = annotation('arrow','HeadLength',headlength_arrow);
 a1.Parent = gca;
-a1.X = [5.4 6.7];
+a1.X = [5.4 6.87];
 a1.Y = [2.5 5];
 hold on
 %% H1: High perceptual uncertainty
@@ -86,13 +75,12 @@ delete(ax3);
 
 % CREATE BOX AND ADD GRAY SHADING
 axis([0 10 0 10])
-set(ax3_new, 'YTick', [], 'XTick', [])
-drawShadedRectangle([0 10],[0 10],gray_gradient,white_gradient,gray_gradient,[0 0 0])
-brighten(.9);
+set(ax3_new, 'YTick', [], 'XTick', [],'Color','none')
 
 % ADD TEXT BOXES
-all_strings = {'Similar belief states','','Perception','Reward','State 0','State 1'};
+all_strings = {'Similar belief states','','Perception','Reward','State 0: ciabatta','State 1: baguette'};
 num_strings = 6;
+text_xpos = [0,3.9,0.9,0.6,1.4,6.7]; % x-position
 box_height = [1, 1, 1, 1,1,1];
 face_alpha = [1,0,0,0,0,0];
 for n = 1:num_strings
@@ -102,19 +90,16 @@ for n = 1:num_strings
         horz_align,vert_align,bg_color{n},face_alpha(n),edge_color{n},linewidth_axes,'-');
 end
 
-r2=rectangle('Position',[1 5.2 8 3.4]);
-r2.LineWidth = 0.01;
-
 % ADD ARROW
 a1 = annotation('arrow','HeadLength',headlength_arrow);
 a1.Parent = gca;
-a1.X = [5.4 6.7];
+a1.X = [5.4 6.87];
 a1.Y = [2.5 5];
 a1.Color = [0.5 0.5 0.5 0.85];
 
 a1 = annotation('arrow','HeadLength',headlength_arrow);
 a1.Parent = gca;
-a1.X = [4.7 3.4];
+a1.X = [4.7 3.3];
 a1.Y = [2.5 5];
 a1.Color = [0.5 0.5 0.5 1];
 %% PLOT LEARNING RATES
@@ -180,12 +165,10 @@ delete(ax5);
 
 % CREATE BOX AND ADD GRAY SHADING
 set(ax5_new,'xtick',[])
-set(ax5_new,'ytick',[])
+set(ax5_new,'ytick',[],'Color','none')
 hold on
 axis(ax5_new,[0 10 0 10])
 hold on
-drawShadedRectangle([0 10],[0 10],gray_gradient,white_gradient,gray_gradient,[0 0 0])
-brighten(0.9);
 
 % ADD TITLE
 h2 = title(ax5_new,'H2: Visual salience drives choices under reward uncertainty');
@@ -285,10 +268,10 @@ for n = 1:num_pngs
     set(gca,'XColor', 'none','YColor','none')
 end
 
-png_width = 0.05;
-png_height = 0.05;
-xpos = [0.135,0.345,0.135,0.345];
-ypos = [0.807,0.807,0.532,0.532];
+png_width = 0.07;
+png_height = 0.07;
+xpos = [0.135-0.01,0.345,0.135-0.01,0.345];
+ypos = [0.807,0.807,0.532,0.532] - 0.015;
 num_pngs = 4;
 image_pngs = {'pretzel.png','baguette.png','bread.png','baguette.png'};
 for n = 1:num_pngs
@@ -363,4 +346,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure1_1.png', '-dpng', '-r1200') 
+print(fig, 'figure1_2.png', '-dpng', '-r1200') 
