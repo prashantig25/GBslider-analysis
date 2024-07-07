@@ -39,6 +39,7 @@ classdef Agent < agentvars
         q_1_1
     end
     methods
+
         function obj=Agent   
         
         % The contructor methods initialises all other properties of
@@ -71,6 +72,7 @@ classdef Agent < agentvars
                 obj.o_t = normrnd(c_t,obj.sigma); % for simulations, the observation is sampled 
             end
         end
+
         function p_s_giv_o(obj, o_t)  
             
             % function p_s_giv_o computes belief state given observation of
@@ -92,6 +94,7 @@ classdef Agent < agentvars
             obj.pi_0 = (obj.u - obj.v) / (obj.w - obj.v);
             obj.pi_1 = (obj.w - obj.u) / (obj.w - obj.v);
         end  
+
         function decide_p(obj)
             
             % function decide_p makes a perceptual decision for the categorical agent.
@@ -124,6 +127,7 @@ classdef Agent < agentvars
             obj.d_t = binornd(1, obj.p_d_t(2));
             end
         end
+
         function cat_bs(obj)
             
             % function cat_bs computes the categorical belief states based of
@@ -144,6 +148,7 @@ classdef Agent < agentvars
                 obj.pi_1 = 0;
             end
         end
+
         function ev_cat(obj) 
             
             % function ev_cat computes expected value for categorical belief states.
@@ -154,6 +159,7 @@ classdef Agent < agentvars
             obj.cat_bs(); % categorical belief states
             obj.compute_valence(); % expected values
         end
+
         function poly_eval = eval_poly(obj)   
             
             % function poly_eval evaluates the polynomial.
@@ -168,6 +174,7 @@ classdef Agent < agentvars
             poly_eval = polyval(poly_int, [0, 1]); % evaluate the polynomial
             poly_eval = diff(poly_eval); % difference of evaluated polynomial
         end
+
         function compute_valence(obj)
             
             % function compute_valence computes the expected value of each action
@@ -189,6 +196,7 @@ classdef Agent < agentvars
             obj.v_a_1 = (obj.pi_1 - obj.pi_0) * obj.E_mu_t + obj.pi_0;         
             obj.v_a_t = [obj.v_a_0, obj.v_a_1]; % concatenate action valences
         end
+
         function softmax(obj)
             
             % function softmax returns choice probabilities based on the computed
@@ -202,6 +210,7 @@ classdef Agent < agentvars
             
             obj.p_a_t = exp(obj.v_a_t.*obj.beta) / sum(exp(obj.v_a_t.*obj.beta));
         end
+
        function int_voi = integrate_voi(obj,voi,varargin)
            
            % function integrate_voi returns the integral of a particular variable
@@ -233,7 +242,8 @@ classdef Agent < agentvars
                 obj.q_0 = sum(voi_matrix(:, 1) * obj.p_o_giv_u_norm);
                 obj.q_1 = sum(voi_matrix(:, 2) * obj.p_o_giv_u_norm); 
                 int_voi = [obj.q_0, obj.q_1];
-        end
+       end
+
         function decide_e(obj, o_t) 
             
             % function decide_e makes an economic decision based for the agent and
@@ -267,6 +277,7 @@ classdef Agent < agentvars
             end
         obj.a_t = binornd(1, obj.p_a_t(2)); % action
         end 
+
         function r_t = compute_action_dep_rew(obj, r_t) 
             
             % function compute_action_dep_rew recodes task generated reward
@@ -281,6 +292,7 @@ classdef Agent < agentvars
             
             r_t = r_t + (obj.a_t *((-1) .^ (2 + r_t)));
         end
+
         function compute_q(obj,r_t)
             
             % function compute_q computes q_0 and q_1 for the polynomial update.
@@ -310,6 +322,7 @@ classdef Agent < agentvars
                 obj.q_1 = obj.q_1_num ;
             end
         end
+
         function q_a2(obj,r_t)
             
             % function q_a2 computes q values for polynomial updates of categorical
@@ -325,6 +338,7 @@ classdef Agent < agentvars
             obj.cat_bs();
             obj.compute_q(r_t);
         end
+
         function update_coefficients(obj)
             
             % update_coefficients updates the prior probability using the
@@ -344,6 +358,7 @@ classdef Agent < agentvars
             obj.d(1) = obj.q_1 * obj.c_t(1); % update first element
             obj.c_t = obj.d;
         end
+        
         function learn(obj,r_t)
             
             % learn updates the q-values to help the agent learn and
