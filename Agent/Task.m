@@ -1,4 +1,4 @@
-classdef Task <taskvars
+classdef Task < taskvars
 % TASK class specifies task-specific instance variables for the simulation
 % of state dependent contrast differences and action dependent rewards. The
 % methods of this class generate a trial's state, contrast differences, and
@@ -13,6 +13,7 @@ classdef Task <taskvars
         a_index = NaN(1) % a_index instead of a_t
     end
     methods
+
         function obj = Task()
             
             % The contructor methods initialises all other properties of
@@ -27,6 +28,7 @@ classdef Task <taskvars
             obj.p_ras(1, 1) = obj.mu;  % p^(a_t = 0)(r_t = 1|s = 0, \mu)
             obj.p_ras(2, 2) = obj.mu;
         end
+
         function state_sample(obj)
             
             % function state_sample samples a trial's state from a binomial
@@ -43,6 +45,7 @@ classdef Task <taskvars
             obj.s_t = binornd(1, obj.Theta); % sample state from binomial distribution
             obj.s_index = obj.s_t + 1; % s_index because s_t can't be used for indexing in MATLAB
         end
+
         function contrast_sample(obj)
             
             % function contrast_sample samples the trial's state dependent contrast
@@ -59,6 +62,7 @@ classdef Task <taskvars
             i_cs_giv_s = find(s_cs_giv_s>0); % index of sampled contrast difference
             obj.c_t = obj.C(i_cs_giv_s);  % select contrast difference according to index
         end
+
         function reward_sample(obj,a_t)
             
             % function reward_sample samples the trial's action dependent reward for that
@@ -75,5 +79,6 @@ classdef Task <taskvars
             obj.a_index = a_t + 1; % a_index because a_t can't be used for indexing in MATLAB
             obj.r_t = binornd(1, obj.p_ras(obj.a_index,obj.s_index)); % sample reward from binomial distribution
         end
+        
     end
 end

@@ -12,6 +12,7 @@ classdef taskvars < handle
         kappa_min = -0.1; % minimum contrast level
     end
     methods
+        
         function obj = taskvars
             
             % The contructor methods initialises all other properties of
@@ -25,5 +26,6 @@ classdef taskvars < handle
                 obj.mu = 1;
             end
         end
+        
     end
 end
