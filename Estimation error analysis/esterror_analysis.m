@@ -2,7 +2,7 @@ clc
 clearvars
 
 % LOAD DATA
-load('Data/LR analyses/betas_signed_wo_rewunc.mat','betas_all'); % betas from lr analysis model
+load('Data/LR analyses/betas_signed_wo_rewunc_obj.mat','betas_all'); % betas from lr analysis model
 data = readtable("Data/LR analyses/preprocessed_subj,xlsx"); % get choice performance
 
 % INITIALISE VARS
