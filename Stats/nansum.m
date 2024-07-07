@@ -1,14 +1,19 @@
-% NANSUM provides a replacement for MATLAB's nanmean.
-%
-% For usage see SUM.
-
 function y = nansum(x, dim)
 
-x(isnan(x)) = 0;
-if nargin==1
-  y = sum(x);
-else
-  y = sum(x,dim);
-end
+    % function nansum is a replacement for MATLAB's sum which returns a sum
+    % of array which has NaNs.
+    %
+    % INPUTS:
+    %   x: array with data to be summed
+    %   dim: dimension to operate along
+    %
+    % OUTPUTS:
+    %   y: sum of elements in array x
 
-end % function
+    x(isnan(x)) = 0; % replace NaNs with 0
+    if nargin==1 % use the dimension provided
+        y = sum(x);
+    else
+        y = sum(x,dim);
+    end
+end 

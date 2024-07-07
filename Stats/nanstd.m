@@ -1,11 +1,14 @@
-% NANSTD provides a replacement for MATLAB's nanstd that is almost
-% compatible.
-%
-% For usage see STD. Note that the three-argument call with FLAG is not 
-% supported.
-
 function Y = nanstd(varargin)
 
-Y = sqrt(nanvar(varargin{:}));
+    % function nanstd is a replacement for MATLAB's std which returns 
+    % a standard deviation of elements of array which has NaNs.
+    %
+    % INPUTS:
+    %   varargin: array with data for with standard deviation needs to be
+    %   calculated
+    %
+    % OUTPUTS:
+    %   Y: standard deviation of elements in array 
 
-end % function
+    Y = sqrt(nanvar(varargin{:}));
+end 

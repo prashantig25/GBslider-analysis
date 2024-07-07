@@ -1,15 +1,20 @@
-% NANMEAN provides a replacement for MATLAB's nanmean.
-%
-% For usage see MEAN.
-
 function y = nanmean(x, dim)
 
-if nargin<2
-  N = sum(~isnan(x));
-  y = nansum(x) ./ N;
-else
-  N = sum(~isnan(x), dim);
-  y = nansum(x, dim) ./ N;
-end
+    % function nanmean is a replacement for MATLAB's mean which returns an
+    % average of all elements in the array which has NaNs.
+    %
+    % INPUTS:
+    %   x: array with data to be averaged
+    %   dim: dimension to operate along
+    %
+    % OUTPUTS:
+    %   y: mean of elements in array x
 
-end % function
+    if nargin<2 % compute mean along the predefined dimensions
+        N = sum(~isnan(x));
+        y = nansum(x) ./ N;
+    else
+        N = sum(~isnan(x), dim);
+        y = nansum(x, dim) ./ N;
+    end
+end 
