@@ -2,8 +2,8 @@ clc
 clearvars
 
 % LOAD DATA
-load('betas_signed.mat','betas_all'); % betas from lr analysis model
-data = readtable("preprocessed_data.xlsx"); % get choice performance
+load('Data/LR analyses/betas_signed_wo_rewunc.mat','betas_all'); % betas from lr analysis model
+data = readtable("Data/LR analyses/preprocessed_subj,xlsx"); % get choice performance
 
 % INITIALISE VARS
 num_subjs = 98; % number of subjects
