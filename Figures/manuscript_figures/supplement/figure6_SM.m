@@ -9,10 +9,10 @@ font_size = 6; % font size
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALIZE VARS
-load("betas_abs_split0.mat","betas_all"); betas_split0_abs = betas_all; % betas from absolute analysis for splithalf group 0 
-load("betas_abs_split1.mat","betas_all"); betas_split1_abs = betas_all; % betas from absolute analysis for splithalf group 1
-load("betas_signed_split0.mat","betas_all"); betas_split0_signed = betas_all; % betas from signed analysis for splithalf group 0 
-load("betas_signed_split1.mat","betas_all"); betas_split1_signed = betas_all; % betas from signed analysis for splithalf group 1 
+load("Data/LR analyses/betas_abs_split0.mat","betas_all"); betas_split0_abs = betas_all; % betas from absolute analysis for splithalf group 0 
+load("Data/LR analyses/betas_abs_split1.mat","betas_all"); betas_split1_abs = betas_all; % betas from absolute analysis for splithalf group 1
+load("Data/LR analyses/betas_signed_split0.mat","betas_all"); betas_split0_signed = betas_all; % betas from signed analysis for splithalf group 0 
+load("Data/LR analyses/betas_signed_split1.mat","betas_all"); betas_split1_signed = betas_all; % betas from signed analysis for splithalf group 1 
 %% INITIALISE TILE LAYOUT
 
 figure
