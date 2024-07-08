@@ -26,16 +26,16 @@ line_style = '-'; % line style
     ~,~,~,~,~] = colors_rgb(); % colors
 
 % load all required data
-load("ecoperf_mix.mat","ecoperf_mix") % economic performance
-load("ecoperf_perc.mat","ecoperf_perc")
-load("ecoperf_rew.mat","ecoperf_rew")
-load("mean_curves.mat","mean_curves") % learning across trials for each condition
-load("sem_curves.mat","sem_curves")
-load("mix_curves_study2.mat","mix_curve"); % learning in a block for each condition
-load("perc_curves_study2.mat","perc_curve");
-load("rew_curves_study2.mat","rew_curve");
-load("ecoperf.mat","ecoperf"); % mean economic performance
-load("esterror.mat","esterror"); % mean estimation error
+load("Data/descriptive data/main study/ecoperf_mix.mat","ecoperf_mix") % economic performance
+load("Data/descriptive data/main study/ecoperf_perc.mat","ecoperf_perc")
+load("Data/descriptive data/main study/ecoperf_rew.mat","ecoperf_rew")
+load("Data/descriptive data/main study/mean_curves.mat","mean_curves") % learning across trials for each condition
+load("Data/descriptive data/main study/sem_curves.mat","sem_curves")
+load("Data/descriptive data/main study/mix_curves_study2.mat","mix_curve"); % learning in a block for each condition
+load("Data/descriptive data/main study/perc_curves_study2.mat","perc_curve");
+load("Data/descriptive data/main study/rew_curves_study2.mat","rew_curve");
+load("Data/descriptive data/main study/ecoperf.mat","ecoperf"); % mean economic performance
+load("Data/descriptive data/main study/esterror.mat","esterror"); % mean estimation error
 %% INITIALISE TILE LAYOUT
 
 figure
