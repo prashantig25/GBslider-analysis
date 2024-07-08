@@ -2,7 +2,7 @@ clc
 clearvars
 
 % PREPARE DATA
-data = readtable("study1.xlsx"); % load
+data = readtable("Data/descriptive data/pilot study/study1.xlsx"); % load
 all_cond = 1; % whether all conditions to be considered for regression
 if all_cond == 0
     data(data.choice_cond == 3,:) = []; % remove condition, if neccesary
