@@ -10,8 +10,8 @@ fontsize_label = 12; % font size for subplot labels
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-load("betas_signed_wo_rewunc_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-load("betas_abs_wo_rewunc_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from absolute analysis
+load("Data/LR analyses/betas_signed_wo_rewunc_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
+load("Data/LR analyses/betas_abs_wo_rewunc_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from absolute analysis
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,5,3,4]; % regressors to be plotted
 num_vars = 5; % number of variables
