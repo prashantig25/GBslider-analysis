@@ -4,48 +4,43 @@
 % INITIALISE VARS
 clc
 clearvars
-save_descriptive = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\descriptive";
-save_lr = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\lr_analysis";
-save_integration = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\integration";
-save_dm_bias = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\dm_analysis\bias";
-save_dm_reg = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\dm_analysis\regression";
-save_lr_suppl = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
-    "overleaf_folder_organisation\stats\supplement\learning";
+save_descriptive = "stats_saved\descriptive";
+save_lr = "stats_saved\lr_analysis";
+save_integration = "stats_saved\integration";
+save_dm_bias = "stats_saved\dm_analysis\bias";
+save_dm_reg = "stats_saved\dm_analysis\regression";
+save_lr_suppl = "stats_saved\supplement\learning";
+
 %% LOAD DATA
 
 % descriptive choice data for study 2
-load("mix_salience_study2.mat","ecoperf_mix");
-load("perc_salience_study2.mat","ecoperf_perc");
-load("rew_salience_study2.mat","ecoperf_rew");
+load("Data/descriptive data/main study/mix_salience_study2.mat","ecoperf_mix");
+load("Data/descriptive data/main study/perc_salience_study2.mat","ecoperf_perc");
+load("Data/descriptive data/main study/rew_salience_study2.mat","ecoperf_rew");
 
 % descriptive choice data for study 1
-load("ecoperf_hh.mat","ecoperf_hh");
-load("ecoperf_hl.mat","ecoperf_hl");
-load("ecoperf_lh.mat","ecoperf_lh");
-load("ecoperf_ll.mat","ecoperf_ll");
+load("Data/descriptive data/pilot study/ecoperf_hh.mat","ecoperf_hh");
+load("Data/descriptive data/pilot study/ecoperf_hl.mat","ecoperf_hl");
+load("Data/descriptive data/pilot study/ecoperf_lh.mat","ecoperf_lh");
+load("Data/descriptive data/pilot study/ecoperf_ll.mat","ecoperf_ll");
 
 % descriptive learning data
-load("mix_curves_study2.mat","mix_curve");
-load("perc_curves_study2.mat","perc_curve");
-load("rew_curves_study2.mat","rew_curve");
+load("Data/descriptive data/main study/mix_curves_study2.mat","mix_curve");
+load("Data/descriptive data/main study/perc_curves_study2.mat","perc_curve");
+load("Data/descriptive data/main study/rew_curves_study2.mat","rew_curve");
 
 % LR analysis
-betas_signed = load("betas_signed_salience.mat","betas_all"); % signed 
-betas_abs = load("betas_abs_salience.mat","betas_all"); % absolute
-load("lr_data.mat","data_subjs"); % preprocessed data
+betas_signed = load("Data/LR analyses/betas_signed_salience.mat","betas_all"); % signed 
+betas_abs = load("Data/LR analyses/betas_abs_salience.mat","betas_all"); % absolute
+load("Data/LR analyses/lr_data.mat","data_subjs"); % preprocessed data
 
 % estimation error results
-load("lm_signed_esterror_signed_lr.mat","lm");
+load("Data/estimation error analysis/lm_signed_esterror_signed_lr.mat","lm");
 
 % salience bias
-load("salience_bias.mat","salience_bias");
-betas_salience = load("betas_salience.mat",'betas_all'); % beta coefficient from salience bias analysis
-betas_salience_study1 = load("betas_salience_study1.mat",'betas_all'); % beta coefficient from salience bias analysis
+load("Data/salience bias/salience_bias.mat","salience_bias");
+betas_salience = load("Data/salience bias/betas_salience.mat",'betas_all'); % beta coefficient from salience bias analysis
+betas_salience_study1 = load("Data/salience bias/betas_salience_study1.mat",'betas_all'); % beta coefficient from salience bias analysis
 %% DESCRIPTIVE ANALYSIS FROM STUDY 2
 
 % comparison to chance performance
