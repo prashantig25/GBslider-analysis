@@ -10,10 +10,10 @@ dot_size = 5; % size of dots for bars
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-load("betas_signed_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-load("betas_abs_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from signed analysis
-load("betas_signed_salience.mat","betas_all"); betas_signed_salience = betas_all; % participant betas from signed analysis of salience bias in learning
-load("betas_abs_salience.mat","betas_all"); betas_abs_salience = betas_all; % participant betas from absolute analysis of salience bias in learning
+load("Data/LR analyses/betas_signed_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
+load("Data/LR analyses/betas_abs_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from signed analysis
+load("Data/LR analyses/betas_signed_salience.mat","betas_all"); betas_signed_salience = betas_all; % participant betas from signed analysis of salience bias in learning
+load("Data/LR analyses/betas_abs_salience.mat","betas_all"); betas_abs_salience = betas_all; % participant betas from absolute analysis of salience bias in learning
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,6,3,4,5]; % list of regressors
 %% INITIALISE TILE LAYOUT
