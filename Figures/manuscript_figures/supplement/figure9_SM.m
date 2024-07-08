@@ -13,12 +13,12 @@ num_subjs = 98; % number of subjects
 num_conds = 4; % number of condition
 [~,~,~,~,~,~,~,~,~,~,~,~,~,barface_green,reg_color,~,~,~,~] = colors_rgb(); % colors
 
-load("ecoperf_hh.mat"); % economic performance for pilot study for both uncertainties condition
-load("ecoperf_hl.mat"); % perceptual condition
-load("ecoperf_lh.mat"); % reward condition
-load("ecoperf_ll.mat"); % no uncertainty condition
-load("betas_salience.mat"); betas_study2 = betas_all; % beta coefficient from salience bias analysis from main task
-load("betas_salience_study1.mat"); betas_all = [betas_all;NaN(5,3)]; % beta coefficient from salience bias analysis from pilot study
+load("Data/descriptive data/pilot study/ecoperf_hh.mat"); % economic performance for pilot study for both uncertainties condition
+load("Data/descriptive data/pilot study/ecoperf_hl.mat"); % perceptual condition
+load("Data/descriptive data/pilot study/ecoperf_lh.mat"); % reward condition
+load("Data/descriptive data/pilot study/ecoperf_ll.mat"); % no uncertainty condition
+load("Data/salience bias/betas_salience.mat"); betas_study2 = betas_all; % beta coefficient from salience bias analysis from main task
+load("Data/salience bias/betas_salience_study1.mat"); betas_all = [betas_all;NaN(5,3)]; % beta coefficient from salience bias analysis from pilot study
 %% INITIALISE TILE LAYOUT
 
 figure
