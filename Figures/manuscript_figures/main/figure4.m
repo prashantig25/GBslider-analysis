@@ -12,10 +12,10 @@ save_figures = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscrip
     ~,~,~,~,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-load("betas_signed_wo_rewunc_obj.mat","betas_all"); betas_subjs = betas_all; % participant betas
-load("betas_agent_recoding_wo_rewunc.mat","betas_agent"); % agent betas
-load("p_vals_signed_wo_rewunc_obj.mat","p_vals"); % p-vals from ttest
-data_subjs = readtable("preprocessed_subj.xlsx"); % participant lr data
+load("Data/LR analyses/betas_signed_wo_rewunc_obj.mat","betas_all"); betas_subjs = betas_all; % participant betas
+load("Data/LR analyses/betas_agent_recoding_wo_rewunc.mat","betas_agent"); % agent betas
+load("Data/LR analyses/p_vals_signed_wo_rewunc_obj.mat","p_vals"); % p-vals from ttest
+data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % participant lr data
 id_subjs = unique(data_subjs.id); % subject IDs
 num_subjs = length(id_subjs); % number of subjects
 example_participant = 23; % example participant
