@@ -6,8 +6,8 @@ clearvars
     reg_color,dots_edges,~,~,~] = colors_rgb(); % colors
 
 % LOAD DATA
-load("lm_signed_esterror_signed_lr.mat","lm"); % estimated model fit to signed estimation errors
-load("partialrsq_signed_both.mat","partial_rsq"); % partial R2 values
+load("Data/estimation error analysis/lm_signed_esterror_signed_lr.mat","lm"); % estimated model fit to signed estimation errors
+load("Data/estimation error analysis/partialrsq_signed_both.mat","partial_rsq"); % partial R2 values
 
 linewidth_line = 1.5; % linewidth for plot lines
 line_width = 0.5; % linewidth for axes
