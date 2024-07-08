@@ -10,8 +10,8 @@ xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
 [~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
 
-load("lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
-load("partialrsq_signed.mat","partial_rsq"); % partial R2 values
+load("Data/estimation error analysis/lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
+load("Data/estimation error analysis/partialrsq_signed.mat","partial_rsq"); % partial R2 values
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
 pvals_cell = {'',''}; % initalise empty cell array to store p-values
