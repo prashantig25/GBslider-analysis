@@ -11,7 +11,7 @@ fontsize_label = 12; % font size for subplot labels
     ~,dots_edges,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-data_subjs = readtable("preprocessed_data.xlsx"); % single-trial updates, prediction errors
+data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % single-trial updates, prediction errors
 num_subjs = 98; % number of subjects
 %%
 
