@@ -11,9 +11,9 @@ dot_size = 10;
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALISE VARS
-load("rsquared_wo_rewunc_obj.mat","rsquared_full"); % r-squared values
-load("posterior_up_wo_rewunc_obj.mat","posterior_up_subjs"); % posterior updates
-data_subjs = readtable("preprocessed_subj.xlsx"); % single-trial updates, prediction errors
+load("Data/LR analyses/rsquared_wo_rewunc_obj.mat","rsquared_full"); % r-squared values
+load("Data/LR analyses/posterior_up_wo_rewunc_obj.mat","posterior_up_subjs"); % posterior updates
+data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % single-trial updates, prediction errors
 num_subjs = 98; % number of subjects
 %% INITIALISE TILE LAYOUT
 
