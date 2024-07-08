@@ -2,7 +2,7 @@ clc
 clearvars
 
 % INITIALISE
-data_subjs = readtable("preprocessed_data.xlsx");
+data_subjs = readtable("Data/LR analyses/preprocessed_data.xlsx");
 id_subjs = unique(data_subjs.ID); % subject IDs
 mdl = 'up ~ pe + pe:contrast_diff + pe:salience_choice + pe:congruence + pe:pe_sign'; % model definition
 pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_unc','subj_est_unc' ...
