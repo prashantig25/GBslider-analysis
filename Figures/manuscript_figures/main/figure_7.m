@@ -13,9 +13,9 @@ num_subjs = 98; % number of subjects
 num_conds = 3; % number of condition
 [~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
 
-load("ecoperf_mix.mat"); % economic performance for mixed condition
-load("ecoperf_perc.mat");
-load("ecoperf_rew.mat");
+load("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance for mixed condition
+load("Data/descriptive data/main study/ecoperf_perc.mat");
+load("Data/descriptive data/main study/ecoperf_rew.mat");
 %% INITIALISE TILE LAYOUT
 
 figure
