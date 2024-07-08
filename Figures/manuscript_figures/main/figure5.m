@@ -8,8 +8,8 @@ font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
-load("lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
-load("partialrsq_signed.mat","partial_rsq"); % partial R2 values
+load("Data/estimation error analysis/lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
+load("Data/estimation error analysis/partialrsq_signed.mat","partial_rsq"); % partial R2 values
 [~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
