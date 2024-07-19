@@ -9,9 +9,12 @@ num_cont = 2; % number of contrast levels in the task
 num_blocks = 4; % number of blocks per condition
 total_blocks = 12; % total number of blocks per subject
 
+% Get the current working directory
+currentDir = pwd;
+
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = "DATA\main_study"; 
-save_dir = "saved_files\study2";
+behv_dir = strcat('DATA', filesep, 'main_study'); % "DATA\main_study";
+save_dir = strcat('saved_files', filesep, 'study2'); %"saved_files\study2";
 mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
@@ -26,8 +29,8 @@ subj_ids = [139	143	145	146	151	157	159	160	162	163	164	165	174	176	181	192	198,
 num_subjs = length(subj_ids);
 data_all = []; % empty table to merge all subjects data
 for i = 1:length(subj_ids)
-    tsv_file = fullfile(behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
-        strcat('sub_',num2str(subj_ids(i)),".tsv")); % path and file name for TSV file
+    tsv_file = fullfile(currentDir, behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
+            strcat('sub_',num2str(subj_ids(i)),".tsv")); % path and file name for TSV file
     data_table = readtable(tsv_file, "FileType","text",'Delimiter', '\t'); % read
     data_all = [data_all; data_table]; % merge all subjects data
 end
