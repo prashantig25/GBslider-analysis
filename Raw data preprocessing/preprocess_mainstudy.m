@@ -14,7 +14,7 @@ currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
 behv_dir = strcat('DATA', filesep, 'main_study'); % "DATA\main_study";
-save_dir = strcat('saved_files', filesep, 'study2'); %"saved_files\study2";
+save_dir = strcat('saved_files', filesep, 'main study'); %"saved_files\study2";
 mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
@@ -85,14 +85,37 @@ end
 data_all.mu_congruence = data_all.mu_congruence./100;
 data_all.mu = data_all.mu./100;
 
+% INITIALISE TO STORE MEAN MU FOR ALL TRIALS, ACROSS SUBJECTS
+mix_curve = NaN(num_subjs,t);
+perc_curve = NaN(num_subjs,t);
+rew_curve = NaN(num_subjs,t);
+
+for i = [1:num_subjs] % exclude participant 21 because unbalanced blocks
+    data_subj_choice = data_all(data_all.ID==subj_ids(i),:); % for each subject
+    uni_mix = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==1)); % block number for condition = 1
+    uni_perc = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==2)); % block number for condition = 2
+    uni_rew = unique(data_subj_choice.blocks(data_subj_choice.choice_cond==3)); % block number for condition = 3
+    mix_subj = NaN(num_blocks,t);
+    perc_subj = NaN(num_blocks,t);
+    rew_subj = NaN(num_blocks,t);
+    for b = 1:num_blocks
+        mix_subj(b,:) = data_subj_choice.mu_congruence(and(data_subj_choice.blocks == uni_mix(b),data_subj_choice.choice_cond == 1));
+        perc_subj(b,:) = data_subj_choice.mu_congruence(and(data_subj_choice.blocks == uni_perc(b),data_subj_choice.choice_cond == 2));
+        rew_subj(b,:) = data_subj_choice.mu_congruence(and(data_subj_choice.blocks == uni_rew(b),data_subj_choice.choice_cond == 3));
+    end
+    mix_curve(i,:) = mean(mix_subj);
+    perc_curve(i,:) = mean(perc_subj);
+    rew_curve(i,:) = mean(rew_subj);
+end
+
 %% SAVE DATA
 
-writetable(data_all,fullfile(save_dir,'study2.txt'));
+safe_saveall(fullfile(save_dir,'study2.txt'),data_all);
 
-save(fullfile(save_dir,'ecoperf_mix.mat'));
-save(fullfile(save_dir,'ecoperf_perc.mat'));
-save(fullfile(save_dir,'ecoperf_rew.mat'));
+safe_saveall(fullfile(save_dir,'ecoperf_mix.mat'),ecoperf_mix);
+safe_saveall(fullfile(save_dir,'ecoperf_perc.mat'),ecoperf_perc);
+safe_saveall(fullfile(save_dir,'ecoperf_rew.mat'),ecoperf_rew);
 
-save(fullfile(save_dir,'mix_curve.mat'));
-save(fullfile(save_dir,'perc_curve.mat'));
-save(fullfile(save_dir,'rew_curve.mat'));
+safe_saveall(fullfile(save_dir,'mix_curve.mat'),mix_curve);
+safe_saveall(fullfile(save_dir,'perc_curve.mat'),perc_curve);
+safe_saveall(fullfile(save_dir,'rew_curve.mat'),rew_curve);

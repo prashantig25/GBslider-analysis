@@ -20,9 +20,12 @@ num_cont = 2; % number of contrast levels in the task
 num_blocks = 4; % number of blocks per condition
 total_blocks = 16; % total number of blocks per subject
 
-% CHANGE DATA DIRECTORY ACCORDINGLY
-behv_dir = "DATA\pilot_study"; 
-save_dir = "saved_files\study1";
+% Get the current working directory
+currentDir = pwd;
+
+% CHANGE DIRECTORY ACCORDINGLY
+behv_dir = strcat('DATA', filesep, 'pilot_study'); % "DATA\main_study";
+save_dir = strcat('saved_files',filesep,'pilot_study', filesep, 'study1'); %"saved_files\study2";
 mkdir(save_dir);
 
 % MERGE ALL SUBJECT DATA
@@ -78,16 +81,47 @@ for i = 1:num_subjs
     end
 end
 ecoperf_cond_cont = [ecoperf_hh,ecoperf_hl,ecoperf_lh,ecoperf_ll];
+
+%%
+
+% INITIALISE ARRAYS FOR SINGLE TRIAL ECONOMIC PERFORMANCE
+hh_curve = NaN(num_subjs,t);
+hl_curve = NaN(num_subjs,t);
+lh_curve = NaN(num_subjs,t);
+ll_curve = NaN(num_subjs,t);
+
+for i = [1:9,11:93] % exclude participant 21 because unbalanced blocks
+    data_subj = data_all(data_all.ID==subj_ids(i),:);
+    uni_mix = unique(data_subj.blocks(data_subj.condition_int==1));
+    uni_perc = unique(data_subj.blocks(data_subj.condition_int==2));
+    uni_rew = unique(data_subj.blocks(data_subj.condition_int==3));
+    uni_no = unique(data_subj.blocks(data_subj.condition_int==4));
+    hh_subj = NaN(num_cond,t);
+    hl_subj = NaN(num_cond,t);
+    lh_subj = NaN(num_cond,t);
+    ll_subj = NaN(num_cond,t);
+    for b = 1:num_cond
+        hh_subj(b,:) = data_subj.ecoperf(and(data_subj.blocks == uni_mix(b),data_subj.condition_int == 1));
+        hl_subj(b,:) = data_subj.ecoperf(and(data_subj.blocks == uni_perc(b),data_subj.condition_int == 2));
+        lh_subj(b,:) = data_subj.ecoperf(and(data_subj.blocks == uni_rew(b),data_subj.condition_int == 3));
+        ll_subj(b,:) = data_subj.ecoperf(and(data_subj.blocks == uni_no(b),data_subj.condition_int == 4));
+    end
+    hh_curve(i,:) = mean(hh_subj);
+    hl_curve(i,:) = mean(hl_subj);
+    lh_curve(i,:) = mean(lh_subj);
+    ll_curve(i,:) = mean(ll_subj);
+end
+
 %% SAVE DATA
 
-writetable(data_all,fullfile(save_dir,"study1.txt"));
+safe_saveall(fullfile(save_dir,"study1.txt"),data_all);
 
-save(fullfile(save_dir,'ecoperf_hh.mat')); 
-save(fullfile(save_dir,'ecoperf_hl,mat'));
-save(fullfile(save_dir,'ecoperf_lh.mat'));
-save(fullfile(save_dir,'ecoperf_ll.mat'));
+safe_saveall(fullfile(save_dir,'ecoperf_hh.mat'),ecoperf_hh); 
+safe_saveall(fullfile(save_dir,'ecoperf_hl.mat'),ecoperf_hl);
+safe_saveall(fullfile(save_dir,'ecoperf_lh.mat'),ecoperf_lh);
+safe_saveall(fullfile(save_dir,'ecoperf_ll.mat'),ecoperf_ll);
 
-save(fullfile(save_dir,'hh_curve.mat')); 
-save(fullfile(save_dir,'hl_curve.mat'));
-save(fullfile(save_dir,'lh_curve.mat'));
-save(fullfile(save_dir,'ll_curve.mat'));
+safe_saveall(fullfile(save_dir,'hh_curve.mat'),hh_curve); 
+safe_saveall(fullfile(save_dir,'hl_curve.mat'),hl_curve);
+safe_saveall(fullfile(save_dir,'lh_curve.mat'),lh_curve);
+safe_saveall(fullfile(save_dir,'ll_curve.mat'),ll_curve);
