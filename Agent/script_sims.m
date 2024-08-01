@@ -15,18 +15,18 @@ condition = 1; % experimental condition; change accordingly in agentvars and tas
 
 [simulations] = run_simulations(num_sims,num_blocks,simulations); % use run simulations function
 for n = 1:num_blocks % add task-based variables 
-    contrast = [contrast; repelem(contrast_vars(n),num_trials,1);];
-    congruence = [congruence; repelem(congruence_vars(n),num_trials,1)];
+    contrast = [contrast; repelem(contrast_vars(n),num_trials,num_sims);];
+    congruence = [congruence; repelem(congruence_vars(n),num_trials,num_sims)];
 end
 condition = repelem(condition,num_trials*num_blocks,1);
 simulations.contrast = repmat(contrast,num_sims,1);
 simulations.congruence = repmat(congruence,num_sims,1);
 simulations.choice_cond = repmat(condition,num_sims,1);
-writetable(simulations,'data_agent_condition1.xlsx');
+safe_saveall('data_agent_condition1.xlsx',simulations);
 %% SAVE ALL CONDITION SIMULATIONS
 
 agent_cond1 = readtable("data_agent_condition1.xlsx");
 agent_cond2 = readtable("data_agent_condition2.xlsx");
 agent_cond3 = readtable("data_agent_condition3.xlsx");
 agent = [agent_cond1;agent_cond2];
-writetable(agent,"data_agent.xlsx");
+safe_saveall("data_agent.xlsx",agent);
