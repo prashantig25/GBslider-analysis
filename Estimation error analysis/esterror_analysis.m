@@ -1,16 +1,21 @@
 clc
 clearvars
 
+% Get the current working directory
+currentDir = pwd;
+save_dir = strcat('saved_files', filesep, 'esterror_analysis'); %"saved_files\study2";
+mkdir(save_dir);
+
 % LOAD DATA
-load('Data/LR analyses/betas_signed_wo_rewunc_obj.mat','betas_all'); % betas from lr analysis model
-data = readtable("Data/LR analyses/preprocessed_subj,xlsx"); % get choice performance
+betas_all = importdata(fullfile('Data',filesep,'LR analyses',filesep,'betas_signed_wo_rewunc_obj.mat')); % betas from lr analysis model
+data = readtable(fullfile('Data',filesep,'LR analyses',filesep,'preprocessed_data.xlsx')); % get choice performance
 
 % INITIALISE VARS
 num_subjs = 98; % number of subjects
 ecoperf = NaN(num_subjs,1); % initialised array for economic performance
 esterror = NaN(num_subjs,1); % initialised array for estimation error
 id_subjs = unique(data.ID); % subject IDs
-save_mat = 0; % set to 1, if data needs to be saved for plotting
+save_mat = 1; % set to 1, if data needs to be saved for plotting
 abs_esterror = 1; % set to 1, if analysis needs to be done for absolute estimation error
 num_vars = 5; % number of variables
 num_vars_partial = 4; % number of variables for partial R2
@@ -63,7 +68,7 @@ data = [betas_all,esterror];
 
 var_names = {'pe','pe__condiff','pe__salience','pe__congruence','pe__pesign','perf'}; % variable names
 data_tbl = array2table(data, 'VariableNames', var_names); % data table
-writetable(data_tbl,'esterror_analysis.xlsx'); % save table
+safe_saveall(fullfile(save_dir,filesep,"esterror_analysis.xlsx"),data_tbl); % save table
 
 % INITIALISE VARIABLES TO FIT MODEL
 esterror = lr_analysis_obj(); % linear regression object
@@ -102,6 +107,6 @@ end
 
 % SAVE DATA
 if save_mat == 1
-    save("lm_signed_esterror_signed_lr.mat","lm");
-    save("partialrsq_signed_both.mat","partial_rsq");
+    safe_saveall(fullfile(save_dir,filesep,"lm_signed_esterror_signed_lr.mat"),lm);
+    safe_saveall(fullfile(save_dir,filesep,"partialrsq_signed_both.mat"),partial_rsq);
 end
