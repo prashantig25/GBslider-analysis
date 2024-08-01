@@ -24,15 +24,21 @@ preprocess_obj.add_vars(preprocess_obj.data.confirm_rew,'pe_sign'); % confirmati
 % EXCLUDE TRIALS
 preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
 
+% CHANGE DIRECTORY ACCORDINGLY
+% Get the current working directory
+currentDir = pwd;
+save_dir = strcat('saved_files', filesep, 'LR analysis'); %"saved_files\study2";
+mkdir(save_dir);
+
 % SAVE PREPROCESSED FILE
-writetable(preprocess_obj.data,'preprocessed_data.xlsx');
+safe_saveall(fullfile(save_dir,'preprocessed_data.xlsx'),preprocess_obj.data);
 
 % SAVE FILES SEPARATELY FOR GROUPED REGRESSION
 grouped = 0; % 1 if files need to be saved separately for grouped regression
 if grouped == 1
-    data = readtable("preprocessed_data.xlsx");
-    writetable(data(data.splithalf == 1,:),'preprocessed_subj_split1.xlsx');
-    writetable(data(data.splithalf == 0,:),'preprocessed_subj_split0.xlsx');
+    data = readtable(fullfile(save_dir,'preprocessed_data.xlsx'));
+    safe_saveall(fullfile(save_dir,'preprocessed_subj_split1.xlsx'),data(data.splithalf == 1,:));
+    safe_saveall(fullfile(save_dir,'preprocessed_subj_split0.xlsx'),data(data.splithalf == 0,:));
 end
 
 % FIT THE MODEL
@@ -40,6 +46,6 @@ lr_analysis = lr_analysis_obj();
 [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = lr_analysis.get_coeffs(@fitlm);
 
 % SAVE DATA 
-save("betas_abs","betas_all"); % save betas as betas_signed if running signed analysis
-save("rsquared_wo_rewunc_obj.mat","rsquared_full"); % save r-squared values
-save("posterior_up_wo_rewunc_obj.mat","posterior_up_subjs"); % save posterior updates
+safe_saveall(fullfile(save_dir,"betas_abs.mat"),betas_all); % save betas as betas_signed if running signed analysis
+safe_saveall(fullfile(save_dir,"rsquared_wo_rewunc_obj.mat"),rsquared_full); % save r-squared values
+safe_saveall(fullfile(save_dir,"posterior_up_wo_rewunc_obj.mat"),posterior_up_subjs); % save posterior updates
