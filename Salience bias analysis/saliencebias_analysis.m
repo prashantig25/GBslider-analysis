@@ -1,8 +1,16 @@
 clc
 clearvars
 
+% Get the current working directory
+currentDir = pwd;
+
+% CHANGE DIRECTORY ACCORDINGLY
+behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'pilot study'); % "DATA\main_study";
+save_dir = strcat('saved_files', filesep, 'salience bias'); %"saved_files\study2";
+mkdir(save_dir);
+
 % PREPARE DATA
-data = readtable("Data/descriptive data/pilot study/study1.xlsx"); % load
+data = readtable(fullfile(behv_dir,"study1.txt")); % load
 all_cond = 1; % whether all conditions to be considered for regression
 if all_cond == 0
     data(data.choice_cond == 3,:) = []; % remove condition, if neccesary
@@ -53,4 +61,4 @@ for i = 1:length(subj_id)
 end
 
 % SAVE DATA
-save("betas_salience_study1","betas_all")
+safe_saveall(fullfile(save_dir,"betas_salience_study1.mat"),betas_all)

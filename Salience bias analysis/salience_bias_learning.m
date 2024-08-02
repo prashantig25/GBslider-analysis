@@ -1,8 +1,16 @@
 clc
 clearvars
 
+% Get the current working directory
+currentDir = pwd;
+
+% CHANGE DIRECTORY ACCORDINGLY
+behv_dir = strcat('DATA', filesep, 'LR analyses'); % "DATA\main_study";
+save_dir = strcat('saved_files', filesep, 'salience bias'); %"saved_files\study2";
+mkdir(save_dir);
+
 % INITIALISE
-data_subjs = readtable("Data/LR analyses/preprocessed_data.xlsx");
+data_subjs = readtable(fullfile(behv_dir,filesep,'preprocessed_data.xlsx'));
 id_subjs = unique(data_subjs.ID); % subject IDs
 mdl = 'up ~ pe + pe:contrast_diff + pe:salience_choice + pe:congruence + pe:pe_sign'; % model definition
 pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_unc','subj_est_unc' ...
@@ -16,7 +24,7 @@ num_subjs = 1:length(id_subjs); % number of subjects
 
 % FIT MODEL
 salience_bias = lr_analysis_obj(); % linear regression object
-salience_bias.filename = 'preprocessed_data.xlsx'; % use the estimation error data file
+salience_bias.filename = fullfile(behv_dir,filesep,'preprocessed_data.xlsx'); % use the estimation error data file
 salience_bias.mdl = mdl; % model to be fit
 salience_bias.pred_vars = pred_vars; % predictor variables
 salience_bias.resp_var = resp_var; % response variable
@@ -27,4 +35,4 @@ salience_bias.weight_y_n = 0;
 salience_bias.absolute_analysis = 1; % absolute analysis or not
 
 [betas_all,rsquared,~,coeffs_name,posterior_up_subjs] = salience_bias.get_coeffs(@fitlm);
-save("betas_abs_salience.mat","betas_all") % save file
+safe_saveall(fullfile(save_dir,"betas_abs_salience.mat"),betas_all) % save file
