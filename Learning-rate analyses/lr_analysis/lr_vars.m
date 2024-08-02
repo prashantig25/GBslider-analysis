@@ -2,7 +2,7 @@ classdef lr_vars < handle
 % LR_VARS superclass specifies variables for the model-based analysis of
 % learning rates.
     properties
-        filename = 'Data/LR analyses/preprocessed_data.xlsx'; % filename with pre-processed data
+        filename = 'preprocessed_data.xlsx'; % filename with pre-processed data
         data % pre-processed data
         mdl = 'up ~ pe + pe:salience + pe:congruence + pe:pe_sign + pe:contrast_diff'; % model defininition
         pred_vars = {'pe','salience','contrast_diff','congruence','reward_unc' ...
