@@ -6,7 +6,7 @@ currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
 behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'pilot study'); % "DATA\main_study";
-save_dir = strcat('saved_files', filesep, 'salience bias'); %"saved_files\study2";
+save_dir = strcat('Data', filesep, 'salience bias'); %"saved_files\study2";
 mkdir(save_dir);
 
 % PREPARE DATA
