@@ -13,8 +13,8 @@ total_blocks = 12; % total number of blocks per subject
 currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('DATA', filesep, 'main_study'); % "DATA\main_study";
-save_dir = strcat('saved_files', filesep, 'main study'); %"saved_files\study2";
+behv_dir = strcat('DATA', filesep, 'main_study'); 
+save_dir = strcat('Data', filesep, 'main study'); 
 mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
