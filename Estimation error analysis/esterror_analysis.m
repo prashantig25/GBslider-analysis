@@ -3,7 +3,7 @@ clearvars
 
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat('saved_files', filesep, 'esterror_analysis'); %"saved_files\study2";
+save_dir = strcat('Data', filesep, 'esterror_analysis'); 
 mkdir(save_dir);
 
 % LOAD DATA
