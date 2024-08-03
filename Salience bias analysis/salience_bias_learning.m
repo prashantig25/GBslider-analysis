@@ -5,8 +5,8 @@ clearvars
 currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('DATA', filesep, 'LR analyses'); % "DATA\main_study";
-save_dir = strcat('saved_files', filesep, 'salience bias'); %"saved_files\study2";
+behv_dir = strcat('DATA', filesep, 'LR analyses'); 
+save_dir = strcat('Data', filesep, 'salience bias'); 
 mkdir(save_dir);
 
 % INITIALISE
