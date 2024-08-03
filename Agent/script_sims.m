@@ -14,7 +14,7 @@ condition = 3; % experimental condition; change accordingly in agentvars and tas
 
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat('saved_files', filesep, 'agent_simulations'); %"saved_files\study2";
+save_dir = strcat('Data', filesep, 'agent_simulations'); 
 mkdir(save_dir);
 %% RUN SIMULATIONS
 
