@@ -27,7 +27,7 @@ preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
 % CHANGE DIRECTORY ACCORDINGLY
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat('saved_files', filesep, 'LR analysis'); %"saved_files\study2";
+save_dir = strcat('Data', filesep, 'LR analysis'); 
 mkdir(save_dir);
 
 % SAVE PREPROCESSED FILE
