@@ -24,8 +24,8 @@ total_blocks = 16; % total number of blocks per subject
 currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('DATA', filesep, 'pilot_study'); % "DATA\main_study";
-save_dir = strcat('saved_files',filesep,'pilot_study', filesep, 'study1'); %"saved_files\study2";
+behv_dir = strcat('DATA', filesep, 'pilot_study'); 
+save_dir = strcat('Data',filesep,'pilot_study', filesep, 'study1'); 
 mkdir(save_dir);
 
 % MERGE ALL SUBJECT DATA
