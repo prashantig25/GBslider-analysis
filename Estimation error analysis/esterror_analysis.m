@@ -3,7 +3,7 @@ clearvars
 
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat('Data', filesep, 'esterror_analysis'); 
+save_dir = strcat('saved_files', filesep, 'esterror_analysis'); %"saved_files\study2";
 mkdir(save_dir);
 
 % LOAD DATA
@@ -40,12 +40,7 @@ for i = 1:height(data)
     else 
         data.actual_mu(i) = 0.7;
     end
-    if data.congruence(i) == 0 % mu corrected for congruence
-        data.flipped_mu(i) = 1-data.mu(i);
-    else
-        data.flipped_mu(i) = data.mu(i);
-    end
-    data.est_error(i) = data.flipped_mu(i) - data.actual_mu(i); 
+    data.est_error(i) = data.mu_congruence(i) - data.actual_mu(i); 
     if abs_esterror == 1
         data.est_error(i) = abs(data.est_error(i));
     end
@@ -68,7 +63,7 @@ data = [betas_all,esterror];
 
 var_names = {'pe','pe__condiff','pe__salience','pe__congruence','pe__pesign','perf'}; % variable names
 data_tbl = array2table(data, 'VariableNames', var_names); % data table
-safe_saveall(fullfile(save_dir,filesep,"esterror_analysis.xlsx"),data_tbl); % save table
+safe_saveall("esterror_analysis.xlsx",data_tbl); % save table
 
 % INITIALISE VARIABLES TO FIT MODEL
 esterror = lr_analysis_obj(); % linear regression object
