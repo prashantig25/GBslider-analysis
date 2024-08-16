@@ -10,28 +10,23 @@ congruence_vars = [1,0,1,0]; % value for congruence in a condition
 simulations = []; % store the simulations
 contrast = []; % store contrast level for each trial
 congruence = []; % store congruence level for each trial
-condition = 3; % experimental condition; change accordingly in agentvars and taskvars
-
-% Get the current working directory
-currentDir = pwd;
-save_dir = strcat('Data', filesep, 'agent_simulations'); 
-mkdir(save_dir);
+condition = 1; % experimental condition; change accordingly in agentvars and taskvars
 %% RUN SIMULATIONS
 
 [simulations] = run_simulations(num_sims,num_blocks,simulations); % use run simulations function
 for n = 1:num_blocks % add task-based variables 
-    contrast = [contrast; repelem(contrast_vars(n),num_trials,1);];
-    congruence = [congruence; repelem(congruence_vars(n),num_trials,1)];
+    contrast = [contrast; repelem(contrast_vars(n),num_trials,num_sims);];
+    congruence = [congruence; repelem(congruence_vars(n),num_trials,num_sims)];
 end
 condition = repelem(condition,num_trials*num_blocks,1);
 simulations.contrast = repmat(contrast,num_sims,1);
 simulations.congruence = repmat(congruence,num_sims,1);
 simulations.choice_cond = repmat(condition,num_sims,1);
-safe_saveall(fullfile(save_dir,'data_agent_condition1.xlsx'),simulations);
+safe_saveall('data_agent_condition1.xlsx',simulations);
 %% SAVE ALL CONDITION SIMULATIONS
 
-agent_cond1 = readtable(strcat('saved_files', filesep,"agent_simulations",filesep,"data_agent_condition1.xlsx"));
-agent_cond2 = readtable(strcat('saved_files', filesep,"agent_simulations",filesep,"data_agent_condition2.xlsx"));
-agent_cond3 = readtable(strcat('saved_files', filesep,"agent_simulations",filesep,"data_agent_condition3.xlsx"));
-agent = [agent_cond1;agent_cond2;agent_cond3];
-safe_saveall(fullfile(save_dir,"data_agent.xlsx"),agent);
+agent_cond1 = readtable("data_agent_condition1.txt");
+agent_cond2 = readtable("data_agent_condition2.txt");
+agent_cond3 = readtable("data_agent_condition3.txt");
+agent = [agent_cond1;agent_cond2];
+safe_saveall("data_agent.txt",agent);
