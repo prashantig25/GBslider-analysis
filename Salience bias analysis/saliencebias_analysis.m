@@ -5,12 +5,21 @@ clearvars
 currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'pilot study'); % "DATA\main_study";
-save_dir = strcat('Data', filesep, 'salience bias'); %"saved_files\study2";
+pilot_study = 0; % analysis to be done for pilot or main study 
+
+if pilot_study == 0
+    behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'main study');
+    data = readtable(fullfile(behv_dir,"study2.txt")); % load
+    num_blocks = 12; % number of blocks
+else
+    behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'pilot study');
+    data = readtable(fullfile(behv_dir,"study1.txt")); % load
+    num_blocks = 16; % number of blocks
+end
+save_dir = strcat("../", 'Data', filesep, 'salience bias');
 mkdir(save_dir);
 
 % PREPARE DATA
-data = readtable(fullfile(behv_dir,"study1.txt")); % load
 all_cond = 1; % whether all conditions to be considered for regression
 if all_cond == 0
     data(data.choice_cond == 3,:) = []; % remove condition, if neccesary
@@ -18,12 +27,12 @@ end
 
 % CATEGORICALLY CODE PERCEPTUAL AND REWARD UNCERTAINTY
 for i = 1:height(data) 
-    if data.condition_int(i) == 1 || data.condition_int(i) == 3
+    if data.condition(i) == 1 || data.condition(i) == 3
         data.reward_unc(i) = 1; % reward uncertainty
     else
         data.reward_unc(i) = 0;
     end
-    if data.condition_int(i) == 4 || data.condition_int(i) == 3
+    if data.condition(i) == 4 || data.condition(i) == 3
         data.pu(i) = 0; % perceptual uncertainty
     else
         data.pu(i) = 1;
@@ -31,7 +40,6 @@ for i = 1:height(data)
 end
 
 % FIT MODEL
-num_blocks = 16; % number of blocks
 subj_id = unique(data.ID); % subject IDs
 mdl = 'ecoperf ~ pu + reward_unc + contrast'; % model
 num_vars = 3; % number of variables
@@ -61,4 +69,4 @@ for i = 1:length(subj_id)
 end
 
 % SAVE DATA
-safe_saveall(fullfile(save_dir,"betas_salience_study1.mat"),betas_all)
+safe_saveall(fullfile(save_dir,"betas_salience.mat"),betas_all)
