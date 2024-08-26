@@ -3,11 +3,18 @@ clearvars
 
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat('saved_files', filesep, 'esterror_analysis'); %"saved_files\study2";
+save_dir = strcat('Data', filesep, 'estimation error analysis'); 
 mkdir(save_dir);
 
 % LOAD DATA
-betas_all = importdata(fullfile('Data',filesep,'LR analyses',filesep,'betas_signed_wo_rewunc_obj.mat')); % betas from lr analysis model
+abs_lr = 1; % if absolute LRs are to be used for estimation error analysis
+if abs_lr == 1
+    betas_all = importdata(fullfile('Data',filesep,'LR analyses' ...
+        ,filesep,'betas_abs_wo_rewunc_obj.mat')); % betas from lr analysis model
+else
+    betas_all = importdata(fullfile('Data',filesep,'LR analyses' ...
+        ,filesep,'betas_signed_wo_rewunc_obj.mat')); % betas from lr analysis model
+end
 data = readtable(fullfile('Data',filesep,'LR analyses',filesep,'preprocessed_data.xlsx')); % get choice performance
 
 % INITIALISE VARS
@@ -59,15 +66,15 @@ for i = 1:num_vars
 end
 norm_ecoperf = normalise_zero_one(ecoperf,NaN(height(betas_all),1));
 norm_esterror = normalise_zero_one(esterror,NaN(height(betas_all),1));
-data = [betas_all,esterror];
+data = [norm_betas_all,norm_esterror];
 
 var_names = {'pe','pe__condiff','pe__salience','pe__congruence','pe__pesign','perf'}; % variable names
 data_tbl = array2table(data, 'VariableNames', var_names); % data table
-safe_saveall("esterror_analysis.xlsx",data_tbl); % save table
+safe_saveall(fullfile(save_dir,"esterror_analysis_abs_error_abs_lr.xlsx"),data_tbl); % save table
 
 % INITIALISE VARIABLES TO FIT MODEL
 esterror = lr_analysis_obj(); % linear regression object
-esterror.filename = 'esterror_analysis.xlsx'; % use the estimation error data file
+esterror.filename = 'Data\estimation error analysis\esterror_analysis_abs_error_abs_lr.xlsx'; % use the estimation error data file
 esterror.mdl = mdl; % model to be fit
 esterror.pred_vars = pred_vars; % predictor variables
 esterror.resp_var = resp_var; % response variable
@@ -102,6 +109,6 @@ end
 
 % SAVE DATA
 if save_mat == 1
-    safe_saveall(fullfile(save_dir,filesep,"lm_signed_esterror_signed_lr.mat"),lm);
-    safe_saveall(fullfile(save_dir,filesep,"partialrsq_signed_both.mat"),partial_rsq);
+    safe_saveall(fullfile(save_dir,filesep,"lm_abs_esterror_abs_lr.mat"),lm);
+    safe_saveall(fullfile(save_dir,filesep,"partialrsq_abs_esterror_abs_lr.mat"),partial_rsq);
 end
