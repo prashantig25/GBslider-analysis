@@ -9,9 +9,22 @@ fontsize_label = 12; % font size for subplot labels
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % INITIALISE VARS
-load("Data/LR analyses/betas_signed_wo_rewunc_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-load("Data/LR analyses/betas_abs_wo_rewunc_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from absolute analysis
+% Define the base directory
+baseDir = fullfile('Data', 'LR analyses');
+
+% Construct the file paths using fullfile
+betas_signed_path = fullfile(baseDir, 'betas_signed_wo_rewunc_obj.mat');
+betas_abs_path = fullfile(baseDir, 'betas_abs_wo_rewunc_obj.mat');
+
+% Load the data
+betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
+betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,5,3,4]; % regressors to be plotted
 num_vars = 5; % number of variables
@@ -117,4 +130,4 @@ end
 %%
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure2_corr_SM3.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure2_corr_SM3.png'), '-dpng', '-r600') 

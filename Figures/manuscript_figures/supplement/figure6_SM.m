@@ -9,10 +9,26 @@ font_size = 6; % font size
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
 % INITIALIZE VARS
-load("Data/LR analyses/betas_abs_split0.mat","betas_all"); betas_split0_abs = betas_all; % betas from absolute analysis for splithalf group 0 
-load("Data/LR analyses/betas_abs_split1.mat","betas_all"); betas_split1_abs = betas_all; % betas from absolute analysis for splithalf group 1
-load("Data/LR analyses/betas_signed_split0.mat","betas_all"); betas_split0_signed = betas_all; % betas from signed analysis for splithalf group 0 
-load("Data/LR analyses/betas_signed_split1.mat","betas_all"); betas_split1_signed = betas_all; % betas from signed analysis for splithalf group 1 
+
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
+% Define the base directory
+baseDir = fullfile('Data', 'LR analyses');
+
+% Construct the file paths using fullfile
+betas_split0_abs_path = fullfile(baseDir, 'betas_abs_split0.mat');
+betas_split1_abs_path = fullfile(baseDir, 'betas_abs_split1.mat');
+betas_split0_signed_path = fullfile(baseDir, 'betas_signed_split0.mat');
+betas_split1_signed_path = fullfile(baseDir, 'betas_signed_split1.mat');
+
+% Load the data using importdata
+betas_split0_abs = importdata(betas_split0_abs_path); % betas from absolute analysis for splithalf group 0
+betas_split1_abs = importdata(betas_split1_abs_path); % betas from absolute analysis for splithalf group 1
+betas_split0_signed = importdata(betas_split0_signed_path); % betas from signed analysis for splithalf group 0
+betas_split1_signed = importdata(betas_split1_signed_path); % betas from signed analysis for splithalf group 1
 %% INITIALISE TILE LAYOUT
 
 figure
@@ -160,4 +176,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure8_SM1.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure8_SM1.png'), '-dpng', '-r600') 

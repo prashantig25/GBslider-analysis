@@ -7,13 +7,27 @@ font_name = 'Arial'; % font name
 linewidth_axes = 0.5; % line width for plot lines
 fontsize_label = 12; % fontsize for subplot labels
 dot_size = 10;
-[~,~,~,~,~,~,~,~,~,~,~,~,~,barface_green,...
+[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,barface_green,...
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % INITIALISE VARS
-load("Data/LR analyses/rsquared_wo_rewunc_obj.mat","rsquared_full"); % r-squared values
-load("Data/LR analyses/posterior_up_wo_rewunc_obj.mat","posterior_up_subjs"); % posterior updates
-data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % single-trial updates, prediction errors
+% Define the base directory
+baseDir = fullfile('Data', 'LR analyses');
+
+% Construct the file paths using fullfile
+rsquared_full_path = fullfile(baseDir, 'rsquared_wo_rewunc_obj.mat');
+posterior_up_subjs_path = fullfile(baseDir, 'posterior_up_wo_rewunc_obj.mat');
+data_subjs_path = fullfile(baseDir, 'preprocessed_data.xlsx');
+
+% Load the data
+rsquared_full = importdata(rsquared_full_path); % r-squared values
+posterior_up_subjs = importdata(posterior_up_subjs_path); % posterior updates
+data_subjs = readtable(data_subjs_path); % single-trial updates, prediction errors
 num_subjs = 98; % number of subjects
 %% INITIALISE TILE LAYOUT
 
@@ -37,7 +51,7 @@ delete(ax2); % delete old axis
 % PLOT
 title_name = {''}; 
 bar_plots_pval(rsquared_full,mean(rsquared_full),std(rsquared_full)./sqrt(num_subjs),num_subjs, ...
-    1,1,{''},1,{''},title_name,{''},{''},0,1,dot_size,1,font_size,line_width,font_name,0,barface_green) 
+    1,1,{''},1,{''},title_name,{''},{''},0,1,dot_size,1,font_size,line_width,font_name,0,darkblue_muted) 
 hold on
 
 % PLOT PROPERTIES
@@ -104,4 +118,4 @@ end
 %%
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure4_SM2.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure4_SM2.png'), '-dpng', '-r600') 

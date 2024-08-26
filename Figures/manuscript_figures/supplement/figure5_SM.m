@@ -7,11 +7,17 @@ font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
 linewidth_axes = 0.5; % line width for axes
 fontsize_label = 12; % font size for subplot labels
-[~,~,~,~,~,~,~,~,~,~,gray_dots,~,~,barface_green,...
+[~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,barface_green,...
     ~,dots_edges,~,fits_colors,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % INITIALISE VARS
-data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % single-trial updates, prediction errors
+data_subjs = readtable("Data/LR analyses/preprocessed_data.xlsx"); % single-trial updates, prediction errors
+data_subjs.id = data_subjs.ID;
 num_subjs = 98; % number of subjects
 %%
 
@@ -42,7 +48,7 @@ for i = 1:3
     % FIT MODEL
     data = data_subjs(data_subjs.id == id_subjs(subjs(i)),:);
     tbl = table(data.pe,data.up, round(data.norm_condiff), data.contrast,...
-            data.condition,data.congruence,data.reward_unc,data.pe_sign,...
+            data.choice_cond,data.congruence,data.reward_unc,data.pe_sign,...
             'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
             ,'reward_unc','pe_sign'});
     [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(tbl,mdl,pred_vars,resp_var, ...
@@ -54,9 +60,9 @@ for i = 1:3
         dots_edges,'MarkerFaceColor',gray_dots);
 
     % PLOT PROPERTIES
-    p(1).Color = barface_green;
-    p(2).Color = barface_green;
-    p(3).Color = barface_green;
+    p(1).Color = darkblue_muted;
+    p(2).Color = darkblue_muted;
+    p(3).Color = darkblue_muted;
 
     p(2).LineWidth = 1.5;
     p(3).LineWidth = 0.2;
@@ -127,4 +133,4 @@ end
 %%
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure5_SM5', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure5_SM5'), '-dpng', '-r600') 

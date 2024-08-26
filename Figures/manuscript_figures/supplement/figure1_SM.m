@@ -8,14 +8,29 @@ linewidth_plot = 1; % line width for plot lines
 save_csv = 0; % if figure caption needs any stats input, then save
 save_figures = "C:\Users\prash\Nextcloud\Thesis_laptop\Semester 7\behv_manuscript\" + ...
     "overleaf_folder_organisation\stats\figures"; % path to save
-[~,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,light_gray,binned_dots,barface_green,...
+[~,high_PU,mid_PU,low_PU,~,~,darkblue_muted,~,~,~,~,light_gray,binned_dots,barface_green,...
     ~,~,dim_gray,~,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % INITIALISE VARS
-load("Data/LR analyses/betas_abs_wo_rewunc_obj.mat","betas_all"); betas_subjs = betas_all; % participant betas from absolute analysis
-load("Data/LR analyses/betas_signed_wo_rewunc_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-load("Data/LR analyses/p_vals_abs_wo_rewunc_obj.mat","p_vals"); % p-vals from ttest
-data_subjs = readtable("Data/LR analyses/preprocessed_subj.xlsx"); % participant lr data
+baseDir = fullfile('Data', 'LR analyses');
+
+% Construct the file paths using fullfile
+betas_subjs_path = fullfile(baseDir, 'betas_abs_wo_rewunc_obj.mat');
+betas_signed_path = fullfile(baseDir, 'betas_signed_wo_rewunc_obj.mat');
+p_vals_path = fullfile(baseDir, 'p_vals_abs_wo_rewunc_obj.mat');
+data_subjs_path = fullfile(baseDir, 'preprocessed_data.xlsx');
+
+% Load the data
+betas_subjs = importdata(betas_subjs_path); % participant betas from absolute analysis
+betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
+p_vals = importdata(p_vals_path); % p-vals from ttest
+data_subjs = readtable(data_subjs_path); % participant lr data
+data_subjs.id = data_subjs.ID;
 id_subjs = unique(data_subjs.id); % subject IDs
 num_subjs = length(id_subjs); % number of subjects
 example_participant = 23; % example participant
@@ -76,12 +91,13 @@ avg_binneddata = nanmean(avg_behv_bins,2);
 sem_ydata = nanstd(avg_ydata_bins,0,2)./sqrt(num_subjs);
 
 % PLOT
+s1 = scatter(1:nbins,avg_ydata,"filled",'MarkerEdgeColor',"none",'MarkerFaceColor',"none");
+ls = lsline;
+ls.Color = 'k';
 hold('on')
 errorbar(1:nbins,avg_ydata, sem_ydata, 'k', 'LineWidth',line_width,'LineStyle','none');
 hold on
 s1 = scatter(1:nbins,avg_ydata,"filled",'MarkerEdgeColor',"k",'MarkerFaceColor',binned_dots);
-ls = lsline;
-ls.Color = 'k';
 xlabel('Absolute PE bins (1 bin = 0.1)')
 ylabel('Mean absolute UP')
 
@@ -130,12 +146,14 @@ avg_binneddata = nanmean(avg_behv_bins,2);
 sem_ydata = nanstd(avg_ydata_bins,0,2)./sqrt(num_subjs);
 
 % PLOT
+s1 = scatter(1:nbins,avg_ydata,"filled",'MarkerEdgeColor',"none",'MarkerFaceColor',"none");
+hold on
+ls = lsline;
+ls.Color = 'k';
 hold('on')
 errorbar(1:nbins,avg_ydata, sem_ydata, 'k', 'LineWidth',line_width,'LineStyle','none');
 hold on
 s1 = scatter(1:nbins,avg_ydata,"filled",'MarkerEdgeColor',"k",'MarkerFaceColor',binned_dots);
-ls = lsline;
-ls.Color = 'k';
 xlabel('Absolute contrast difference bins (1 bin = 0.01)')
 ylabel('Mean absolute UP')
 
@@ -181,7 +199,7 @@ for r = 1:length(regressors)
     bar_labels = {'*'};
     pstars = pvals_stars(p_vals,selected_regressors,bar_labels,0);
     title_name = pstars;
-    colors_name = barface_green;
+    colors_name = darkblue_muted;
    
     agent_means = NaN;
     
@@ -248,7 +266,7 @@ tbl = table(abs(data.pe(and(data.id == id_subjs(i),data.pe ~= 0))), ...
     abs(data.up(and(data.id == id_subjs(i),data.pe ~= 0))),...
     round(data.norm_condiff(and(data.id == id_subjs(i),data.pe ~= 0)),2), ...
     data.contrast(and(data.id == id_subjs(i),data.pe ~= 0)),...
-    data.condition(and(data.id == id_subjs(i),data.pe ~= 0)),...
+    data.choice_cond(and(data.id == id_subjs(i),data.pe ~= 0)),...
     data.congruence(and(data.id == id_subjs(i),data.pe ~= 0)),...
     data.reward_unc(and(data.id == id_subjs(i),data.pe ~= 0)),...
     data.pe_sign(and(data.id == id_subjs(i),data.pe ~= 0)),...
@@ -316,4 +334,4 @@ end
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure1_SM2.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure1_SM2.png'), '-dpng', '-r600') 

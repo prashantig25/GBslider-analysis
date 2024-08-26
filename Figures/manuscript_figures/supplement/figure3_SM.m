@@ -9,11 +9,27 @@ fontsize_label = 12; % font size for subplot labels
 dot_size = 5; % size of dots for bars
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,fits_colors,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % INITIALISE VARS
-load("Data/LR analyses/betas_signed_obj.mat","betas_all"); betas_signed = betas_all; % participant betas from signed analysis
-load("Data/LR analyses/betas_abs_obj.mat","betas_all"); betas_abs = betas_all; % participant betas from signed analysis
-load("Data/LR analyses/betas_signed_salience.mat","betas_all"); betas_signed_salience = betas_all; % participant betas from signed analysis of salience bias in learning
-load("Data/LR analyses/betas_abs_salience.mat","betas_all"); betas_abs_salience = betas_all; % participant betas from absolute analysis of salience bias in learning
+% Define the base directory
+baseDir = fullfile('Data', 'LR analyses');
+
+% Construct the file paths using fullfile
+betas_signed_path = fullfile(baseDir, 'betas_signed.mat');
+betas_abs_path = fullfile(baseDir, 'betas_abs.mat');
+betas_signed_salience_path = fullfile(baseDir, 'betas_signed_salience.mat');
+betas_abs_salience_path = fullfile(baseDir, 'betas_abs_salience.mat');
+
+% Load the data using importdata
+betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
+betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
+betas_signed_salience = importdata(betas_signed_salience_path); % participant betas from signed analysis of salience bias in learning
+betas_abs_salience = importdata(betas_abs_salience_path); % participant betas from absolute analysis of salience bias in learning
+
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,6,3,4,5]; % list of regressors
 %% INITIALISE TILE LAYOUT
@@ -84,7 +100,7 @@ box(ax2_new, 'off');
 delete(ax2);
 
 % GET MEAN AND SEM FOR BETAS
-selected_regressors = 3;
+selected_regressors = 5;
 [mean_signed,sem_signed,coeffs_signed] = prepare_betas(betas_signed_salience,selected_regressors,num_subjs);
 [mean_abs,sem_abs,coeffs_abs] = prepare_betas(betas_abs_salience,selected_regressors,num_subjs);
 coeffs_subjs = [coeffs_signed,coeffs_abs];
@@ -143,4 +159,4 @@ end
 %%
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure3_SM2.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figure3_SM2.png'), '-dpng', '-r600') 
