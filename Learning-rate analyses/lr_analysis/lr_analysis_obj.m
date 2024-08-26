@@ -1,17 +1,62 @@
 classdef lr_analysis_obj < lr_vars
-% LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
+    % LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
     methods
         function obj = lr_analysis_obj()
-            
+
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
-            
+
             obj.data = readtable(obj.filename);
         end
 
+        function compute_numvars(obj)
+
+            % function compute_numvars computes the number of variables in
+            % the model definition.
+            % INPUT:
+            %   obj: current object
+
+            % SPLIT THE FORMULA
+            rhs = split(obj.mdl, '~');
+            rhs = strtrim(rhs{2}); % trim any leading/trailing whitespace
+
+            % GET NUM_VARS
+            terms = strtrim(split(rhs, '+'));
+            unique_terms = unique(terms);
+            obj.num_vars = length(unique_terms);
+        end
+
+        function model_definition(obj)
+
+            % function model_definition defines the regression model
+            % equation for the desired analysis.
+            %
+            % INPUT:
+            %   obj: current object
+
+            if obj.lr_mdl == 1
+                obj.mdl = 'up ~ pe + pe:salience + pe:congruence + pe:pe_sign + pe:contrast_diff';
+                obj.compute_numvars;
+            elseif obj.risk_mdl == 1
+                obj.mdl = 'up ~ pe + pe:salience + pe:congruence + pe:pe_sign + pe:contrast_diff + pe:reward_unc';
+                obj.compute_numvars;
+            elseif obj.saliencechoice_mdl == 1
+                obj.mdl = 'up ~ pe + pe:contrast_diff + pe:salience_choice + pe:congruence + pe:pe_sign ';
+                obj.compute_numvars;
+            end
+
+            if obj.agent == 1
+                obj.pred_vars = {'pe','salience','contrast_diff','congruence','reward_unc','reward','mu','pe_sign'}; % cell array with names of predictor variables
+                obj.cat_vars = {'salience','congruence','condition','reward_unc','pe_sign'}; % cell array with names of categorical variables
+            elseif obj.online == 1
+                obj.pred_vars = {'pe','salience','contrast_diff','congruence','reward_unc','reward','mu','pe_sign','salience_choice'}; % cell array with names of predictor variables
+                obj.cat_vars = {'salience','congruence','condition','reward_unc','pe_sign','salience_choice'}; % cell array with names of categorical variables
+            end
+        end
+
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
-            
+
             % function linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
@@ -29,7 +74,7 @@ classdef lr_analysis_obj < lr_vars
             %   residuals: residuals after fitting mdl to the data
             %   coeffs_name: cell array containing name of all regressors
             %   lm: fitted model
-            
+
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
             if obj.weight_y_n == 1
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
@@ -38,7 +83,7 @@ classdef lr_analysis_obj < lr_vars
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
                     'CategoricalVars',obj.cat_vars);
             end
-        
+
             % SAVE R-SQUARED, RESIDUALS AND BETA VALUES
             rsquared = lm.Rsquared.Adjusted;
             residuals = lm.Residuals.Raw;
@@ -50,7 +95,7 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
-            
+
             % function get_coeffs fits the linear regression model by running non-weighted
             % and weighted regressions to get the beta coefficients across
             % subjects
@@ -66,10 +111,10 @@ classdef lr_analysis_obj < lr_vars
             %   name
             %   posterior_up_subjs: posterior predicted updates by model
             %   fit_fn: function to be used, adjust if using mock fitlm
-            
+
             % SET VARIABLES TO RUN THE FUNCTION
             id_subjs = unique(obj.data.ID);
-            
+
             % INITIALISE VARIABLES
             betas_all = NaN(length(obj.num_subjs),obj.num_vars);
             rsquared_full = NaN(length(obj.num_subjs),1);
@@ -80,40 +125,42 @@ classdef lr_analysis_obj < lr_vars
                 obj.data.pe = abs(obj.data.pe);
                 obj.data.up = abs(obj.data.up);
             end
-            
+
             % FIT THE MODEL TO GET RESIDUALS (non-weighted)
             for i = 1:obj.num_subjs
                 obj.weight_y_n = 0; % non-weighted
                 data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
-                tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
-                    'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','pe_sign','salience_choice'});
                 if obj.pupil == 1
                     tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
-                    data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
-                    normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
-                    normalise_zero_one(data_subject.fb_tonic).',...
-                    'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
+                        data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
+                        data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
+                        normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
+                        normalise_zero_one(data_subject.fb_tonic).',...
+                        'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                        ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
+                elseif obj.online == 1
+                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                        data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                        'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                        ,'reward_unc','pe_sign','salience_choice'});
+                elseif obj.agent == 1
+                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                        data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,...
+                        'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                        ,'reward_unc','pe_sign'});
                 end
                 [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn);
                 obj.res_subjs = [obj.res_subjs; residuals_reg, repelem(id_subjs(i),length(residuals_reg)).'];
             end
-            
+
             % WEIGHTED REGRESSION USING RESIDUALS
             if obj.weighted == 1
                 obj.weight_y_n = 1;
                 [wt_subjs] = weights_general(obj.data, obj.res_subjs); % get weights
                 wt_subjs(:,2) = obj.res_subjs(:,2);
                 for i = 1:obj.num_subjs
+                    data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
-                    data_subject = obj.data(obj.data.ID == id_subjs(i),:);
-                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
-                    'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','pe_sign','salience_choice'}); 
                     if obj.pupil == 1
                         tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
                             data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
@@ -122,19 +169,29 @@ classdef lr_analysis_obj < lr_vars
                             normalise_zero_one(data_subject.fb_tonic).',...
                             'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
                             ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
+                    elseif obj.online == 1
+                        tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                            data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
+                            'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                            ,'reward_unc','pe_sign','salience_choice'});
+                    elseif obj.agent == 1
+                        tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
+                            data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,...
+                            'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
+                            ,'reward_unc','pe_sign'});
                     end
                     [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj);
                     betas_all(i,:) = betas(2:end);
                     rsquared_full(i,1) = rsquared;
-                    [post_up] = obj.posterior_up(tbl,betas);
+                    [post_up] = predict(lm,tbl);
                     posterior_update = post_up;
                     posterior_up_subjs = [posterior_up_subjs; posterior_update];
                 end
-            end            
+            end
         end
 
         function [post_up] = posterior_up(obj,tbl,betas)
-            
+
             % function posterior_up calculates the posterior updated predicted by the model
             % given the pe and other task/computational vars.
             %
@@ -146,16 +203,16 @@ classdef lr_analysis_obj < lr_vars
             %
             % OUTPUT:
             %   post_up: posterior update predicted by the model
-            
+
             % INITIALISE OUTPUT AND OTHER VARS
             post_up = zeros(height(tbl),1);
             var_array = NaN(height(tbl),length(obj.var_names));
-        
+
             % GET TRIAL-BASED VALUES FOR PREDICTOR VARS FOR Y_POST = X.*BETA + ERROR
             for v = 1:length(obj.var_names)
                 var_array(:,v) = tbl.(obj.var_names{v});
             end
-        
+
             % CALCULATE Y_POST
             post_up(:,1) = post_up(:,1) + betas(1); % add intercept
             for b = 2:length(betas)
