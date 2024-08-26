@@ -24,7 +24,7 @@ classdef agentvars < handle
             % the class.
             
             if obj.condition == 1 || obj.condition == 2 % condition dependent sensitivity parameter for agent
-                obj.sigma = 0.3; %0.03;
+                obj.sigma = 0.03; %0.03;
             else 
                 obj.sigma = 0.0001;
             end
