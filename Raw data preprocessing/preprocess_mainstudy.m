@@ -10,11 +10,11 @@ num_blocks = 4; % number of blocks per condition
 total_blocks = 12; % total number of blocks per subject
 
 % Get the current working directory
-currentDir = pwd;
+currentDir = "Reward-learning-analysis-main";
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('DATA', filesep, 'main_study'); 
-save_dir = strcat('Data', filesep, 'main study'); 
+behv_dir = strcat('Data', filesep, 'main_study');
+save_dir = strcat("../",'Data', filesep, 'descriptive data', filesep, 'main study'); 
 mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
@@ -84,6 +84,7 @@ for i = 1:height(data_all)
 end
 data_all.mu_congruence = data_all.mu_congruence./100;
 data_all.mu = data_all.mu./100;
+data_all.condition = data_all.choice_cond;
 
 % INITIALISE TO STORE MEAN MU FOR ALL TRIALS, ACROSS SUBJECTS
 mix_curve = NaN(num_subjs,t);
@@ -108,6 +109,28 @@ for i = [1:num_subjs] % exclude participant 21 because unbalanced blocks
     rew_curve(i,:) = mean(rew_subj);
 end
 
+mean_curves = [nanmean(mix_curve);nanmean(perc_curve);nanmean(rew_curve)];
+sem_curves = [nanstd(mix_curve)./sqrt(num_subjs);nanstd(perc_curve)./sqrt(num_subjs);nanstd(rew_curve)./sqrt(num_subjs)];
+
+ecoperf = NaN(num_subjs,1); % initialised array for economic performance
+esterror = NaN(num_subjs,1); % initialised array for estimation error
+
+% COMPUTE ESTIMATION ERROR
+for i = 1:height(data_all)
+    if data_all.choice_cond(i) == 2 % actual mu for each condition
+        data_all.actual_mu(i) = 0.9; 
+    else 
+        data_all.actual_mu(i) = 0.7;
+    end
+    data_all.est_error(i) = data_all.mu_congruence(i) - data_all.actual_mu(i); 
+    data_all.est_error(i) = abs(data_all.est_error(i));
+end
+
+% GET ECONOMIC PERFORMANCE & EST. ERROR
+for i = 1:num_subjs
+    ecoperf(i,:) = nanmean(data_all.ecoperf(data_all.ID == subj_ids(i)));
+    esterror(i,:) = nanmean(data_all.est_error(data_all.ID == subj_ids(i)));
+end
 %% SAVE DATA
 
 safe_saveall(fullfile(save_dir,'study2.txt'),data_all);
@@ -119,3 +142,9 @@ safe_saveall(fullfile(save_dir,'ecoperf_rew.mat'),ecoperf_rew);
 safe_saveall(fullfile(save_dir,'mix_curve.mat'),mix_curve);
 safe_saveall(fullfile(save_dir,'perc_curve.mat'),perc_curve);
 safe_saveall(fullfile(save_dir,'rew_curve.mat'),rew_curve);
+
+safe_saveall(fullfile(save_dir,'mean_curves.mat'),mean_curves);
+safe_saveall(fullfile(save_dir,'sem_curves.mat'),sem_curves);
+
+safe_saveall(fullfile(save_dir,'ecoperf.mat'),ecoperf);
+safe_saveall(fullfile(save_dir,'esterror.mat'),esterror);

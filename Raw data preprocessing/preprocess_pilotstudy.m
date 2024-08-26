@@ -24,8 +24,8 @@ total_blocks = 16; % total number of blocks per subject
 currentDir = pwd;
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('DATA', filesep, 'pilot_study'); 
-save_dir = strcat('Data',filesep,'pilot_study', filesep, 'study1'); 
+behv_dir = strcat('Data', filesep, 'pilot_study'); 
+save_dir = strcat('Data', filesep,'descriptive data', filesep, 'pilot study'); 
 mkdir(save_dir);
 
 % MERGE ALL SUBJECT DATA
@@ -42,6 +42,7 @@ for i = 1:length(subj_ids)
     data_table = readtable(tsv_file, "FileType","text",'Delimiter', '\t'); % read
     data_all = [data_all; data_table]; % merge all subjects data
 end
+data_all.condition = data_all.condition_int;
 %% CALCULATE ECONOMIC PERFORMANCE
 
 % ACROSS CONDITIONS
