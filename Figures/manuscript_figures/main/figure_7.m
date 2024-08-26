@@ -11,11 +11,16 @@ xlim_vals = [0 1]; % x limits
 ylim_vals = [0 1.2]; % y limits
 num_subjs = 98; % number of subjects
 num_conds = 3; % number of condition
-[~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
+[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb(); % colors
 
-load("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance for mixed condition
-load("Data/descriptive data/main study/ecoperf_perc.mat");
-load("Data/descriptive data/main study/ecoperf_rew.mat");
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"main");
+mkdir(save_dir)
+
+ecoperf_mix = importdata("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance for mixed condition
+ecoperf_perc = importdata("Data/descriptive data/main study/ecoperf_perc.mat");
+ecoperf_rew = importdata("Data/descriptive data/main study/ecoperf_rew.mat");
 %% INITIALISE TILE LAYOUT
 
 figure
@@ -54,7 +59,7 @@ bar_labels = pvals_stars(p_vals,1:3,bar_labels,0);
 
 % PLOT PROPERTIES
 xticks = [1:length(mean_sd)]; % array of x-axis ticks
-colors_name = [reg_color]; % colors for bars
+colors_name = [darkblue_muted]; % colors for bars
 y_label = repelem(1.05,num_conds,1); % y-axis position for p-val stars
 disp_pval = 1; % whether to display p-val stars
 xticklabs = {'Both','Perceptual','Reward'}; % x-axis tick labels
@@ -79,4 +84,4 @@ set(gca,'Color','none')
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'bias.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'bias.png'), '-dpng', '-r600') 

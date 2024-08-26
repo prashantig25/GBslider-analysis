@@ -19,6 +19,11 @@ edge_color = 'none'; % edge color for text box
 [~,high_PU,mid_PU,low_PU,color_screen,~,~,~,~,~,gray_dots,light_gray,~,~,...
     ~,dots_edges,~,~,gray_arrow] = colors_rgb(); % colors
 
+% DIRECTORY
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"main");
+mkdir(save_dir)
+
 % AGENT RELATED VARS
 contrast_diff = [0.08,0.02]; % contrast difference levels
 sigma = [0.06,0.06]; % perceptual sensitivity of agent
@@ -173,7 +178,7 @@ hatchfill2(p1, 'single', 'HatchAngle', 45, 'HatchDensity', 25, 'HatchColor', 'bl
 % ADD TEXT TO BARS
 groupOffset = [-0.32, 0.32];
 barWidth = 0.4;
-bar_text(b,groupOffset,barWidth,6);
+bar_text(b,groupOffset,barWidth,font_size,font_name);
 
 %% PLOT EXPECTED VALUES
 position_change = [-0.05, -0.06, 0.1, 0];
@@ -234,7 +239,7 @@ hatchfill2(p1, 'single', 'HatchAngle', 45, 'HatchDensity', 25, 'HatchColor', 'bl
 % ADD TEXT ON BARS
 groupOffset = [-0.32, 0.32];
 barWidth = 0.4;
-bar_text(b,groupOffset,barWidth,6)
+bar_text(b,groupOffset,barWidth,font_size,font_name)
 
 %% PLOT LEARNING RATES
 position_change = [-0.05, -0.06, 0.1, 0]; 
@@ -364,4 +369,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'agent.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,"agent5.png"), '-dpng', '-r1200') 

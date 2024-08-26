@@ -11,6 +11,10 @@ vert_align = 'middle'; % vertical alignment for text
 headlength_arrow = 4; % head length for arrow
 fontsize_label = 12; % font size for subplot labels
 [pu_box,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,~,~,~,~,~,~,~,gray_arrow] = colors_rgb(); % colors
+
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"main");
+mkdir(save_dir)
 %% INITIALISE TILE LAYOUT
 
 figure("Position",[150,150,350,350])
@@ -346,4 +350,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure1_2.png', '-dpng', '-r1200') 
+print(fig, fullfile(save_dir,filesep,"figure1_6.png"), '-dpng', '-r1200') 

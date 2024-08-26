@@ -8,9 +8,14 @@ font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
-load("Data/estimation error analysis/lm_abs_esterror_signed_lr.mat","lm"); % estimated model fit to estimation errors
-load("Data/estimation error analysis/partialrsq_signed.mat","partial_rsq"); % partial R2 values
-[~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
+lm = importdata("Data/estimation error analysis/lm_abs_esterror_signed_lr.mat"); % estimated model fit to estimation errors
+partial_rsq = importdata("Data/estimation error analysis/partialrsq_abs_esterror_signed_lr.mat"); % partial R2 values
+[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
+
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"main");
+mkdir(save_dir)
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
 pvals_cell = {'','','','','',''}; % initalise empty cell array to store p-values
@@ -49,8 +54,8 @@ for v = 1:length(variables)
         'MarkerEdgeColor',[184, 184, 184]./255);
 
     % PLOT PROPERTIES
-    p(2).Color = reg_color;
-    p(3).Color = reg_color;
+    p(2).Color = darkblue_muted;
+    p(3).Color = darkblue_muted;
 
     p(2).LineWidth = linewidth_line;
     p(1).LineWidth = 0.7;
@@ -85,4 +90,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'estimation_error.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'estimation_error.png'), '-dpng', '-r600') 

@@ -5,9 +5,21 @@ clearvars
 [~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,~,...
     reg_color,dots_edges,~,~,~] = colors_rgb(); % colors
 
+% directory specification
+current_Dir = pwd;
+save_dir = fullfile("saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
 % LOAD DATA
-load("Data/estimation error analysis/lm_signed_esterror_signed_lr.mat","lm"); % estimated model fit to signed estimation errors
-load("Data/estimation error analysis/partialrsq_signed_both.mat","partial_rsq"); % partial R2 values
+baseDir = fullfile('Data', 'estimation error analysis');
+
+% Construct the file paths using fullfile
+lm_path = fullfile(baseDir, 'lm_signed_esterror_signed_lr.mat');
+partial_rsq_path = fullfile(baseDir, 'partialrsq_signed_both.mat');
+
+% Load the data using importdata
+lm = importdata(lm_path); % estimated model fit to signed estimation errors
+partial_rsq = importdata(partial_rsq_path); % partial R2 values
 
 linewidth_line = 1.5; % linewidth for plot lines
 line_width = 0.5; % linewidth for axes
@@ -90,4 +102,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figure4_signed_est_bars4.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,filesep,'figureSM_signed_est_bars.png'), '-dpng', '-r600') 
