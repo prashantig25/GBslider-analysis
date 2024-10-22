@@ -1,14 +1,18 @@
+% Todo: High level description
+% - script for both papers
+% - data saved again on Rasmus' computer due to inconsistency
+
 clc
 clearvars
 
-%% PATH STUFF
+% PATH STUFF
 
 % change directory accordingly
 currentDir = pwd;
 save_dir = strcat('Data', filesep, 'LR analyses');
 mkdir(save_dir);
 
-%% SCRIPT TO RUN MODEL BASED ANALYSIS OF LEARNING RATES
+% SCRIPT TO RUN MODEL BASED ANALYSIS OF LEARNING RATES
 
 preprocess_obj = preprocess_LR(); % initialise object with all required variables and functions
 preprocess_obj.flip_mu(); % compute reported contingency parameter, after correcting for congruence
@@ -49,12 +53,13 @@ if grouped == 1
     safe_saveall(fullfile(save_dir,'preprocessed_subj_split0.xlsx'),data(data.splithalf == 0,:));
 end
 
-%% FIT THE MODEL
+% FIT THE MODEL
 
 lr_analysis = lr_analysis_obj();
 lr_analysis.model_definition();
 [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = lr_analysis.get_coeffs(@fitlm);
-%% SAVE DATA FOR VARIOUS MODELS
+
+% SAVE DATA FOR VARIOUS MODELS
 
 if lr_analysis.grouped == 0
     if lr_analysis.absolute_analysis == 1 % save absolute analyses betas

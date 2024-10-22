@@ -1,3 +1,7 @@
+% Todo: high level summary
+% and implement for both projects
+% Check safe_save: resaved everything
+
 clc
 clearvars
 
@@ -38,7 +42,8 @@ mdl_pe_condiff = 'perf ~ pe + pe__salience + pe__congruence + pe__pesign'; % par
 mdl_pe_pesign = 'perf ~ pe + pe__condiff + pe__salience + pe__congruence'; % partial model without confirmation bias
 mdl_pe_salience = 'perf ~ pe + pe__condiff + pe__congruence + pe__pesign'; % partial model without salience
 mdl_pe_congruence = 'perf ~ pe + pe__condiff + pe__salience + pe__pesign'; % partial model without congruence
-%% FIT LEARNING RATE ANALYSIS COEFFICIENTS TO MEAN PERFORMANCE
+
+% FIT LEARNING RATE ANALYSIS COEFFICIENTS TO MEAN PERFORMANCE
 
 % COMPUTE ESTIMATION ERROR
 for i = 1:height(data)

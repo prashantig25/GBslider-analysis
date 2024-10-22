@@ -1,5 +1,4 @@
-function [partial_rsq] = compute_partialrsq(rsq_reduced,rsq_full)
-    
+function partial_rsq = compute_partialrsq(rsq_reduced,rsq_full)
     % function compute_partialrsq computes partial r-squared value for a single
     % coefficient from a multi-variate model.
     %

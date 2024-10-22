@@ -1,6 +1,5 @@
 function annotate_textbox(gca,position,string,font_name,font_size, ...
     horz_align,vert_align,bg_color,face_alpha,edge_color,varargin)
-    
     % function annotate_textbox adds a textbox and customises it in a figure.
     %
     % INPUTS:

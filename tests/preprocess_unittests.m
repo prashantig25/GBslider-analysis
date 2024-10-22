@@ -1,13 +1,13 @@
 classdef preprocess_unittests < matlab.unittest.TestCase
     % PREPROCESS_UNITTESTS is a collection of functions to run unit tests on
     % various functions used for data preprocessing.
+    
     methods(Test)
 
         function test_flipmu(obj)
-            
             % test_flipmu function tests the flip_mu function
             % from the preprocess_LR() object.
-            
+
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 2; % number of trials on which the test needs to be run on
@@ -26,10 +26,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeactiondeprew(obj)
-            
             % test_computeactiondeprew function tests the compute_action_dep_rew
             % function from the preprocess_LR() object.
-            
+
             % INTIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 4; % number of trials on which the test needs to be run on
@@ -43,7 +42,7 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             expected_recodedrew = NaN(num_trials,1);
             for n = 1:num_trials
                 expected_recodedrew(n) = preprocess_obj.obtained_reward(n) + (preprocess_obj.action(n)*((-1) .^ ...
-                        (2 + preprocess_obj.obtained_reward(n))));
+                    (2 + preprocess_obj.obtained_reward(n))));
             end
 
             % RUN TEST
@@ -52,7 +51,6 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computemu(obj)
-            %
             % test_computemu function tests the compute_mu
             % function from the preprocess_LR() object.
             %
@@ -68,7 +66,7 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % EXPECTED
             expected_mu_t_1 = NaN(num_trials,1);
             expected_mu_t = NaN(num_trials,1);
-           for i = 2:height(preprocess_obj.data)
+            for i = 2:height(preprocess_obj.data)
                 if preprocess_obj.data.contrast(i) == 1 % if actual mu < 0.5
                     expected_mu_t_1(i) = 1-preprocess_obj.flipped_mu(i-1);
                     expected_mu_t(i) = 1-preprocess_obj.flipped_mu(i);
@@ -76,9 +74,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
                     expected_mu_t_1(i) = preprocess_obj.flipped_mu(i-1);
                     expected_mu_t(i) = preprocess_obj.flipped_mu(i);
                 end
-           end
+            end
 
-           % RUN TEST
+            % RUN TEST
             obj.verifyEqual(preprocess_obj.mu_t,expected_mu_t, ...
                 'Expected and actual mu for current trial array do not match.')
             obj.verifyEqual(preprocess_obj.mu_t_1,expected_mu_t_1, ...
@@ -86,10 +84,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computestatedeppe(obj)
-            
             % test_computestatedeppe function tests the compute_state_dep_pe
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 4; % number of trials on which the test needs to be run on
@@ -128,16 +125,15 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeconfirm(obj)
-            
             % test_computeconfirm function tests the compute_confirm
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 8; % number of trials on which the test needs to be run on
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.obtained_reward = [0,0,0,0,1,1,1,1].'; 
-            preprocess_obj.state = [0,0,1,1,0,0,1,1].'; 
+            preprocess_obj.obtained_reward = [0,0,0,0,1,1,1,1].';
+            preprocess_obj.state = [0,0,1,1,0,0,1,1].';
             preprocess_obj.action = [0,1,0,1,0,1,0,1].';
             preprocess_obj.data.contrast = [1,0,1,0,1,0,1,0].';
 
@@ -167,10 +163,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removeconditions(obj)
-            
             % test_removeconditions function tests the removed_cond
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 3; % number of trials on which the test needs to be run on
@@ -194,10 +189,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computenormalise(obj)
-            
             % test_computenormalise function tests the compute_normalise
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 10;
@@ -218,10 +212,9 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_computeru(obj)
-            
             % test_computeru function tests the compute_ru
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
             num_trials = 3;
@@ -246,15 +239,14 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addvars(testCase)
-            
             % test_addvars function tests the add_vars
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();  % Replace YourClass with the actual class name
             num_trials = 5;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            
+
             new_column = linspace(0,1,num_trials).';
             varName = 'new_column';
             preprocess_obj.add_vars(new_column, varName);
@@ -266,12 +258,11 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removezerope(testCase)
-            
             % test_removezerope function tests the remove_zero_pe
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
-            preprocess_obj = preprocess_LR();  
+            preprocess_obj = preprocess_LR();
             num_trials = 10;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
 
@@ -284,12 +275,11 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsplithalf(testCase)
-            
             % test_addsplithalf function tests the add_splithalf
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
-            preprocess_obj = preprocess_LR();  
+            preprocess_obj = preprocess_LR();
             num_trials = 10;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
 
@@ -302,12 +292,11 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_addsaliencechoice(testCase)
-            
             % test_addsaliencechoice function tests the add_saliencechoice
             % function from the preprocess_LR() object.
-            
+
             % INITIALIZE VARS
-            preprocess_obj = preprocess_LR();  
+            preprocess_obj = preprocess_LR();
             num_trials = 10;
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
 
@@ -318,7 +307,7 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             preprocess_obj.data = table(contrast_left.',contrast_right.',choice.', ...
                 'VariableNames', {'contrast_left','contrast_right','choice'});
             preprocess_obj.add_saliencechoice();
-            
+
             % RUN TESTS
             expected_data = [1, 0, 0, 0, 1, 0, 0, 0, 0, 0].';
             testCase.verifyEqual(preprocess_obj.data.salience_choice, expected_data);

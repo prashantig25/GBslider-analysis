@@ -1,3 +1,6 @@
+% Todo: summary
+% - and failed to run to error
+
 clc
 clearvars 
 % SCRIPT TO RUN MODEL BASED ANALYSIS OF LEARNING RATES
@@ -45,7 +48,8 @@ end
 
 % SAVE PREPROCESSED FILE
 safe_saveall(fullfile(save_dir,'preprocessed_agent.xlsx'),preprocess_obj.data);
-%% FIT THE MODEL
+
+% FIT THE MODEL
 
 lr_analysis = lr_analysis_obj();
 lr_analysis.model_definition();

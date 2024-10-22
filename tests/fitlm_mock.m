@@ -1,5 +1,4 @@
 function lm_mock = fitlm_mock(tbl,varargin)
-    %
     % function fitlm_mock is mock version of MATLAB's fitlm.
     %
     % INPUTS:

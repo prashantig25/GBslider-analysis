@@ -1,4 +1,6 @@
-%% INITIALISE GENERAL PLOT VARS
+% Todo: high-level summary
+
+% INITIALISE GENERAL PLOT VARS
 clc
 clearvars
 
@@ -30,7 +32,8 @@ for p = 1:length(pvals)
         pvals_cell{p} = strcat("\itp\rm = ",num2str(round(pvals(p),2)));
     end
 end
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 600 200])
@@ -40,7 +43,8 @@ t.TileSpacing = 'compact';
 ax2 = nexttile(2,[1,1]);
 ax3 = nexttile(3,[1,1]);
 ax1 = nexttile(1,[1,1]);
-%% ADDED VARIABLE PLOTS
+
+% ADDED VARIABLE PLOTS
 
 variables = [2,3,6]; % variables to be plotted
 axes_variables = [ax1,ax2,ax3]; % axes array
@@ -72,7 +76,8 @@ for v = 1:length(variables)
     adjust_figprops(axes_variables(v),font_name,font_size,line_width,xlim_vals,ylim_vals)
     box(axes_variables(v),"off")
 end
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = ax1.Position;
 adjust_x = -0.055; % adjusted x-position for subplot label
@@ -86,7 +91,8 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
     'b','FontSize',12,'LineStyle','none','HorizontalAlignment','center')
 
 [label_x,label_y] = change_plotlabel(ax3,adjust_x,adjust_y);
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

@@ -1,4 +1,6 @@
-%% INITIALISE GENERAL PLOT VARS
+% Figure 6: Summary
+
+% INITIALISE GENERAL PLOT VARS
 clc
 clearvars
 
@@ -21,14 +23,16 @@ mkdir(save_dir)
 ecoperf_mix = importdata("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance for mixed condition
 ecoperf_perc = importdata("Data/descriptive data/main study/ecoperf_perc.mat");
 ecoperf_rew = importdata("Data/descriptive data/main study/ecoperf_rew.mat");
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 250 200])
 t = tiledlayout(1,1);
 t.Padding = 'compact';
 t.TileSpacing = 'compact';
-%% PLOT SALIENCE BIAS
+
+% PLOT SALIENCE BIAS
 
 % COMPUTE SALIENCE BIAS
 bias_mix = ecoperf_mix(:,2) - ecoperf_mix(:,1);
@@ -80,7 +84,7 @@ ylim([-0.5,1.1])
 xlim([0.5,3.5])
 set(gca,'Color','none')
 
-%% SAVE FIGURE
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

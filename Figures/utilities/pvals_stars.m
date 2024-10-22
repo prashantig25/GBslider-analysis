@@ -1,5 +1,4 @@
 function bar_labels = pvals_stars(p_vals,selected_regressors,bar_labels,stars)
-    
     % function pval_stars creates a cell-array with stars, according to p-values.
     %
     % INPUTS:

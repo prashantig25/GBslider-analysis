@@ -1,4 +1,6 @@
-%% INITIALISE VARIABLES
+% Figure 2: Summary
+
+% INITIALISE VARIABLES
 
 clc
 clearvars
@@ -41,7 +43,8 @@ perc_curve = importdata("Data/descriptive data/main study/perc_curve.mat");
 rew_curve = importdata("Data/descriptive data/main study/rew_curve.mat");
 ecoperf = importdata("Data/descriptive data/main study/ecoperf.mat"); % mean economic performance
 esterror = importdata("Data/descriptive data/main study/esterror.mat"); % mean estimation error
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 600 400])
@@ -53,7 +56,8 @@ ax10 = nexttile(10,[1 1]);
 ax12 = nexttile(12,[1,1]);
 ax11 = nexttile(11,[1,1]);
 ax1 = nexttile(1,[2,2]);
-%% PLOT TRIAL PROCEDURE
+
+% PLOT TRIAL PROCEDURE
 
 % axes position adjustments
 position_change = [0, 0, -0.05, 0]; % change in position
@@ -149,7 +153,8 @@ for n = 1:num_strings
     annotate_textbox(ax1_new,position,string,font_name,font_size-0.5, ...
         horz_align,vert_align,bg_color,face_alpha,edge_color);
 end
-%% PLOT S-A-R CONTINGENCY
+
+% PLOT S-A-R CONTINGENCY
 
 pos = ax3.Position + [0, -0.03,0,0];
 ax3_new = axes('Units', 'Normalized', 'Position', pos);
@@ -228,7 +233,8 @@ a1.Parent = gca;
 set(gca, 'Color', 'None','FontName','Arial')
 box off
 axis off
-%% DESCRIPTIVE PLOTS
+
+% DESCRIPTIVE PLOTS
 
 position_change = [0, 0.05, 0, 0];
 new_pos = change_position(ax12,position_change);

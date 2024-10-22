@@ -1,5 +1,4 @@
 function [mean_avg,mean_sd,coeffs_subjs] = prepare_betas(betas_all,selected_regressors,num_subjs)
-    
     % function prepare_betas computes mean, sem and prepares for bar-graphs.
     %
     % INPUTS:

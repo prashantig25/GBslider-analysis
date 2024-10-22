@@ -1,8 +1,8 @@
 classdef lr_analysis_obj < lr_vars
     % LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
+    
     methods
         function obj = lr_analysis_obj()
-
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
@@ -11,9 +11,9 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function compute_numvars(obj)
-
             % function compute_numvars computes the number of variables in
             % the model definition.
+            %
             % INPUT:
             %   obj: current object
 
@@ -28,7 +28,6 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function model_definition(obj)
-
             % function model_definition defines the regression model
             % equation for the desired analysis.
             %
@@ -56,7 +55,6 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
-
             % function linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
@@ -95,7 +93,6 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
-
             % function get_coeffs fits the linear regression model by running non-weighted
             % and weighted regressions to get the beta coefficients across
             % subjects
@@ -161,6 +158,9 @@ classdef lr_analysis_obj < lr_vars
                 for i = 1:obj.num_subjs
                     data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
+                    
+                    % Todo: check if models above are the same. If so, don't
+                    % reapeat yourself but create function
                     if obj.pupil == 1
                         tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
                             data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
@@ -191,7 +191,6 @@ classdef lr_analysis_obj < lr_vars
         end
 
         function [post_up] = posterior_up(obj,tbl,betas)
-
             % function posterior_up calculates the posterior updated predicted by the model
             % given the pe and other task/computational vars.
             %

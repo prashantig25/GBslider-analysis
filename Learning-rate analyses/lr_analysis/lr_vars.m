@@ -1,6 +1,7 @@
 classdef lr_vars < handle
 % LR_VARS superclass specifies variables for the model-based analysis of
 % learning rates.
+
     properties
         filename = 'Data/LR analyses/preprocessed_subj_split1.xlsx'; % filename with pre-processed data
         data % pre-processed data

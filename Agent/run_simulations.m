@@ -1,5 +1,4 @@
-function [simulations] = run_simulations(num_sims,num_blocks,simulations)
-    
+function [simulations] = run_simulations(num_sims,num_blocks,simulations)    
     % function run_simulations runs task-agent interaction simulations to get choice
     % and learning data.
     %

@@ -1,9 +1,10 @@
 classdef preprocess_LR < preprocess_vars
-% PREPROCESS_LR initialises, computes and preprocesses required regressors for
-% model based analyses.
-        methods
-            function obj = preprocess_LR()
+    % PREPROCESS_LR initialises, computes and preprocesses required regressors for
+    % model based analyses.
 
+    methods
+
+        function obj = preprocess_LR()
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
@@ -37,7 +38,7 @@ classdef preprocess_LR < preprocess_vars
         end
 
         function flip_mu(obj)
-            
+
             % function flip_mu computes the reported contingency parameter, after
             % correcting for incongruent blocks (eq. 16).
             %
@@ -49,12 +50,11 @@ classdef preprocess_LR < preprocess_vars
             %   contingency parameter
 
             incongruent_idx = obj.data.congruence == 0; % incongruent trials index
-            obj.flipped_mu(incongruent_idx) = 1 - obj.mu(incongruent_idx); % for incongruent 
-            obj.flipped_mu(~incongruent_idx) = obj.mu(~incongruent_idx); % for congruent 
+            obj.flipped_mu(incongruent_idx) = 1 - obj.mu(incongruent_idx); % for incongruent
+            obj.flipped_mu(~incongruent_idx) = obj.mu(~incongruent_idx); % for congruent
         end
 
-        function compute_action_dep_rew(obj) 
-            
+        function compute_action_dep_rew(obj)
             % function compute_action_dep_rew recodes task generated reward
             % contingent on action.
             %
@@ -67,9 +67,9 @@ classdef preprocess_LR < preprocess_vars
             recoding = obj.action .* ((-1) .^ (2 + obj.obtained_reward)); % recoding for action = 0
             obj.recoded_reward = obj.obtained_reward + recoding; % storing recoded values
         end
-        
+
         function compute_mu(obj)
-            
+
             % function compute_mu computes the reported contingency parameter,
             % depending on if actual mu < 0.5.
             %
@@ -94,7 +94,6 @@ classdef preprocess_LR < preprocess_vars
         end
 
         function [pe,up] = compute_state_dep_pe(obj)
-            
             % function compute_state_dep_pe computes prediction error, using recoded
             % reward and contingent on state
             %
@@ -102,15 +101,15 @@ classdef preprocess_LR < preprocess_vars
             %   obj: current object
             %
             % OUTPUT:
-            %   obj.pe: prediciton error
-            %   obj.up: update
+            %   pe: prediciton error
+            %   up: update
 
             state_zero_idx = obj.state == 0; % index for rows where state is 0
 
             % COMPUTE PE
             obj.data.pe(state_zero_idx) = obj.recoded_reward(state_zero_idx) - obj.mu_t_1(state_zero_idx); % state = 0
             obj.data.pe(~state_zero_idx) = (1 - obj.recoded_reward(~state_zero_idx)) - obj.mu_t_1(~state_zero_idx); % state = 1
-            
+
             % COMPUTE UP
             obj.data.up = NaN(height(obj.data),1);
             obj.data.up(2:end) = obj.mu_t(2:height(obj.data)) - obj.mu_t_1(2:height(obj.data));
@@ -122,7 +121,6 @@ classdef preprocess_LR < preprocess_vars
         end
 
         function compute_confirm(obj)
-            
             % function compute_confirm checks whether the outcome confirms the
             % choice.
             %
@@ -134,18 +132,17 @@ classdef preprocess_LR < preprocess_vars
 
             % High contrast trials
             contrast_one_idx = obj.data.contrast == 1;
-            
+
             % actual mu < 0.5
             obj.data.confirm_rew(contrast_one_idx & (obj.state == obj.action)) = 1 - obj.obtained_reward(contrast_one_idx & (obj.state == obj.action)); % less rewarding state-action
             obj.data.confirm_rew(contrast_one_idx & (obj.state ~= obj.action)) = obj.obtained_reward(contrast_one_idx & (obj.state ~= obj.action));
-            
+
             % actual mu > 0.5
             obj.data.confirm_rew(~contrast_one_idx & (obj.state ~= obj.action)) = 1 - obj.obtained_reward(~contrast_one_idx & (obj.state ~= obj.action)); % less rewarding state-action
             obj.data.confirm_rew(~contrast_one_idx & (obj.state == obj.action)) = obj.obtained_reward(~contrast_one_idx & (obj.state == obj.action));
         end
 
         function remove_conditions(obj)
-            
             % function remove_conditions removes conditions that are not wanted for
             % further analysis.
             %
@@ -153,15 +150,14 @@ classdef preprocess_LR < preprocess_vars
             %   obj: current object
             %
             % OUTPUT:
-            %   obj.condition: reduced condition array
-            
+            %   obj.condition: reduced condition array 
+
             obj.data = obj.data(obj.condition ~= obj.removed_cond,:);
             obj.condition = obj.data.choice_cond;
         end
 
         function zscored = compute_nanzscore(var_zscore)
-            
-            % function compute_nanzscore computes the z-score for a given 
+            % function compute_nanzscore computes the z-score for a given
             % variable.
             %
             % INPUTS:
@@ -169,40 +165,37 @@ classdef preprocess_LR < preprocess_vars
             %
             % OUTPUTS:
             %   zscored: z-scored variable
-            
+
             zscored = nanzscore(var_zscore);
         end
 
         function normalised = compute_normalise(~,var_normalise)
-            
             % function compute_normalise normalises a given variable.
             %
-            % INPUTS:
+            % INPUT:
             %   var_normalise: variable that needs to be normalised
             %
-            % OUTPUTS:
+            % OUTPUT:
             %   normalised: normalised variable
-            
+
             norm_data = NaN(height(var_normalise),1);
             normalised = normalise_zero_one(var_normalise,norm_data);
         end
 
         function compute_ru(obj)
-            
             % function compute_ru checks if reward uncertainty is high or low, given
             % the experimental condition.
             %
-            % INPUTS:
+            % INPUT:
             %   obj: current object
             %
-            % OUTPUTS:
+            % OUTPUT:
             %   obj.ru: reward uncertainty
 
             obj.data.ru = obj.condition ~= 1; % Set ru to 0 where condition is 1, and to 1 otherwise
         end
 
         function add_vars(obj,var,varname)
-            
             % function add_vars adds array as table columns.
             %
             % INPUTS:
@@ -212,12 +205,11 @@ classdef preprocess_LR < preprocess_vars
             %
             % OUTPUT:
             %   obj.data: table with added column
-            
+
             obj.data = addvars(obj.data,var,'NewVariableNames',varname);
         end
 
         function remove_zero_pe(obj)
-            
             % function remove_zero_pe gets rid of trials with PE = 0
             %
             % INPUTS:
@@ -225,12 +217,11 @@ classdef preprocess_LR < preprocess_vars
             %
             % OUTPUT:
             %   obj.data: table without PE = 0
-            
+
             obj.data = obj.data(obj.data.pe ~= 0,:);
         end
 
         function add_splithalf(obj)
-            
             % function add_splithalf splits and groups alternating trials into
             % different groups.
             %
@@ -239,13 +230,12 @@ classdef preprocess_LR < preprocess_vars
             %
             % OUTPUT:
             %   obj.data.splithalf: split half variable for that trial
-
+            
             even_trials_idx = mod(obj.data.trials, 2) == 0; % Create a logical array where the trial numbers are even
             obj.data.splithalf = even_trials_idx; % Set splithalf to 1 where trials are even, and 0 otherwise
         end
 
         function add_saliencechoice(obj)
-            
             % function add_saliencechoice adds a categorical variable for whether
             % the more salient choice was made on a given trial.
             %

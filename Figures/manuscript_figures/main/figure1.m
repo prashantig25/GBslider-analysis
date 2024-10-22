@@ -1,4 +1,6 @@
-%% INITIALISE VARS
+% Figure 1: Summary
+
+% INITIALISE VARS
 
 clc
 clearvars
@@ -15,7 +17,8 @@ fontsize_label = 12; % font size for subplot labels
 current_Dir = pwd;
 save_dir = fullfile("saved_figures",filesep,"main");
 mkdir(save_dir)
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure("Position",[150,150,350,350])
 t = tiledlayout(3,2);
@@ -26,7 +29,7 @@ ax2 = nexttile(2, [2,1]);
 ax3 = nexttile(3);
 ax5 = nexttile(5, [1,2]);
 
-%% H1: low perceptual uncertainty
+% H1: low perceptual uncertainty
 
 % CHANGE AXES POSITION
 position_change = [0, -0.05, 0, 0.015]; % adjusted position
@@ -68,7 +71,8 @@ a1.Parent = gca;
 a1.X = [5.4 6.87];
 a1.Y = [2.5 5];
 hold on
-%% H1: High perceptual uncertainty
+
+% H1: High perceptual uncertainty
 
 % CHANGE AXES POSITION
 position_change = [0, 0, 0, 0.015]; 
@@ -106,7 +110,8 @@ a1.Parent = gca;
 a1.X = [4.7 3.3];
 a1.Y = [2.5 5];
 a1.Color = [0.5 0.5 0.5 1];
-%% PLOT LEARNING RATES
+
+% PLOT LEARNING RATES
 
 % CHANGE AXES POSITION
 position_change =  [0.02, 0.05, -0.02, -0.09]; 
@@ -158,7 +163,8 @@ for n = 1:num_strings
     txt.FontName = font_name;
     txt.HorizontalAlignment = horz_align;
 end
-%% H2 Box
+
+% H2 Box
 
 % CHANGE AXES POSITION
 position_change =  [0, -0.02, 0, 0]; 
@@ -213,7 +219,8 @@ for n = 1:num_lines
     a1.Color = 'k';
     a1.LineWidth = linewidths(n);
 end
-%% ADD EXTERNAL PNGs
+
+% ADD EXTERNAL PNGs
 
 png_width = 0.06; % width of PNG
 png_height = 0.06; % height of PNG
@@ -325,7 +332,8 @@ for n = 1:num_plots
     yl.Position = yl.Position;% + [-1,0,0];
     box off
 end
-%% SUBPLOT LABELS
+
+% SUBPLOT LABELS
 
 ax1_pos = ax1_new.Position;
 adjust_x = -0.06; % adjust x-axis position of subplot label
@@ -346,7 +354,8 @@ adjust_y = ax2_pos(4) - 0.01;
 [label_x,label_y] = change_plotlabel(ax2_new,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'c','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

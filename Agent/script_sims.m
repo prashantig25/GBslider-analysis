@@ -14,10 +14,10 @@ condition = 1; % experimental condition; change accordingly in agentvars and tas
 
 % Get the current working directory
 currentDir = pwd;
-save_dir = strcat("../",'Data', filesep, 'agent_simulations'); 
+save_dir = strcat("..", filesep, 'Data', filesep, 'agent_simulations'); 
 mkdir(save_dir);
-%% RUN SIMULATIONS
 
+% RUN SIMULATIONS
 [simulations] = run_simulations(num_sims,num_blocks,simulations); % use run simulations function
 for n = 1:num_blocks % add task-based variables 
     contrast = [contrast; repelem(contrast_vars(n),num_trials,1);];
@@ -28,8 +28,10 @@ simulations.contrast = repmat(contrast,num_sims,1);
 simulations.congruence = repmat(congruence,num_sims,1);
 simulations.choice_cond = repmat(condition,num_sims,1);
 safe_saveall(fullfile(save_dir,'data_agent_condition1.xlsx'),simulations);
-%% SAVE ALL CONDITION SIMULATIONS
 
+% Todo: save all files
+
+% SAVE ALL CONDITION SIMULATIONS
 agent_cond1 = readtable(fullfile(save_dir,"data_agent_condition1.xlsx"));
 agent_cond2 = readtable(fullfile(save_dir,"data_agent_condition2.xlsx"));
 agent_cond3 = readtable(fullfile(save_dir,"data_agent_condition3.xlsx"));
