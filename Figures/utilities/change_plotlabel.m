@@ -1,5 +1,4 @@
-function [label_x,label_y] = change_plotlabel(axes,adjust_x,adjust_y)
-    
+function [label_x,label_y] = change_plotlabel(axes,adjust_x,adjust_y)  
     % function change_plotlabel adjusts plot label accordingly.
     %
     % INPUTS:

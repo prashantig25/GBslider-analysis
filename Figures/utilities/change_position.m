@@ -1,5 +1,4 @@
 function new_pos = change_position(axes,position_change)
-    
     % function change_position adjusts axes position for a tile, figure,
     % subplot.
     %

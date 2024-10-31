@@ -1,7 +1,6 @@
 function [pu_box,high_PU,mid_PU,low_PU,color_screen,fb_green,...
     darkblue_muted,mix,perc,rew,gray_dots,light_gray,binned_dots,barface_green,...
     reg_color,dots_edges,dim_gray,fits_colors,gray_arrow,study2_blue] = colors_rgb()
-
     % function colors_rgb returns a set of predefined RGB color values used
     % for various graphical elements in plots and figures.
     %
