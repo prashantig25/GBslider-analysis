@@ -36,6 +36,7 @@ classdef agent_unittests < matlab.unittest.TestCase
             
             % INITIALIZE VARS
             agent = Agent();
+            agent.getSigma();
             contrast_diff = 0.1; % set contrast difference
             rng(123) % set seed
             agent.observation_sample(contrast_diff);

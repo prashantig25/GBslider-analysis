@@ -3,8 +3,7 @@ classdef task_unittests < matlab.unittest.TestCase
     % various functions used to generate task-based variables for the agent.
 
     methods(Test)
-        function test_constructormethods(obj)
-            
+        function test_constructormethods(obj)            
             % test_constructormethods tests the output for all the
             % constructor methods within object Task().
             
@@ -13,6 +12,7 @@ classdef task_unittests < matlab.unittest.TestCase
             task.C = linspace(-0.1,0.1,20);
             task.condition = 1;
             task.mu = 0.7;
+            task.taskMu();
 
             % COMPUTE EXPECTED OUTPUTS
             expected_p_cs = NaN(length(task.C), 2); 
@@ -29,14 +29,14 @@ classdef task_unittests < matlab.unittest.TestCase
             obj.verifyEqual(task.p_ras,expected_p_ras, 'Incorrect p_ras');
         end
 
-        function test_statesample(obj)
-            
+        function test_statesample(obj)            
             % test_statesample function tests the state_sample function
             % from the Task() object.
             
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
             task.Theta = 0.5;
+            task.taskMu();
             task.state_sample();
             
             % RUN TESTS
@@ -63,8 +63,7 @@ classdef task_unittests < matlab.unittest.TestCase
 
         end
 
-        function test_contrastsample(obj)
-            
+        function test_contrastsample(obj)            
             % test_contrastsample function tests the contrast_sample function
             % from the Task() object.
             
@@ -72,6 +71,7 @@ classdef task_unittests < matlab.unittest.TestCase
             task = Task();
             task.s_index = 1;
             task.C = linspace(-0.1,0.1,20); 
+            task.taskMu();
             task.contrast_sample();
             
             % COMPUTE EXPECTED OUTPUTS
@@ -85,13 +85,13 @@ classdef task_unittests < matlab.unittest.TestCase
             obj.verifyLessThan(task.c_t,0,'Contrast difference does not match the task generated state')
         end
 
-        function test_rewardsample(obj)
-            
+        function test_rewardsample(obj)         
             % test_rewardsample function tests the reward_sample function
             % from the Task() object.
             
             % INITIALIZE TASK AND OTHER VARS
             task = Task();
+            task.taskMu();
             task.state_sample();
             task.reward_sample(1);
 

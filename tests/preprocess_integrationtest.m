@@ -1,12 +1,16 @@
 classdef preprocess_integrationtest < matlab.unittest.TestCase
     % PREPROCESS_INTEGRATIONTEST is an integration test for
     % various functions used for data pre-processing.
+    
     methods(Test)
         
         function test_integration(obj)
+            % Todo: documentaiton missing
 
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR(); % class
+            preprocess_obj.filename = "Data/descriptive data/main study/study2.txt"; % specify path to get the dataset
+            preprocess_obj.initivaliseVars();
             num_trials = 20; % number of trials
             preprocess_obj.data = preprocess_obj.data(1:num_trials,:); % data table
             preprocess_obj.flipped_mu = NaN(num_trials,1); % congruence contingent flipped mu
@@ -95,62 +99,49 @@ classdef preprocess_integrationtest < matlab.unittest.TestCase
                 expected_data.up(i) = expected_data.mu_t(i) - expected_data.mu_t_1(i);
             end
             expected_data.pe(preprocess_obj.data.trials == 1,1) = 0;
-            if preprocess_obj.absolute_lr == 1 % for absolute LR analysis
-                expected_data.pe = abs(expected_data.pe);
-                expected_data.up = abs(expected_data.up);
-            end
 
             % EXPECTED VARIABLE FOR CHOICE CONFIRMATION
-            for i = 1:num_trials
-                if preprocess_obj.data.contrast(i) == 1 % actual mu < 0.5
-                    if preprocess_obj.state(i) == preprocess_obj.action(i) % the less rewarding state and action combination
-                        confirm_rew(i) = 1-preprocess_obj.obtained_reward(i);
-                    else
-                        confirm_rew(i) = preprocess_obj.obtained_reward(i);
-                    end
-                else
-                    if preprocess_obj.state(i) ~= preprocess_obj.action(i) % the less rewarding state and action combination
-                        confirm_rew(i) = 1-preprocess_obj.obtained_reward(i);
-                    else
-                        confirm_rew(i) = preprocess_obj.obtained_reward(i);
-                    end
-                end
-            end
+%             for i = 1:num_trials
+%                 if preprocess_obj.data.contrast(i) == 1 % actual mu < 0.5
+%                     if preprocess_obj.state(i) == preprocess_obj.action(i) % the less rewarding state and action combination
+%                         confirm_rew(i) = 1-preprocess_obj.obtained_reward(i);
+%                     else
+%                         confirm_rew(i) = preprocess_obj.obtained_reward(i);
+%                     end
+%                 else
+%                     if preprocess_obj.state(i) ~= preprocess_obj.action(i) % the less rewarding state and action combination
+%                         confirm_rew(i) = 1-preprocess_obj.obtained_reward(i);
+%                     else
+%                         confirm_rew(i) = preprocess_obj.obtained_reward(i);
+%                     end
+%                 end
+%             end
+
+            % High contrast trials
+            contrast_one_idx = preprocess_obj.data.contrast == 1;
+
+            % actual mu < 0.5
+            confirm_rew(contrast_one_idx & (preprocess_obj.state == preprocess_obj.action)) = 1 - preprocess_obj.obtained_reward(contrast_one_idx & (preprocess_obj.state == preprocess_obj.action)); % less rewarding state-action
+            confirm_rew(contrast_one_idx & (preprocess_obj.state ~= preprocess_obj.action)) = preprocess_obj.obtained_reward(contrast_one_idx & (preprocess_obj.state ~= preprocess_obj.action));
+
+            % actual mu > 0.5
+            confirm_rew(~contrast_one_idx & (preprocess_obj.state ~= preprocess_obj.action)) = 1 - preprocess_obj.obtained_reward(~contrast_one_idx & (preprocess_obj.state ~= preprocess_obj.action)); % less rewarding state-action
+            confirm_rew(~contrast_one_idx & (preprocess_obj.state == preprocess_obj.action)) = preprocess_obj.obtained_reward(~contrast_one_idx & (preprocess_obj.state == preprocess_obj.action));
 
             % EXPECTED REWARD UNCERTAINTY VARIABLE
-            for i = 1:num_trials
-                if preprocess_obj.condition(i) == 1
-                    ru(i) = 0;
-                else
-                    ru(i) = 1;
-                end
-            end
+            ru = preprocess_obj.condition ~= 1; % Set ru to 0 where condition is 1, and to 1 otherwise            
 
             % EXPECTED SPLITHALF VARIABLE
-            for i = 1:num_trials
-                if mod(preprocess_obj.data.trials(i),2) == 0
-                    splithalf(i) = 1;
-                else
-                    splithalf(i) = 0;
-                end
-            end
+            even_trials_idx = mod(preprocess_obj.data.trials, 2) == 0; % Create a logical array where the trial numbers are even
+            splithalf = even_trials_idx; % Set splithalf to 1 where trials are even, and 0 otherwise
 
             % EXPECTED SALIENCE CHOICE
-            for i = 1:num_trials
-                if preprocess_obj.data.contrast_left(i) > preprocess_obj.data.contrast_right(i)
-                    if preprocess_obj.data.choice(i) == 0
-                        salience_choice(i) = 1;
-                    else
-                        salience_choice(i) = 0;
-                    end
-                else
-                    if preprocess_obj.data.choice(i) == 1
-                        salience_choice(i) = 1;
-                    else
-                        salience_choice(i) = 0;
-                    end
-                end
-            end
+            left_greater_idx = find(preprocess_obj.data.contrast_left > preprocess_obj.data.contrast_right); % contrast left is greater than contrast right
+            right_greater_idx = find(preprocess_obj.data.contrast_left <= preprocess_obj.data.contrast_right); % contrast right is greater than contrast left
+
+            % Set salience_choice to 1 or 0 based on choice for these indices
+            salience_choice(left_greater_idx) = preprocess_obj.data.choice(left_greater_idx) == 0;
+            salience_choice(right_greater_idx) = preprocess_obj.data.choice(right_greater_idx) == 1;
             
             % EXPECTED NORMALISATION
             norm_data = NaN(height(linspace(0,0.1,num_trials).'),1);
@@ -168,7 +159,7 @@ classdef preprocess_integrationtest < matlab.unittest.TestCase
             preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
 
             % TEST
-            obj.assertEqual(preprocess_obj.data, expected_data);
+            assert(isequaln(preprocess_obj.data, expected_data), 'Data does not match.');
         end
     end
 end
