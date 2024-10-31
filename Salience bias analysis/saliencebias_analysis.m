@@ -1,45 +1,33 @@
+% saliencebias_analysis fits a regression model to explain the influence of
+% uncertainty on salience bias in choices.
+
 clc
 clearvars
 
-% Get the current working directory
-currentDir = pwd;
+% PATH STUFF
 
-% CHANGE DIRECTORY ACCORDINGLY
-pilot_study = 0; % analysis to be done for pilot or main study 
-
-if pilot_study == 0
-    behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'main study');
-    data = readtable(fullfile(behv_dir,"study2.txt")); % load
-    num_blocks = 12; % number of blocks
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
 else
-    behv_dir = strcat('Data', filesep, 'descriptive data', filesep, 'pilot study');
-    data = readtable(fullfile(behv_dir,"study1.txt")); % load
-    num_blocks = 16; % number of blocks
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
 end
-save_dir = strcat("../", 'Data', filesep, 'salience bias');
+save_dir = strcat(desiredPath, filesep, 'Data', filesep, 'salience bias');
 mkdir(save_dir);
 
-% PREPARE DATA
-all_cond = 1; % whether all conditions to be considered for regression
-if all_cond == 0
-    data(data.choice_cond == 3,:) = []; % remove condition, if neccesary
-end
+% LOAD DATA FOR MAIN STUDY ANALYSIS
 
-% CATEGORICALLY CODE PERCEPTUAL AND REWARD UNCERTAINTY
-for i = 1:height(data) 
-    if data.condition(i) == 1 || data.condition(i) == 3
-        data.reward_unc(i) = 1; % reward uncertainty
-    else
-        data.reward_unc(i) = 0;
-    end
-    if data.condition(i) == 4 || data.condition(i) == 3
-        data.pu(i) = 0; % perceptual uncertainty
-    else
-        data.pu(i) = 1;
-    end
-end
+behv_dir = strcat(desiredPath, filesep, 'Data', filesep, 'descriptive data', filesep, 'main study');
+data = readtable(fullfile(behv_dir,"study2.txt")); % load
+num_blocks = 12; % number of blocks
 
 % FIT MODEL
+
+all_cond = 1; % whether all conditions to be considered for regression
 subj_id = unique(data.ID); % subject IDs
 mdl = 'ecoperf ~ pu + reward_unc + contrast'; % model
 num_vars = 3; % number of variables
@@ -48,25 +36,21 @@ pred_vars = {'contrast','pu','reward_unc'}; % cell array with names of predictor
 resp_var = 'ecoperf'; % name of response variable
 cat_vars = {'contrast','pu','reward_unc'}; % cell array with names of categorical variables
 num_vars = 3; % number of predictor vars
-res_subjs = []; % empty array to store residuals
 weight_y_n = 0; % non-weighted regression
-betas_all = NaN(length(subj_id),num_vars);
-
-for i = 1:length(subj_id)
-    data_subj = data(data.ID == subj_id(i),:);
-    for b = 1:num_blocks % get task-based variables and economic performance for each block
-        data_blocks = data_subj(data_subj.blocks == b,:);
-        block_data(b,1) = unique(data_blocks.reward_unc);
-        block_data(b,2) = unique(data_blocks.pu);
-        block_data(b,3) = unique(data_blocks.contrast);
-        block_data(b,4) = nanmean(data_blocks.ecoperf);
-    end
-    tbl = table(block_data(:,1),block_data(:,2),block_data(:,3),block_data(:,4), ...
-        'VariableNames',{'reward_unc','pu','contrast','ecoperf'});
-    [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(tbl,mdl,pred_vars,resp_var, ...
-        cat_vars,num_vars,weight_y_n);
-    betas_all(i,:) = betas(2:end);
-end
+betas_all = modelSalienceBias(data,num_blocks, ...
+   all_cond,mdl,num_vars,block_data,pred_vars,resp_var,cat_vars, ...
+   weight_y_n);
 
 % SAVE DATA
-safe_saveall(fullfile(save_dir,"betas_salience.mat"),betas_all)
+
+safe_saveall(fullfile(save_dir,"betas_salience_study2.mat"),betas_all)
+
+% RUN ANALYSIS ON PILOT DATA
+
+behv_dir = strcat(desiredPath, filesep, 'Data', filesep, 'descriptive data', filesep, 'pilot study');
+data = readtable(fullfile(behv_dir,"study1.txt")); % load
+num_blocks = 16; % number of blocks
+betas_all = modelSalienceBias(data,num_blocks, ...
+   all_cond,mdl,num_vars,block_data,pred_vars,resp_var,cat_vars, ...
+   weight_y_n);
+safe_saveall(fullfile(save_dir,"betas_salience_study1.mat"),betas_all)
