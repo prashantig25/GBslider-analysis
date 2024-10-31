@@ -20,12 +20,21 @@ num_cont = 2; % number of contrast levels in the task
 num_blocks = 4; % number of blocks per condition
 total_blocks = 16; % total number of blocks per subject
 
-% Get the current working directory
-currentDir = pwd;
+% USER-BASED PATH
+currentDir = cd; % current directory
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('Data', filesep, 'pilot_study'); 
-save_dir = strcat('Data', filesep,'descriptive data', filesep, 'pilot study'); 
+behv_dir = strcat(desiredPath, filesep, 'Data', filesep, 'pilot_study'); 
+save_dir = strcat(desiredPath, filesep, 'Data', filesep,'descriptive data', filesep, 'pilot study'); 
 mkdir(save_dir);
 
 % MERGE ALL SUBJECT DATA

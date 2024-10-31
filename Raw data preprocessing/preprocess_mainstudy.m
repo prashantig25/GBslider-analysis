@@ -9,12 +9,21 @@ num_cont = 2; % number of contrast levels in the task
 num_blocks = 4; % number of blocks per condition
 total_blocks = 12; % total number of blocks per subject
 
-% Get the current working directory
-currentDir = "Reward-learning-analysis-main";
+% USER-BASED PATH
+currentDir = cd; % current directory
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
 
 % CHANGE DIRECTORY ACCORDINGLY
-behv_dir = strcat('Data', filesep, 'main_study');
-save_dir = strcat("../",'Data', filesep, 'descriptive data', filesep, 'main study'); 
+behv_dir = strcat(desiredPath, filesep, 'Data', filesep, 'main_study');
+save_dir = strcat(desiredPath, filesep, 'Data', filesep, 'descriptive data', filesep, 'main study'); 
 mkdir(save_dir);
 
 % ARRAY WITH SUBJECT IDS
@@ -29,7 +38,7 @@ subj_ids = [139	143	145	146	151	157	159	160	162	163	164	165	174	176	181	192	198,
 num_subjs = length(subj_ids);
 data_all = []; % empty table to merge all subjects data
 for i = 1:length(subj_ids)
-    tsv_file = fullfile(currentDir, behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
+    tsv_file = fullfile(behv_dir,strcat('sub_',num2str(subj_ids(i))),'behav', ...
             strcat('sub_',num2str(subj_ids(i)),".tsv")); % path and file name for TSV file
     data_table = readtable(tsv_file, "FileType","text",'Delimiter', '\t'); % read
     data_all = [data_all; data_table]; % merge all subjects data
