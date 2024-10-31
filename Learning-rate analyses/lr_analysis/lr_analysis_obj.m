@@ -1,19 +1,22 @@
 classdef lr_analysis_obj < lr_vars
     % LR_ANALYSIS_OBJ fits a linear regression model to single trial updates.
+    
     methods
-        function obj = lr_analysis_obj()
 
-            % The contructor methods initialises all other properties of
-            % the class that are computed based on exisitng static properties of
-            % the class.
+        function initialiseVars(obj)
+            % function initivaliseVars initializes all the required
+            % variables for the preprocessing of data for LR analyses.
+            %
+            % INPUTS:
+            %   obj: current object
 
-            obj.data = readtable(obj.filename);
+            obj.data = importdata(obj.filename);
         end
 
         function compute_numvars(obj)
-
             % function compute_numvars computes the number of variables in
             % the model definition.
+            %
             % INPUT:
             %   obj: current object
 
@@ -27,8 +30,7 @@ classdef lr_analysis_obj < lr_vars
             obj.num_vars = length(unique_terms);
         end
 
-        function model_definition(obj)
-
+        function model_definition(obj,varargin)
             % function model_definition defines the regression model
             % equation for the desired analysis.
             %
@@ -44,19 +46,27 @@ classdef lr_analysis_obj < lr_vars
             elseif obj.saliencechoice_mdl == 1
                 obj.mdl = 'up ~ pe + pe:contrast_diff + pe:salience_choice + pe:congruence + pe:pe_sign ';
                 obj.compute_numvars;
+            elseif obj.EEanalysis == 1
+                obj.mdl = varargin{1};
+                obj.compute_numvars;
             end
 
             if obj.agent == 1
                 obj.pred_vars = {'pe','salience','contrast_diff','congruence','reward_unc','reward','mu','pe_sign'}; % cell array with names of predictor variables
                 obj.cat_vars = {'salience','congruence','condition','reward_unc','pe_sign'}; % cell array with names of categorical variables
+                obj.resp_var = 'up';
             elseif obj.online == 1
                 obj.pred_vars = {'pe','salience','contrast_diff','congruence','reward_unc','reward','mu','pe_sign','salience_choice'}; % cell array with names of predictor variables
                 obj.cat_vars = {'salience','congruence','condition','reward_unc','pe_sign','salience_choice'}; % cell array with names of categorical variables
+                obj.resp_var = 'up';
+            elseif obj.EEanalysis == 1
+                obj.pred_vars = {'pe','pe__condiff','pe__salience','pe__congruence','pe__pesign'}; % variable names
+                obj.cat_vars = '';
+                obj.resp_var = 'perf';
             end
         end
 
         function [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(obj,tbl,fit_fn,varargin)
-
             % function linear_fit fits a linear regression model to the updates as a
             % function of prediction error and other task based computational
             % variables.
@@ -94,8 +104,7 @@ classdef lr_analysis_obj < lr_vars
             coeffs_name = lm.CoefficientNames;
         end
 
-        function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = get_coeffs(obj,fit_fn)
-
+        function [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_all] = get_coeffs(obj,fit_fn,predict_fn)
             % function get_coeffs fits the linear regression model by running non-weighted
             % and weighted regressions to get the beta coefficients across
             % subjects
@@ -118,7 +127,8 @@ classdef lr_analysis_obj < lr_vars
             % INITIALISE VARIABLES
             betas_all = NaN(length(obj.num_subjs),obj.num_vars);
             rsquared_full = NaN(length(obj.num_subjs),1);
-            posterior_up_subjs = [];
+            posterior_all = cell(length(obj.num_subjs),1);
+            obj.res_subjs = [];
 
             % CHECK IF ANALYSIS NEEDS TO BE RUN FOR ABSOLUTE OR SIGNED LRs
             if obj.absolute_analysis == 1
@@ -130,15 +140,7 @@ classdef lr_analysis_obj < lr_vars
             for i = 1:obj.num_subjs
                 obj.weight_y_n = 0; % non-weighted
                 data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
-                if obj.pupil == 1
-                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                        data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
-                        data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
-                        normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
-                        normalise_zero_one(data_subject.fb_tonic).',...
-                        'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                        ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
-                elseif obj.online == 1
+                if obj.online == 1
                     tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
                         data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                         'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
@@ -161,15 +163,7 @@ classdef lr_analysis_obj < lr_vars
                 for i = 1:obj.num_subjs
                     data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
-                    if obj.pupil == 1
-                        tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                            data_subject.condition,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign, ...
-                            data_subject.salience_choice,normalise_zero_one(data_subject.patch_phasic).',...
-                            normalise_zero_one(data_subject.patch_tonic).',normalise_zero_one(data_subject.fb_phasic).',...
-                            normalise_zero_one(data_subject.fb_tonic).',...
-                            'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                            ,'reward_unc','pe_sign','salience_choice','patch_phasic','patch_tonic','fb_phasic','fb_tonic'});
-                    elseif obj.online == 1
+                    if obj.online == 1
                         tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
                             data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
                             'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
@@ -183,43 +177,8 @@ classdef lr_analysis_obj < lr_vars
                     [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj);
                     betas_all(i,:) = betas(2:end);
                     rsquared_full(i,1) = rsquared;
-                    [post_up] = predict(lm,tbl);
-                    posterior_update = post_up;
-                    posterior_up_subjs = [posterior_up_subjs; posterior_update];
-                end
-            end
-        end
-
-        function [post_up] = posterior_up(obj,tbl,betas)
-
-            % function posterior_up calculates the posterior updated predicted by the model
-            % given the pe and other task/computational vars.
-            %
-            % INPUT:
-            %   obj: current object
-            %   tbl: table contatining all vars including pe, task/computational
-            %   vars such as contrast difference and so on
-            %   betas: beta values by the model
-            %
-            % OUTPUT:
-            %   post_up: posterior update predicted by the model
-
-            % INITIALISE OUTPUT AND OTHER VARS
-            post_up = zeros(height(tbl),1);
-            var_array = NaN(height(tbl),length(obj.var_names));
-
-            % GET TRIAL-BASED VALUES FOR PREDICTOR VARS FOR Y_POST = X.*BETA + ERROR
-            for v = 1:length(obj.var_names)
-                var_array(:,v) = tbl.(obj.var_names{v});
-            end
-
-            % CALCULATE Y_POST
-            post_up(:,1) = post_up(:,1) + betas(1); % add intercept
-            for b = 2:length(betas)
-                if b == 2
-                    post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,b-1); % main effect of PE
-                else
-                    post_up(:,1) = post_up(:,1) + betas(b).*var_array(:,1).*var_array(:,b-1); % interaction effect
+                    [post_up] = predict_fn(lm,tbl);
+                    posterior_all{i,1} = post_up;
                 end
             end
         end
