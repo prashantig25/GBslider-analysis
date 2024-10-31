@@ -1,4 +1,5 @@
-function partial_rsq = compute_partialrsq(rsq_reduced,rsq_full)
+function [partial_rsq] = compute_partialrsqSSE(SSE_reduced,SSE_full)
+    
     % function compute_partialrsq computes partial r-squared value for a single
     % coefficient from a multi-variate model.
     %
@@ -10,5 +11,5 @@ function partial_rsq = compute_partialrsq(rsq_reduced,rsq_full)
     % OUTPUT:
     %   partial_rsq: partial r-squared
     
-    partial_rsq = (rsq_full - rsq_reduced)./rsq_full;
+    partial_rsq = (SSE_reduced - SSE_full)./SSE_reduced; % source: https://online.stat.psu.edu/stat462/node/138/
 end

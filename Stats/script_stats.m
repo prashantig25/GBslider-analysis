@@ -6,14 +6,23 @@ clc
 clearvars
 
 % Get the current working directory
-currentDir = pwd;
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
 
-save_descriptive = "..\Data\stats_saved\descriptive";
-save_lr = "..\Data\stats_saved\lr_analysis";
-save_integration = "..\Data\stats_saved\integration";
-save_dm_bias = "..\Data\stats_saved\dm_analysis\bias";
-save_dm_reg = "..\Data\stats_saved\dm_analysis\regression";
-save_lr_suppl = "..\Data\stats_saved\supplement\learning";
+save_descriptive = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'descriptive');
+save_lr = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'lr_analysis');
+save_integration = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'integration');
+save_dm_bias = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'dm_analysis', filesep, 'bias');
+save_dm_reg = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'dm_analysis', filesep, 'regression');
+save_lr_suppl = strcat(desiredPath, filesep, 'Stats', filesep, 'stats_saved', filesep, 'supplement', filesep, 'learning');
 
 mkdir(save_descriptive);
 mkdir(save_lr);
@@ -22,36 +31,38 @@ mkdir(save_dm_bias);
 mkdir(save_dm_reg);
 mkdir(save_lr_suppl);
 
-%% LOAD DATA
+% LOAD DATA
 
-% descriptive choice data for study 2
-ecoperf_mix = importdata("../Data/descriptive data/main study/ecoperf_mix.mat");
-ecoperf_perc = importdata("../Data/descriptive data/main study/ecoperf_perc.mat");
-ecoperf_rew = importdata("../Data/descriptive data/main study/ecoperf_rew.mat");
+% Base directory for data files
+base_dir = strcat(desiredPath, filesep, 'Data');
 
-% descriptive choice data for study 1
-ecoperf_hh = importdata("../Data/descriptive data/pilot study/ecoperf_hh.mat");
-ecoperf_hl = importdata("../Data/descriptive data/pilot study/ecoperf_hl.mat");
-ecoperf_lh = importdata("../Data/descriptive data/pilot study/ecoperf_lh.mat");
-ecoperf_ll = importdata("../Data/descriptive data/pilot study/ecoperf_ll.mat");
+% Descriptive choice data for study 2
+ecoperf_mix = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_mix.mat'));
+ecoperf_perc = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_perc.mat'));
+ecoperf_rew = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_rew.mat'));
 
-% descriptive learning data
-mix_curve = importdata("../Data/descriptive data/main study/mix_curve.mat");
-perc_curve = importdata("../Data/descriptive data/main study/perc_curve.mat");
-rew_curve = importdata("../Data/descriptive data/main study/rew_curve.mat");
+% Descriptive choice data for study 1
+ecoperf_hh = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'pilot study', filesep, 'ecoperf_hh.mat'));
+ecoperf_hl = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'pilot study', filesep, 'ecoperf_hl.mat'));
+ecoperf_lh = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'pilot study', filesep, 'ecoperf_lh.mat'));
+ecoperf_ll = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'pilot study', filesep, 'ecoperf_ll.mat'));
+
+% Descriptive learning data
+mix_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'mix_curve.mat'));
+perc_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'perc_curve.mat'));
+rew_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'rew_curve.mat'));
 
 % LR analysis
-betas_signed = importdata("../Data/LR analyses/betas_signed_salience.mat","betas_all"); % signed 
-betas_abs = importdata("../Data/LR analyses/betas_abs_salience.mat","betas_all"); % absolute
-data_subjs = readtable("../Data/LR analyses/preprocessed_data.xlsx");%,"data_subjs"); % preprocessed data
+betas_signed = importdata(strcat(base_dir, filesep, 'LR analyses', filesep, 'betas_signed_salience.mat'), "betas_all"); % signed 
+betas_abs = importdata(strcat(base_dir, filesep, 'LR analyses', filesep, 'betas_abs_salience.mat'), "betas_all"); % absolute
+data_subjs = readtable(strcat(base_dir, filesep, 'LR analyses', filesep, 'preprocessed_data.xlsx')); % preprocessed data
 
-% estimation error results
-lm = importdata("../Data/estimation error analysis/lm_signed_esterror_signed_lr.mat");
+% Estimation error results
+lm = importdata(strcat(base_dir, filesep, 'estimation error analysis', filesep, 'lm_signed_esterror_signed_lr.mat'));
 
-% salience bias
-% load("../Data/salience bias/salience_bias.mat","salience_bias");
-betas_salience_study2 = importdata("../Data/salience bias/betas_salience_study2.mat"); % beta coefficient from salience bias analysis
-betas_salience_study1 = importdata("../Data/salience bias/betas_salience_study1.mat"); % beta coefficient from salience bias analysis
+% Salience bias
+betas_salience_study2 = importdata(strcat(base_dir, filesep, 'salience bias', filesep, 'betas_salience_study2.mat')); % beta coefficient from salience bias analysis
+betas_salience_study1 = importdata(strcat(base_dir, filesep, 'salience bias', filesep, 'betas_salience_study1.mat')); % beta coefficient from salience bias analysis
 %% DESCRIPTIVE ANALYSIS FROM STUDY 2
 
 % comparison to chance performance
@@ -95,7 +106,7 @@ ttestResults = table(cond_names, round(h_vals(:,1),2), round(p_vals(:,1),2), ...
 % Save the table as a CSV file
 safe_saveall(strcat(save_descriptive,filesep,'allconditions_chance_ttest.csv'),ttestResults);
 
-%% COHEN'S D FOR ECONOMIC PERFORMANCE ACROSS CONDITIONS
+% COHEN'S D FOR ECONOMIC PERFORMANCE ACROSS CONDITIONS
 
 num_condition = 3; % number of conditions
 cohen_d = NaN(num_condition,1); % initialise
@@ -108,7 +119,8 @@ end
 cohenResults = table(cond_names, round(cohen_d,2), ...
     'VariableNames', {'Condition', 'cohend'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'ecoperf_cohen.csv'),cohenResults);
-%% ANOVA to compare three conditions
+
+% ANOVA to compare three conditions
 
 % initialise
 mix_avg = nanmean(ecoperf_mix,2);
@@ -124,7 +136,8 @@ name = "anova";
 anova_results = table(name, round(tbl{2,5},2), round(tbl{2,6},2), tbl{2,3}, tbl{3,3}, ...
     'VariableNames', {'test', 'fvalue', 'pvalue', 'df1', 'df2'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'ecoperf_anova.csv'),anova_results);
-%% T-TEST TO COMPARE THE IMPACT OF UNCERTAINTY ON CHOICES
+
+% T-TEST TO COMPARE THE IMPACT OF UNCERTAINTY ON CHOICES
 
 % initialise
 h_vals = NaN(3,1);
@@ -162,7 +175,8 @@ ttestResults = table(cond_names, round(h_vals(:,1),2), round(p_vals(:,1),2), ...
     round(t_vals,2), round(df_vals,2), round(cohen_d,2),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','cohen_d'}); 
 safe_saveall(strcat(save_descriptive,filesep,'uncertainty_ttest.csv'),ttestResults);
-%% ANOVA TO COMPARE SLIDER DATA ACROSS CONDITIONS
+
+% ANOVA TO COMPARE SLIDER DATA ACROSS CONDITIONS
 
 % initialise
 mix_avg = nanmean(mix_curve,2);
@@ -178,7 +192,8 @@ name = "anova";
 anova_results = table(name, round(tbl{2,5},2), round(tbl{2,6},2), tbl{2,3}, tbl{3,3}, ...
     'VariableNames', {'test', 'fvalue', 'pvalue', 'df1', 'df2'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'mu_anova.csv'),anova_results);
-%% T-TEST TO COMPARE SLIDER DATA ACROSS UNCERTAINTIES
+
+% T-TEST TO COMPARE SLIDER DATA ACROSS UNCERTAINTIES
 
 % initialise
 h_vals = NaN(3,1);
@@ -214,7 +229,8 @@ ttestResults = table(cond_names, round(h_vals(:,1),2), round(p_vals(:,1),2), ...
     round(t_vals,2), round(df_vals,2), round(cohen_d,2),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','cohen_d'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'mu_uncertainty_ttest.csv'), ttestResults);
-%% SAVE MEAN and SEM FOR SLIDER UPDATES ACROSS CONDITIONS
+
+% SAVE MEAN and SEM FOR SLIDER UPDATES ACROSS CONDITIONS
 
 % initialise
 mean_mu = NaN(3,1);
@@ -230,7 +246,8 @@ cond_names = ["mix";"perc";"rew"];
 ttestResults = table(cond_names, round(mean_mu,2), round(sem_mu,2),...
     'VariableNames', {'Condition', 'mean', 'sem'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'mu_meansem.csv'),ttestResults);
-%% COHEN'S D FOR SLIDER UPDATES ACROSS CONDITIONS
+
+% COHEN'S D FOR SLIDER UPDATES ACROSS CONDITIONS
 
 num_condition = 3;
 cohen_d = NaN(num_condition,1);
@@ -245,7 +262,8 @@ end
 cohenResults = table(cond_names, round(cohen_d,2), ...
     'VariableNames', {'Condition', 'cohend'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_descriptive,filesep,'mu_cohen.csv'),cohenResults);
-%% T-TEST ON BETA COEFFICIENTS
+
+% T-TEST ON BETA COEFFICIENTS
 
 % t-test
 cond_names = ["pe";"pe_condiff";"pe_salience";"pe_congruence";"pe_pesign"];
@@ -265,7 +283,8 @@ ttestResults = table(cond_names, round(h_vals,2).', round(p_vals,4).', ...
     round(t_vals,2).', round(df_vals,2).', round(mean_ecoperf,2), round(sem_ecoperf,3),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_lr,filesep,'lr_betas_ttest_salience.csv'),ttestResults);
-%% COHEN'S D FOR BETA COEFFICIENTS
+
+% COHEN'S D FOR BETA COEFFICIENTS
 
 num_vars = size(betas_signed,2);
 cohen_d = NaN(num_vars,1);
@@ -278,7 +297,8 @@ end
 cohenResults = table(cond_names, round(cohen_d,2), ...
     'VariableNames', {'Condition', 'cohend'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_lr,filesep,'lr_betas_cohen_salience.csv'),cohenResults);
-%% STATS FOR INTEGRATION RESULTS
+
+% STATS FOR INTEGRATION RESULTS
 
 % initialise
 p_vals = lm.Coefficients.pValue;
@@ -289,7 +309,8 @@ cond_names = ["intercept";"pe";"pe_condiff";"pe_salience";"pe_congruence";"pe_pe
 cohenResults = table(cond_names, round(p_vals,4), round(betas,2),...
     'VariableNames', {'Condition', 'pval', 'betas'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_integration,filesep,'signed_esterror_signed_lr_pvals.csv'),cohenResults);
-%% SALIENCE BIAS STATS FOR STUDY 2
+
+% SALIENCE BIAS STATS FOR STUDY 2
 
 % bias
 bias_mix = ecoperf_mix(:,2) - ecoperf_mix(:,1);
@@ -321,7 +342,8 @@ ttestResults = table(cond_names, round(h_vals,2), round(p_vals,2), round(t_vals,
     round(df_vals,2), round(bias_mean,2), round(bias_sem,3), round(cohen_d,2),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem','cohen_d'});
 safe_saveall(strcat(save_dm_bias,filesep,'bias_ttest.csv'),ttestResults);
-%% SALIENCE BIAS STATS FOR STUDY 1
+
+% SALIENCE BIAS STATS FOR STUDY 1
 
 % bias
 bias_mix = ecoperf_hh(:,2) - ecoperf_hh(:,1);
@@ -352,7 +374,9 @@ ttestResults = table(cond_names, round(h_vals,2), round(p_vals,2), round(t_vals,
     round(df_vals,2), round(bias_mean,2), round(bias_sem,3),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem'});
 safe_saveall(strcat(save_dm_bias,filesep,'bias_ttest_study1.csv'),ttestResults);
-%% BIAS COMPARED ACROSS CONDITIONS
+
+% BIAS COMPARED ACROSS CONDITIONS
+
 % anove
 [p,tbl,~] = anova1(bias);
 
@@ -361,7 +385,8 @@ name = "anova";
 anova_results = table(name, round(tbl{2,5},2), round(tbl{2,6},2), tbl{2,3}, tbl{3,3}, ...
     'VariableNames', {'test', 'fvalue', 'pvalue', 'df1', 'df2'}); 
 safe_saveall(strcat(save_dm_bias,filesep,'bias_anova.csv'),anova_results);
-%% BIAS COMPARED ACROSS UNCERTAINTIES
+
+% BIAS COMPARED ACROSS UNCERTAINTIES
 % initialise
 h_vals = NaN(2,1);
 p_vals = NaN(2,1);
@@ -393,7 +418,8 @@ cohen_d(2,:)
 ttestResults = table(cond_names, round(h_vals(:,1),2), round(p_vals(:,1),2), round(t_vals,2), round(df_vals,2), ...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df'}); 
 safe_saveall(strcat(save_dm_bias,filesep,'bias_ttest_uncertainty.csv'),ttestResults);
-%% T-TEST ON ABSOLUTE BETA COEFFICIENTS
+
+% T-TEST ON ABSOLUTE BETA COEFFICIENTS
 
 % ttest
 cond_names = ["pe";"pe_condiff";"pe_salience";"pe_congruence";"pe_pesign"];
@@ -413,7 +439,8 @@ ttestResults = table(cond_names, round(h_vals,2).', round(p_vals,4).', round(t_v
     round(df_vals,2).', round(mean_ecoperf,2), round(sem_ecoperf,3),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem'}); 
 safe_saveall(strcat(save_lr_suppl,filesep,'abslr_betas_ttest_salience.csv'),ttestResults);
-%% COHEN'S D FOR BETA COEFFICIENTS
+
+% COHEN'S D FOR BETA COEFFICIENTS
 
 num_vars = size(betas_abs,2);
 cohen_d = NaN(num_vars,1);
@@ -426,7 +453,8 @@ end
 cohenResults = table(cond_names, round(cohen_d,2), ...
     'VariableNames', {'Condition', 'cohend'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_lr_suppl,filesep,'abslr_betas_cohen_salience.csv'),cohenResults);
-%% T-TEST ON BETA SALIENCE COEFFICIENTS
+
+% T-TEST ON BETA SALIENCE COEFFICIENTS
 
 % t-test
 cond_names = ["ru";"pu";"salience";];
@@ -446,7 +474,8 @@ ttestResults = table(cond_names, round(h_vals,2).', round(p_vals,4).', ...
     round(t_vals,2).', round(df_vals,2).', round(mean_betas_salience,2), round(sem_betas_salience,3),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_dm_reg,filesep,'betas_salience_ttest.csv'),ttestResults);
-%% T-TEST ON BETA SALIENCE COEFFICIENTS FOR STUDY 1
+
+% T-TEST ON BETA SALIENCE COEFFICIENTS FOR STUDY 1
 
 % t-test
 cond_names = ["ru";"pu";"salience";];
@@ -466,7 +495,8 @@ ttestResults = table(cond_names, round(h_vals,2).', round(p_vals,4).', ...
     round(t_vals,2).', round(df_vals,2).', round(mean_betas_salience,2), round(sem_betas_salience,3),...
     'VariableNames', {'Condition', 'HValue', 'PValue', 'TStat', 'df','mean','sem'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_dm_reg,filesep,'betas_salience_study1_ttest.csv'),ttestResults);
-%% COHEN'S D FOR BETA COEFFICIENTS
+
+% COHEN'S D FOR BETA COEFFICIENTS
 
 num_vars = size(betas_salience_study2,2);
 cohen_d = NaN(num_vars,1);
@@ -479,7 +509,8 @@ end
 cohenResults = table(cond_names, round(cohen_d,2), ...
     'VariableNames', {'Condition', 'cohend'}); % Create a table to store the t-test results
 safe_saveall(strcat(save_dm_reg,filesep,'betas_salience_cohen.csv'),cohenResults);
-%% COHEN'S D FOR BETA COEFFICIENTS FOR STUDY 1
+
+% COHEN'S D FOR BETA COEFFICIENTS FOR STUDY 1
 
 num_vars = size(betas_salience_study1,2);
 cohen_d = NaN(num_vars,1);
