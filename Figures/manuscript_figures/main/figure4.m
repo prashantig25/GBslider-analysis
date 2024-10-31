@@ -1,3 +1,6 @@
+% figure4.m creates Figure 4 of the manuscript which plots coefficients
+% from the signed regression model and belief-states adapted LR.
+
 clc
 clearvars
 
@@ -6,8 +9,17 @@ font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
 save_csv = 0; % if figure caption needs any stats input, then save
-save_figures = "Data\stats_saved\figures"; % path to save stats for figures
-save_dir = fullfile("saved_figures",filesep,"main");
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 [~,high_PU,mid_PU,low_PU,~,~,darkblue_muted,~,~,~,~,light_gray,binned_dots,barface_green,...
     reg_color,~,~,~,~] = colors_rgb(); % colors
@@ -30,7 +42,8 @@ pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_un
         ,'reward','mu','pe_sign','pu'}; % cell array with names of predictor variables
 resp_var = 'up'; % name of response variable
 cat_vars = {'salience','congruence','condition','reward_unc','pe_sign'}; % cell array with names of categorical variables
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 400 400])
@@ -41,7 +54,8 @@ ax2 = nexttile(3,[1,1]);
 ax3 = nexttile(4,[1,1]);
 ax4 = nexttile(5,[1,2]);
 ax5 = nexttile(7,[1,2]);
-%% PLOT LR FOR CONTRAST DIFFERENCE BINS
+
+% PLOT LR FOR CONTRAST DIFFERENCE BINS
 
 % CHANGE AXES POSITION
 position_change = [0 -0.05 0 0]; % change in position
@@ -103,7 +117,8 @@ if save_csv == 1
     save_table = table("subplot_a",round(rho,2),round(pval,3),8,'VariableNames',{'name','rho','pval','df'});
     writetable(save_table,fullfile(save_figures,'figure4.csv'));
 end
-%% PLOT BETA COEFFICIENTS
+
+% PLOT BETA COEFFICIENTS
 
 % INITIALISE VARS FOR PLOTTING COEFFICIENTS
 regressors = [1,2]; % regressors that need to be plotted
@@ -160,7 +175,7 @@ for r = 1:length(regressors)
     adjust_figprops(axes_new(r),font_name,font_size,line_width,xlim_vals,ylim_vals);
 end
 
-%% ADDED VARIABLE PLOT
+% ADDED VARIABLE PLOT
 
 position_change = [0, -0.03, 0, 0];
 new_pos = change_position(ax4,position_change);
@@ -213,7 +228,8 @@ for i = example_participant
     xlim([-0.75,0.75])
 end
 box off
-%% INTERACTION PLOTS
+
+% INTERACTION PLOTS
 
 position_change = [0, -0.03, 0, 0]; 
 new_pos = change_position(ax5,position_change);
@@ -244,7 +260,8 @@ yline(0,"LineWidth",0.5,LineStyle="--")
 
 sgtitle('Update = \beta_0 + \beta_1 \cdot \delta + \beta_2 \cdot \delta \cdot Contrast difference + ... + \epsilon', ...
     'Interpreter','Tex','FontSize',7,'FontName','Arial')
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = ax1_new.Position;
 adjust_x = - 0.08; % adjust x-position of subplot label
@@ -267,7 +284,8 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 [label_x,label_y] = change_plotlabel(ax6_new,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'e','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment','center')
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

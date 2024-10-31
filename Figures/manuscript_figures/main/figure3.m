@@ -1,3 +1,8 @@
+% figur3.m creates Figure 3 of the manuscript which illustrates the agent 
+% computations and plots simulations for a normative and categorical agent.
+
+% Todo: fix code, resulting figure  seems brogne
+
 clc
 clearvars
 
@@ -20,8 +25,17 @@ edge_color = 'none'; % edge color for text box
     ~,dots_edges,~,~,gray_arrow] = colors_rgb(); % colors
 
 % DIRECTORY
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 
 % AGENT RELATED VARS
@@ -36,7 +50,7 @@ neg_up = [-0.5,-0.15]; % negative updates
 pos_up = [0.5,0.15]; % positive updates
 trial = 1:25; % trial numbers
 
-%% INITIALISE TILE LAYOUT
+% INITIALISE TILE LAYOUT
 
 f1 = figure;
 set(gcf,'Position',[100 100 300 500])
@@ -46,7 +60,8 @@ ax2 = nexttile(5);
 ax3 = nexttile(7);
 ax4 = nexttile(9);
 ax5 = nexttile(10,[1,3]);
-%% PLOT OBSERVATION PROBABILITIES
+
+% PLOT OBSERVATION PROBABILITIES
 
 % ADJUST AXES POSITION
 position_change = [-0.05, 0.05, 0.1, -0.03]; % change in position
@@ -124,7 +139,8 @@ ar.X = [0.38 0.63];
 ar.Y = [0.35,0.35];
 box off
 hold on
-%% PLOT BELIEF STATES
+
+% PLOT BELIEF STATES
 
 new_pos = change_position(ax2,position_change);
 ax2_new = axes('Units', 'Normalized', 'Position', new_pos); 
@@ -180,7 +196,9 @@ groupOffset = [-0.32, 0.32];
 barWidth = 0.4;
 bar_text(b,groupOffset,barWidth,font_size,font_name);
 
-%% PLOT EXPECTED VALUES
+% bar_text missing
+
+% PLOT EXPECTED VALUES
 position_change = [-0.05, -0.06, 0.1, 0];
 new_pos = change_position(ax3,position_change);
 ax3_new = axes('Units', 'Normalized', 'Position', new_pos);
@@ -241,7 +259,7 @@ groupOffset = [-0.32, 0.32];
 barWidth = 0.4;
 bar_text(b,groupOffset,barWidth,font_size,font_name)
 
-%% PLOT LEARNING RATES
+% PLOT LEARNING RATES
 position_change = [-0.05, -0.06, 0.1, 0]; 
 new_pos = change_position(ax4,position_change);
 ax4_new = axes('Units', 'Normalized', 'Position', new_pos);
@@ -269,16 +287,17 @@ l1 = legend('Low BS uncertainty','High BS uncertainty','Location','best','Color'
     'EdgeColor','none','AutoUpdate','off');
 l1.ItemTokenSize = [5, 5];
 box off
-%% PLOT LEARNING CURVES
+
+% PLOT LEARNING CURVES
 
 % FOR NORMATIVE AGENT
-data_normative = readtable("data_model_ag1.xlsx");
-data_normative = data_normative(data_normative.condition == 2,:);
+data_normative = readtable("data_agent.txt");
+data_normative = data_normative(data_normative.choice_cond == 2,:);
 data_normative = data_normative(26:50,:);
 
 % FOR CATEGORICAL AGENT
-data_categorical = readtable("agent2_learning.xlsx");
-data_categorical = data_categorical(1:25,:);
+data_categorical = readtable("agent2_learning.txt");
+data_categorical = data_categorical(26:50,:);
 
 position_change = [-0.05, -0.06, 0.1, -0.02];
 new_pos = change_position(ax5,position_change);
@@ -308,7 +327,8 @@ ylim = [0.4 1.1];
 xlim = [1 25];
 adjust_figprops(ax5_new,font_name,font_size,line_width,xlim,ylim);
 box(ax5_new,'off')
-%% IMPORT EXTERNAL PNGs
+
+% IMPORT EXTERNAL PNGs
 
 axes('pos',[.325 .9125 .03 .03]);
 imshow('lowcon_patch.png');
@@ -340,7 +360,8 @@ for n = 1:num_strings
     text2.VerticalAlignment = vert_align;
     text2.BackgroundColor = color_screen;
 end
-%% SUBPLOT LABELS
+
+% SUBPLOT LABELS
 
 ax1_pos = ax1_new.Position;
 adjust_x = -0.06; % adjust x-position of subplot label
@@ -365,7 +386,8 @@ adjust_y = ax1_pos(4) + 0.015;
 [label_x,label_y] = change_plotlabel(ax5_new,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'e','FontSize',12,'LineStyle','none','HorizontalAlignment','center')
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

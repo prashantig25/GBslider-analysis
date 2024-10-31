@@ -1,4 +1,8 @@
-%% INITIALISE VARIABLES
+% figure2.m creates Figure 2 which illustrates the task,
+% state-action-reward contingency and plots for the descriptive behavior of
+% the manuscript.
+
+% INITIALISE VARIABLES
 
 clc
 clearvars
@@ -26,22 +30,37 @@ line_style = '-'; % line style
     ~,~,~,~,~] = colors_rgb(); % colors
 
 % directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+% Get the current working directory
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 
 % load all required data
-ecoperf_mix = importdata("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance
-ecoperf_perc = importdata("Data/descriptive data/main study/ecoperf_perc.mat");
-ecoperf_rew = importdata("Data/descriptive data/main study/ecoperf_rew.mat");
-mean_curves = importdata("Data/descriptive data/main study/mean_curves.mat"); % learning across trials for each condition
-sem_curves = importdata("Data/descriptive data/main study/sem_curves.mat");
-mix_curve = importdata("Data/descriptive data/main study/mix_curve.mat"); % learning in a block for each condition
-perc_curve = importdata("Data/descriptive data/main study/perc_curve.mat");
-rew_curve = importdata("Data/descriptive data/main study/rew_curve.mat");
-ecoperf = importdata("Data/descriptive data/main study/ecoperf.mat"); % mean economic performance
-esterror = importdata("Data/descriptive data/main study/esterror.mat"); % mean estimation error
-%% INITIALISE TILE LAYOUT
+% Base directory for data files
+base_dir = strcat(desiredPath, filesep, 'Data');
+
+% Descriptive data for the main study
+ecoperf_mix = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_mix.mat')); % economic performance
+ecoperf_perc = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_perc.mat'));
+ecoperf_rew = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_rew.mat'));
+mean_curves = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'mean_curves.mat')); % learning across trials for each condition
+sem_curves = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'sem_curves.mat'));
+mix_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'mix_curve.mat')); % learning in a block for each condition
+perc_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'perc_curve.mat'));
+rew_curve = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'rew_curve.mat'));
+ecoperf = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf.mat')); % mean economic performance
+esterror = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'esterror.mat')); % mean estimation error
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 600 400])
@@ -53,7 +72,8 @@ ax10 = nexttile(10,[1 1]);
 ax12 = nexttile(12,[1,1]);
 ax11 = nexttile(11,[1,1]);
 ax1 = nexttile(1,[2,2]);
-%% PLOT TRIAL PROCEDURE
+
+% PLOT TRIAL PROCEDURE
 
 % axes position adjustments
 position_change = [0, 0, -0.05, 0]; % change in position
@@ -149,7 +169,8 @@ for n = 1:num_strings
     annotate_textbox(ax1_new,position,string,font_name,font_size-0.5, ...
         horz_align,vert_align,bg_color,face_alpha,edge_color);
 end
-%% PLOT S-A-R CONTINGENCY
+
+% PLOT S-A-R CONTINGENCY
 
 pos = ax3.Position + [0, -0.03,0,0];
 ax3_new = axes('Units', 'Normalized', 'Position', pos);
@@ -228,7 +249,8 @@ a1.Parent = gca;
 set(gca, 'Color', 'None','FontName','Arial')
 box off
 axis off
-%% DESCRIPTIVE PLOTS
+
+% DESCRIPTIVE PLOTS
 
 position_change = [0, 0.05, 0, 0];
 new_pos = change_position(ax12,position_change);
@@ -389,7 +411,7 @@ for n = 1:num_pngs
     pos_x = pos_x + adjust_x;
 end
 
-%% SUBPLOT LABELS
+% SUBPLOT LABELS
 
 ax1_pos = ax1_new.Position;
 adjust_x = -0.06; % adjust x-position of subplot label
@@ -417,7 +439,8 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 [label_x,label_y] = change_plotlabel(ax12_new,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'f','FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment',horz_align)
-%% SAVE AS PNG
+
+% SAVE AS PNG
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
