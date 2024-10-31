@@ -1,5 +1,6 @@
 function safe_saveall(filename, newData)
-    % function SAFE_SAVE is a custom replacement for MATLAB's save function
+
+    % function SAFE_SAVEALL is a custom replacement for MATLAB's save function
     % to ensure that data does not get saved unexpectedly.
     % INPUTS:
     %   filename: input string with filename
@@ -17,7 +18,15 @@ function safe_saveall(filename, newData)
         end
         
         % Compare the new data with the old data
-        if isequaln(newData, oldData)
+        if isa(newData,"double")
+            equality_check = isequaln(round(newData,10),round(oldData,10));
+        elseif strcmp(string(class(newData)),"LinearModel") == 1
+            equality_check = compare_LinearModels(newData,oldData);
+        else
+            equality_check = isequaln(newData,oldData);
+        end
+
+        if equality_check == 1
             disp('Data is consistent. No need to save.');
         else
             % For different data, create a new filename
