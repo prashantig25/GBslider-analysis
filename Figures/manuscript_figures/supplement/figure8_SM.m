@@ -10,13 +10,23 @@ xlim_vals = [0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
 [~,~,~,~,~,~,~,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+% PATH STUFF
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
 
 % Define the base directory
-baseDir = fullfile('Data', 'estimation error analysis');
+baseDir = fullfile(desiredPath, 'Data', 'estimation error analysis');
 
 % Construct the file paths using fullfile
 lm_path = fullfile(baseDir, 'lm_abs_esterror_signed_lr.mat');

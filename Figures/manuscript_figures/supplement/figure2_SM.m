@@ -1,3 +1,7 @@
+% figure2_SM creates figure S2 and plots the coefficients of all the
+% control regressors from the signed and absolute analysis and plots
+% results from the multicollinearity check.
+
 clc
 clearvars
 
@@ -9,20 +13,30 @@ fontsize_label = 12; % font size for subplot labels
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
+% PATH
+
 % directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
+baseDir = fullfile(desiredPath, 'Data', 'LR analyses');
 
 % INITIALISE VARS
-% Define the base directory
-baseDir = fullfile('Data', 'LR analyses');
 
-% Construct the file paths using fullfile
 betas_signed_path = fullfile(baseDir, 'betas_signed_wo_rewunc_obj.mat');
 betas_abs_path = fullfile(baseDir, 'betas_abs_wo_rewunc_obj.mat');
 
-% Load the data
+% LOAD THE DATA
+
 betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
 betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
 num_subjs = 98; % number of subjects
@@ -31,19 +45,21 @@ num_vars = 5; % number of variables
 xlim_vals = [0.5,5.5]; % x-limit values
 ylim_vals = [0.5,5.5]; % y-axis limit values
 colorbar_pos = [0.5,0.1,0.02,0.35]; % position for colorbar
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 400 400])
 t = tiledlayout(2,2);
 t.Padding = 'compact';
 
-%% PLOT ALL BETA COEFFICIENTS
+% PLOT ALL BETA COEFFICIENTS
 
 % TILE
 ax1 = nexttile(1,[1,2]);
 
 % GET MEAN AND SEM FOR BETAS
+
 [mean_signed,sem_signed,coeffs_signed] = prepare_betas(betas_signed,selected_regressors,num_subjs); % signed
 [mean_abs,sem_abs,coeffs_abs] = prepare_betas(betas_abs,selected_regressors,num_subjs); % absolute
 coeffs_subjs = [coeffs_signed,coeffs_abs];
@@ -51,10 +67,12 @@ mean_avg = [mean_signed,mean_abs];
 mean_sd = [sem_signed,sem_abs];
 
 % GET STARS FOR CORRESPONDING REGRESSOR'S P-VALUES
+
 bar_labels = {'','','','',''};
 pstars = bar_labels;
 
 % OTHER FIGURE PROPERTIES
+
 xticks = [1:length(selected_regressors)]; % x-axis ticks
 row1 = {'Fixed LR' 'Belief-state' 'Confirmation' 'Salience' 'Congruence'};
 row2 = {'' '-adapted LR' 'bias' '' ''};
@@ -68,6 +86,7 @@ y_label = repelem(1,1,length(selected_regressors)); % location for p-value stars
 disp_pval = 0; % if p-value should be displayed
 
 % PLOT
+
 hold on
 bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
     length(selected_regressors),2,{'Signed','Absolute'}, ...
@@ -76,6 +95,7 @@ bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
     y_label,[NaN,NaN,NaN,NaN,NaN],[0.5,5.5]) 
 
 % PLOT PROPERTIES
+
 set(gca,'Color','none')
 ax = gca;
 ax.XTick = [1 2 3 4];
@@ -86,7 +106,8 @@ for i = 1:length(myLabels)
         'horizontalalignment', 'center', 'verticalalignment', 'top','FontSize',font_size);    
 end
 ax.XLabel.String = sprintf('\n\n%s', 'Regressor');
-%% PLOT CORELATION BETWEEN PARAMETERS
+
+% PLOT CORELATION BETWEEN PARAMETERS
 
 % COMPUTE CORRELATION
 correlation_signed = corrcoef(betas_signed);
@@ -97,6 +118,7 @@ ax3 = nexttile(3,[1 1]);
 ax4 = nexttile(4,[1 1]);
 
 % PLOT
+
 imagesc(ax3,correlation_signed) % correlation matrix 
 colormap(ax3,flipud(bone)); % set colormap
 cb = colorbar(ax3); % set colorbar 
@@ -114,7 +136,8 @@ xticklabels(ax4,{'Fixed LR','Belief-state','Salience','Congruence','Confirmation
 title(ax4,'Absolute LR analysis','FontWeight','normal')
 set(ax4,'YTickLabel', [])
 box(ax4,'off')
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = ax1.Position;
 adjust_x = - 0.08; % adjusted x-position for subplot label
@@ -127,7 +150,9 @@ for i = 1:3
     annotation("textbox",[label_x label_y .05 .05],'String', ...
         subplot_labels{i},'FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment','center')
 end
-%%
+
+% SAVE AS PNG
+
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
 print(fig, fullfile(save_dir,filesep,'figure2_corr_SM3.png'), '-dpng', '-r600') 

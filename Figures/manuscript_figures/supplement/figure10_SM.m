@@ -13,17 +13,40 @@ num_subjs = 98; % number of subjects
 num_conds = 4; % number of condition
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,barface_green,reg_color,~,~,~,~,study2_green] = colors_rgb(); % colors
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+% PATH
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
 
-ecoperf_hh = importdata("Data/descriptive data/pilot study/ecoperf_hh.mat"); % economic performance for pilot study for both uncertainties condition
-ecoperf_hl = importdata("Data/descriptive data/pilot study/ecoperf_hl.mat"); % perceptual condition
-ecoperf_lh = importdata("Data/descriptive data/pilot study/ecoperf_lh.mat"); % reward condition
-ecoperf_ll = importdata("Data/descriptive data/pilot study/ecoperf_ll.mat"); % no uncertainty condition
-betas_study2 = importdata("Data/salience bias/betas_salience_study2.mat"); % beta coefficient from salience bias analysis from main task
-betas_study1 = importdata("Data/salience bias/betas_salience_study1.mat"); betas_study1 = [betas_study1;NaN(5,3)]; % beta coefficient from salience bias analysis from pilot study
+% Define the root directory for your project
+rootDir = fullfile(desiredPath,'Data'); % Adjust this to your actual root directory
+
+% Define base directory for economic performance data using fullfile
+baseDir = fullfile(rootDir, 'descriptive data', 'pilot study');
+
+% Load economic performance data for the pilot study under different conditions
+ecoperf_hh = importdata(fullfile(baseDir, 'ecoperf_hh.mat')); % economic performance for both uncertainties condition
+ecoperf_hl = importdata(fullfile(baseDir, 'ecoperf_hl.mat')); % perceptual condition
+ecoperf_lh = importdata(fullfile(baseDir, 'ecoperf_lh.mat')); % reward condition
+ecoperf_ll = importdata(fullfile(baseDir, 'ecoperf_ll.mat')); % no uncertainty condition
+
+% Define base directory for salience bias data files using fullfile
+salienceBaseDir = fullfile(rootDir, 'salience bias');
+
+% Load beta coefficients from salience bias analysis
+betas_study2 = importdata(fullfile(salienceBaseDir, 'betas_salience_study2.mat')); % beta coefficient from salience bias analysis from main task
+betas_study1 = importdata(fullfile(salienceBaseDir, 'betas_salience_study1.mat'));
+betas_study1 = [betas_study1; NaN(5, 3)]; % beta coefficient from salience bias analysis from pilot study
 %% INITIALISE TILE LAYOUT
 
 figure

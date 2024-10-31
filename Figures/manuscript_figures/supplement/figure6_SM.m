@@ -1,3 +1,5 @@
+% figure6_SM creates figure S6 and plots splithalf reliability test results
+
 clc
 clearvars
 
@@ -8,28 +10,34 @@ font_size = 6; % font size
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
     ~,~,~,fits_colors,~] = colors_rgb(); % colors
 
-% INITIALIZE VARS
+% PATH STUFF
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
-
-% Define the base directory
-baseDir = fullfile('Data', 'LR analyses');
-
-% Construct the file paths using fullfile
+baseDir = fullfile(desiredPath, 'Data', 'LR analyses');
 betas_split0_abs_path = fullfile(baseDir, 'betas_abs_split0.mat');
 betas_split1_abs_path = fullfile(baseDir, 'betas_abs_split1.mat');
 betas_split0_signed_path = fullfile(baseDir, 'betas_signed_split0.mat');
 betas_split1_signed_path = fullfile(baseDir, 'betas_signed_split1.mat');
 
-% Load the data using importdata
+% LOAD THE DATA
+
 betas_split0_abs = importdata(betas_split0_abs_path); % betas from absolute analysis for splithalf group 0
 betas_split1_abs = importdata(betas_split1_abs_path); % betas from absolute analysis for splithalf group 1
 betas_split0_signed = importdata(betas_split0_signed_path); % betas from signed analysis for splithalf group 0
 betas_split1_signed = importdata(betas_split1_signed_path); % betas from signed analysis for splithalf group 1
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 600 400])
@@ -42,7 +50,8 @@ ax3 = nexttile(3,[1,1]);
 ax4 = nexttile(4,[1,1]);
 ax5 = nexttile(5,[1,1]);
 ax6 = nexttile(6,[1,1]);
-%% PLOT
+
+% PLOT
 
 axes_old = [ax1,ax2,ax3]; % initialise old axes
 axes_new = axes_old; % initialise axes arrays to save new axes
@@ -96,12 +105,14 @@ for i = 1:length(axes_old)
 end
 
 % INITIALISE
+
 axes_old = [ax4,ax5,ax6];
 axes_new_abs = axes_old;
 vars = [1,2,5];
 pvals_abs = {'','',''};
 
 % P-VALUES
+
 for p = 1:length(pvals_abs)
     [rho,pval] = corr(betas_split0_abs(:,vars(p)),betas_split1_abs(:,vars(p)));
     if pval < 0.001
@@ -145,7 +156,8 @@ for i = 1:length(axes_old)
     plot(xvalues, yci(:,1), Color=darkblue_muted, LineWidth=0.2,LineStyle='--'); % Plot the lower confidence interval
 end
 
-%% SUBPLOT LABELS
+% SUBPLOT LABELS
+
 ax1_pos = axes_new(1).Position;
 adjust_x = -0.06; % adjusted x-position for subplot label
 adjust_y = ax1_pos(4) + 0.02; % adjusted y-position for subplot label
@@ -172,7 +184,8 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 [label_x,label_y] = change_plotlabel(axes_new_abs(3),adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'f','FontSize',12,'LineStyle','none','HorizontalAlignment','center')
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen

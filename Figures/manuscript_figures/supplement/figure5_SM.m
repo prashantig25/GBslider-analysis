@@ -1,3 +1,6 @@
+% figure5_SM creates figure S5 and plots regression model diagnostics for
+% example participants
+
 clc
 clearvars
 
@@ -10,18 +13,29 @@ fontsize_label = 12; % font size for subplot labels
 [~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,barface_green,...
     ~,dots_edges,~,fits_colors,~] = colors_rgb(); % colors
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+% PATH 
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
 
 % INITIALISE VARS
-data_subjs = readtable("Data/LR analyses/preprocessed_data.xlsx"); % single-trial updates, prediction errors
+
+data_subjs = importdata(strcat(desiredPath, filesep, "Data", filesep, "LR analyses", filesep, "preprocessed_data.mat")); % single-trial updates, prediction errors
 data_subjs.id = data_subjs.ID;
 num_subjs = 98; % number of subjects
-%%
 
 % SET VARIABLES TO RUN THE FUNCTION
+
 id_subjs = unique(data_subjs.id); % list of subject-IDs
 model3 = 'up ~ pe + pe:contrast_diff + pe:salience +pe:congruence + pe:pe_sign'; % model
 mdl = model3; % which regression model
@@ -33,14 +47,16 @@ num_vars = 5; % number of predictor vars
 res_subjs = []; % empty array to store residuals
 weight_y_n = 0; % non-weighted regression
 subjs = [15,23,40]; % example participants
-%% INITIALIZE TILE
+
+% INITIALIZE TILE
+
 figure
 set(gcf,'Position',[100 100 600 400])
 t = tiledlayout(2,3);
 t.TileSpacing = 'compact';
 t.Padding = 'compact';
 
-%% PLOT
+% PLOT
 
 axes_list = [];
 for i = 1:3
@@ -118,7 +134,8 @@ end
 
 l = legend('Regression fits','','Empirical updates','','EdgeColor','none','Color','none','Location','Best');
 l.ItemTokenSize = [7 7];
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = axes.Position;
 adjust_x = -0.065; % adjusted x-position for subplot label
@@ -130,7 +147,9 @@ for n = 1:num_labels
     annotation("textbox",[label_x label_y .05 .05],'String', ...
         label_string(n),'FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment','center')
 end
-%%
+
+% SAVE AS PNG
+
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
 print(fig, fullfile(save_dir,filesep,'figure5_SM5'), '-dpng', '-r600') 

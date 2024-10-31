@@ -1,3 +1,7 @@
+% figure3_SM creates figure S3 and plots the coefficients of all the
+% regressors from the signed and absolute analysis with additional
+% regressors for risk and salience
+
 clc
 clearvars
 
@@ -9,39 +13,47 @@ fontsize_label = 12; % font size for subplot labels
 dot_size = 5; % size of dots for bars
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,fits_colors,~] = colors_rgb(); % colors
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+% PATH
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
+baseDir = fullfile(desiredPath, 'Data', 'LR analyses');
 
-% INITIALISE VARS
-% Define the base directory
-baseDir = fullfile('Data', 'LR analyses');
+% LOAD DATA
 
-% Construct the file paths using fullfile
 betas_signed_path = fullfile(baseDir, 'betas_signed.mat');
 betas_abs_path = fullfile(baseDir, 'betas_abs.mat');
 betas_signed_salience_path = fullfile(baseDir, 'betas_signed_salience.mat');
 betas_abs_salience_path = fullfile(baseDir, 'betas_abs_salience.mat');
-
-% Load the data using importdata
 betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
 betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
 betas_signed_salience = importdata(betas_signed_salience_path); % participant betas from signed analysis of salience bias in learning
 betas_abs_salience = importdata(betas_abs_salience_path); % participant betas from absolute analysis of salience bias in learning
-
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,6,3,4,5]; % list of regressors
-%% INITIALISE TILE LAYOUT
+
+% INITIALISE TILE LAYOUT
 
 figure
 set(gcf,'Position',[100 100 400 250])
 t = tiledlayout(1,2);
 ax1 = nexttile(1,[1,1]);
 ax2 = nexttile(2,[1,1]);
-%% PLOT ALL BETA COEFFICIENTS
+
+% PLOT ALL BETA COEFFICIENTS
 
 % TILE
+
 position_change = [-0.06, 0.1, 0.4, -0.1]; % change position
 new_pos = change_position(ax1,position_change); % new position
 ax1_new = axes('Units', 'Normalized', 'Position', new_pos); % updated position
@@ -49,6 +61,7 @@ box(ax1_new, 'off'); % box off
 delete(ax1); % delete old axis
 
 % GET MEAN AND SEM FOR BETAS
+
 [mean_signed,sem_signed,coeffs_signed] = prepare_betas(betas_signed,selected_regressors,num_subjs);
 [mean_abs,sem_abs,coeffs_abs] = prepare_betas(betas_abs,selected_regressors,num_subjs);
 coeffs_subjs = [coeffs_signed,coeffs_abs];
@@ -56,10 +69,12 @@ mean_avg = [mean_signed,mean_abs];
 mean_sd = [sem_signed,sem_abs];
 
 % GET STARS FOR CORRESPONDING REGRESSOR'S P-VALUES
+
 bar_labels = {'','','','','',''};
 pstars = bar_labels;
 
 % OTHER FIGURE PROPERTIES
+
 xticks = [1:length(selected_regressors)]; % x-axis ticks
 row1 = {'Fixed LR' 'Belief-state' 'Confirmation' 'Salience' 'Congruence' 'Risk '};
 row2 = {'' '-adapted LR' 'bias' '' '' ''};
@@ -73,6 +88,7 @@ y_label = repelem(1,1,length(selected_regressors)); % location for p-values star
 disp_pval = 0; % if p-values should be displayed
 
 % PLOT
+
 hold on
 bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
     length(selected_regressors),2,{'Signed','Absolute'}, ...
@@ -81,6 +97,7 @@ bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
     y_label,[NaN,NaN,NaN,NaN,NaN,NaN],[0.5,6.5]) 
 
 % PLOT PROPERTIES
+
 set(gca,'Color','none')
 ax = gca;
 ax.XTick = [1 2 3 4 5 6];
@@ -90,9 +107,11 @@ for i = 1:length(myLabels)
     text(i, ax.YLim(1), sprintf('%s\n%s\n%s', myLabels{:,i}), ...
         'horizontalalignment', 'center', 'verticalalignment', 'top','FontSize',font_size);    
 end
-%% PLOT SALIENCE BIAS IN LEARNING
+
+% PLOT SALIENCE BIAS IN LEARNING
 
 % CHANGE TILE POSITION
+
 position_change = [0.26, 0.1, -0.17, -0.1];
 new_pos = change_position(ax2,position_change);
 ax2_new = axes('Units', 'Normalized', 'Position', new_pos);
@@ -100,6 +119,7 @@ box(ax2_new, 'off');
 delete(ax2);
 
 % GET MEAN AND SEM FOR BETAS
+
 selected_regressors = 5;
 [mean_signed,sem_signed,coeffs_signed] = prepare_betas(betas_signed_salience,selected_regressors,num_subjs);
 [mean_abs,sem_abs,coeffs_abs] = prepare_betas(betas_abs_salience,selected_regressors,num_subjs);
@@ -108,10 +128,12 @@ mean_avg = [mean_signed,mean_abs];
 mean_sd = [sem_signed,sem_abs];
 
 % GET STARS FOR CORRESPONDING REGRESSOR'S P-VALUES
+
 bar_labels = {''};
 pstars = bar_labels;
 
 % OTHER FIGURE PROPERTIES
+
 xticks = [1:length(selected_regressors)]; % x-axis ticks
 row1 = {'Salience-bias'};
 row2 = {''};
@@ -125,6 +147,7 @@ y_label = repelem(1,1,length(selected_regressors)); % location for p-values star
 disp_pval = 0; % if p-values should be displayed
 
 % PLOT
+
 hold on
 bar_plots_pval(coeffs_subjs,mean_avg,mean_sd,num_subjs, ...
     length(selected_regressors),2,{'',''}, ...
@@ -143,7 +166,8 @@ for i = 1
     text(i, ax.YLim(1), sprintf('%s\n%s\n%s', myLabels{:,i}), ...
         'horizontalalignment', 'center', 'verticalalignment', 'top','FontSize',font_size);    
 end
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = ax2_new.Position;
 adjust_x = [- 0.07,-0.08];
@@ -156,7 +180,9 @@ for i = 1:2
     annotation("textbox",[label_x label_y .05 .05],'String', ...
         subplot_labels{i},'FontSize',fontsize_label,'LineStyle','none','HorizontalAlignment','center')
 end
-%%
+
+% SAVE AS PNG
+
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
 print(fig, fullfile(save_dir,filesep,'figure3_SM2.png'), '-dpng', '-r600') 

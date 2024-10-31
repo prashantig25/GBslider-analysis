@@ -1,23 +1,32 @@
-%% INITIALISE VARS
+% figure7_SM creates figure S7 and plots the relationship between
+% confirmation bias and signed estimation errors
+
 clc
 clearvars
 
 [~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,~,...
     reg_color,dots_edges,~,~,~] = colors_rgb(); % colors
 
-% directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"supplement");
+% PATH STUFF
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
 mkdir(save_dir)
-
-% Define the base directory
-baseDir = fullfile('Data', 'estimation error analysis');
-
-% Construct the file paths using fullfile
+baseDir = fullfile(desiredPath, 'Data', 'estimation error analysis');
 lm_path = fullfile(baseDir, 'lm_signed_esterror_signed_lr.mat');
-partial_rsq_path = fullfile(baseDir, 'partialrsq_signed_both.mat');
+partial_rsq_path = fullfile(baseDir, 'partialrsq_signed_esterror_signed_lr.mat');
 
-% Load the data using importdata
+% LOAD THE DATA
+
 lm = importdata(lm_path); % estimated model fit to estimation errors
 partial_rsq = importdata(partial_rsq_path); % partial R2 values
 
@@ -28,7 +37,7 @@ font_size = 6; % font size
 xlim_vals = [0.5 1.5]; % x limits
 ylim_vals = [0.5 0.9]; % y limits
 
-%% INITIALISE FIGURES
+% INITIALISE TILES
 
 figure 
 set(gcf,'Position',[100 100 400 200])
@@ -37,17 +46,18 @@ t.Padding = 'compact';
 ax2 = nexttile(2,[1,1]);
 ax1 = nexttile(1,[1,1]);
 
-%% PLOT
+% PLOT
 
 % ILLUSTRATION OF OVER-ESTIMATION DRIVEN BY CONFIRMATION BIAS
-mu = [0.73 0.77]; % example estimated mu to show over-estimation
 
+mu = [0.73 0.77]; % example estimated mu to show over-estimation
 l1 = line(ax1,[0 4],[0.8 0.8],'Color','k','LineWidth',0.5,'LineStyle','--'); % actual mu
 hold on
 b = bar(ax1,1,mu,0.7,"grouped","EdgeColor",darkblue_muted, ...
     FaceColor=darkblue_muted,LineWidth=1); % estimate mu bars
 
 % ADJUST PLOT PROPERTIES
+
 b(1).FaceAlpha = 0.3;
 b(2).FaceAlpha = 0.6;
 set(ax1,'XTick',[]);
@@ -64,6 +74,7 @@ xlim_vals = [-0.4 0.4]; % x limits
 ylim_vals = [-0.4 0.15]; % y limits
 
 % RELATIONSHIP BETWEEN SIGNED EST. ERROR vs. CONFIRMATION-BIAS LR
+
 p = plotAdded(ax2,lm,[5],'Marker','o','MarkerSize', ...
         3,'MarkerFaceColor',gray_dots, ...
             'MarkerEdgeColor',dots_edges);
@@ -84,9 +95,10 @@ ylabel(ax2,"Signed estimation error")
 title(ax2,strcat("Partial \itR^2\rm =",{' '},num2str(partial_rsq(5),'%.3f')) + newline + strcat({' '},...
         "\itp\rm = ",{''},num2str(lm.Coefficients.pValue(6),'%.3f')), ...
 'FontWeight','normal','Interpreter','tex')
-adjust_figprops(ax2,font_name,font_size,line_width,xlim_vals,ylim_vals)
+adjust_figprops(ax2,font_name,font_size,line_width)
 box(ax2,"off")
-%% ADD SUBPLOT LABELS
+
+% ADD SUBPLOT LABELS
 
 ax1_pos = ax1.Position;
 adjust_x = -0.08; % adjust x-axis position of subplot label
@@ -98,8 +110,9 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 [label_x,label_y] = change_plotlabel(ax2,adjust_x,adjust_y);
 annotation("textbox",[label_x label_y .05 .05],'String', ...
     'b','FontSize',12,'LineStyle','none','HorizontalAlignment','center')
-%% SAVE FIGURE
+
+% SAVE FIGURE
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'figureSM_signed_est_bars.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,'figureSM_signed_est_bars.png'), '-dpng', '-r600') 

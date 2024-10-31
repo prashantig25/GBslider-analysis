@@ -11,10 +11,25 @@ trials = 25; % number of trials
 num_simulations = 396; % number of simulations
 num_plotted = 100; % number of simulations to be plotted
 
-agent_mix = readtable("data_agent_condition1.xlsx");
-agent_perc = readtable("data_agent_condition2.xlsx");
-agent_rew = readtable("data_agent_condition3.xlsx");
-agent_mix_highPU = readtable("data_agent_condition1_highPU.xlsx");
+% PATH
+
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"supplement");
+mkdir(save_dir)
+
+agent_mix = readtable(fullfile(desiredPath, "Data", "agent simulations", "data_agent_condition1.txt"));
+agent_perc = readtable(fullfile(desiredPath, "Data", "agent simulations", "data_agent_condition2.txt"));
+agent_rew = readtable(fullfile(desiredPath, "Data", "agent simulations", "data_agent_condition3.txt"));
+agent_mix_highPU = readtable(fullfile(desiredPath, "Data", "agent simulations", "data_agent_condition1_highPU.txt"));
 
 % ADD SIMULATION NUMBER
 simulation_number = [];
@@ -107,4 +122,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, 'agent_simulations1.png', '-dpng', '-r600') 
+print(fig, fullfile(save_dir,'agent_simulations1.png'), '-dpng', '-r600') 
