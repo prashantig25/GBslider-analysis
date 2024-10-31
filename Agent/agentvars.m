@@ -1,5 +1,6 @@
 classdef agentvars < handle
 % AGENTVARS class specifies and generates parameters for the agent. 
+    
     properties
         set_o = linspace(-0.1,0.1,20) % set of observations
         sigma % sensitivity parameter 
@@ -15,10 +16,10 @@ classdef agentvars < handle
         condition = 1 % experimental condition
         q_0_0 = 0.5 % for learning models
     end 
+    
     methods
 
-        function obj = agentvars
-            
+        function obj = agentvars           
             % The contructor methods initialises all other properties of
             % the class that are computed based on exisitng static properties of
             % the class.
