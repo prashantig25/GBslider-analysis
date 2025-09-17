@@ -1,0 +1,6 @@
+[submodule "path/to/submodule"]
+	path = path/to/submodule
+	url = git@github.com:prashantig25/helperFuncs.git
+[submodule "UtilitieshelperFuncs"]
+	path = UtilitieshelperFuncs
+	url = git@github.com:prashantig25/helperFuncs.git
