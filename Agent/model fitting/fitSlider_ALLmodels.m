@@ -994,5 +994,54 @@ classdef fitSlider_ALLmodels
             BIC = log(num_trials) * num_params - 2 * logL;
         end
 
+        %% ===================================================================
+        %  REWARD RECODING
+        %  -------------------------------------------------------------------
+        %  Recode trial rewards into the model's fixed state-0 reference frame.
+        %  recoded_rewards is coded relative to stimulus identity (e.g. left/
+        %  right), but the RL/Bayesian models track a single Q-value / belief
+        %  in a fixed reference frame. On zero-contrast trials there is no
+        %  left/right asymmetry to correct for, so the reward is kept as-is;
+        %  on non-zero-contrast trials it is flipped (1 - reward) to stay
+        %  consistent with that fixed frame.
+        %  Inputs:
+        %    recoded_rewards - reward outcomes recoded relative to stimulus
+        %                      identity (vector)
+        %    contrast        - contrast value per trial; 0 marks a
+        %                      zero-contrast trial (vector)
+        %  Outputs:
+        %    rewards - reward outcomes recoded into the state-0 reference
+        %              frame (vector)
+        % ====================================================================
+        function rewards = recode_rewards(recoded_rewards, contrast)
+            rewards = recoded_rewards .* (contrast == 0) + ...
+                (1 - recoded_rewards) .* (contrast ~= 0);
+        end
+
+        %% ===================================================================
+        %  LOAD FITTING DATA
+        %  -------------------------------------------------------------------
+        %  Load the preprocessed slider-fitting dataset and split it into the
+        %  "both" (mixed reward + perceptual) and perceptual-only condition
+        %  subsets used by the fitting scripts.
+        %  Outputs:
+        %    data           - both-condition trials (condition == 1), with
+        %                      reward-condition trials (choice_cond == 3)
+        %                      removed and condiff_relative precomputed
+        %    dataPerceptual - perceptual-condition trials (condition == 2)
+        %    uniqueID       - unique subject IDs (vector)
+        %    numSubjs       - number of subjects (scalar)
+        % ====================================================================
+        function [data, dataPerceptual, uniqueID, numSubjs] = load_fitting_data()
+            data = importdata("preprocessed_dataFitting.mat");
+            uniqueID = unique(data.ID);
+            data = data(data.choice_cond ~= 3,:);
+            numSubjs = length(uniqueID);
+            % Precompute contrast difference
+            data.condiff_relative = (data.contrast_left - data.contrast_right) ./ 2;
+            dataPerceptual = data(data.condition ~= 1,:);
+            data(data.condition == 2,:) = [];
+        end
+
     end % methods
 end % classdef
