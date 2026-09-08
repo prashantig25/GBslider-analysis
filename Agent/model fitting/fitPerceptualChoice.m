@@ -86,9 +86,10 @@ end
 % elsewhere, e.g. plotSigma.m, even though this isn't a full learning-model fit)
 params_bayesianAgent.sigma = sigmaParameter;
 
-% Saving is currently disabled -- uncomment to persist results to disk
-% safe_saveall('sigma_perceptualChoice.mat', params_bayesianAgent);
-% safe_saveall('nll_perceptualChoice.mat', nll_bayesianAgent);
+% Persist results to disk (consumed by fitReducedModelSpace_fixedSigma.m,
+% which fixes sigma to these fitted values instead of fitting it jointly)
+safe_saveall('sigma_perceptualChoice.mat', params_bayesianAgent);
+safe_saveall('nll_perceptualChoice.mat', nll_bayesianAgent);
 
 %% Plot fitted sigma parameter
 % Mean and SEM of the fitted sigma across subjects
