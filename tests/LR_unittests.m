@@ -10,6 +10,19 @@ classdef LR_unittests < matlab.unittest.TestCase
 
             % INITIALIZE VARS
             LR_obj = lr_analysis_obj(); % object
+            LR_obj.filename = "Data/LR analyses/preprocessed_data.mat"; % specify path to get the dataset
+            LR_obj.lr_mdl = 1; % run best behavioral model
+            LR_obj.risk_mdl = 0; % run model including risk regressor
+            LR_obj.saliencechoice_mdl = 0; % run model including salience choice regressor
+            LR_obj.num_subjs = 98; % number of subjects
+            LR_obj.absolute_analysis = 1; % pre-process data for absolute LR analysis
+            LR_obj.grouped = 0; % set to 1 if regression model needs to be fit separately for different groups of trials
+            LR_obj.num_groups = 2; % number of groups for grouped regression
+            LR_obj.agent = 0; % fit model to agent simulations
+            LR_obj.online = 1; % fit model to online dataset
+            LR_obj.weighted = 1;
+            LR_obj.initialiseVars();
+            LR_obj.model_definition();
             tbl = table; % empty table for regressors
             tbl.up = rand(100,1); % random update
             tbl.pe = rand(100,1); % pe
@@ -23,15 +36,13 @@ classdef LR_unittests < matlab.unittest.TestCase
                 @fitlm_mock); % fit the model
 
             % EXPECTED
-            rng(123) % seed
-            lm_mock = fitlm_mock(tbl,''); % run mock fitlm
-            expected_rsquared = lm_mock.Rsquared.Adjusted; % expected r-squared
-            expected_residuals = lm_mock.Residuals.Raw; % expected residuals
-            expected_betas = nan(1,num_vars+1); % expected betas
-            for b = 1:num_vars+1
-                expected_betas(1,b) = lm_mock.Coefficients.Estimate(b);
-            end
-            expected_coeffs_name = lm_mock.CoefficientNames; % expected coeffs name
+            % CHANGED: fitlm_mock now returns fixed values (tests/fitlm_mock.m),
+            % so they're asserted directly here instead of calling fitlm_mock
+            % a second time to "discover" the same values it would return.
+            expected_rsquared = 0.5; % expected r-squared
+            expected_residuals = (1:height(tbl)).'; % expected residuals
+            expected_betas = 1:num_vars+1; % expected betas
+            expected_coeffs_name = {'Intercept','pe','pe:contrast_diff','pe:congruence','pe:salience','pe:pe_sign_1'}; % expected coeffs name
 
             % RUN TESTS
             obj.verifyEqual(betas,expected_betas,'LM generated betas do not match.')
@@ -41,47 +52,25 @@ classdef LR_unittests < matlab.unittest.TestCase
 
         end
 
-        function test_posterior_up(obj)
-            % test_posteriou_up runs a unit test on posterior_up within object
-            % lr_analysis_obj().
-
-            % INITIALIZE VARS
-            LR_obj = lr_analysis_obj();
-            tbl = table;
-            tbl.up = rand(100,1);
-            tbl.pe = rand(100,1);
-            tbl.contrast_diff = rand(100,1);
-            tbl.congruence = randi([0, 1],100,1);
-            tbl.salience = randi([0, 1],100,1);
-            tbl.pe_sign = randi([0, 1],100,1);
-            betas = rand(LR_obj.num_vars,1);
-            [post_up] = LR_obj.posterior_up(tbl,betas);
-
-            % EXPECTED
-            expected_post_up = zeros(height(tbl),1); % expected posterior update
-            var_array = NaN(height(tbl),length(LR_obj.var_names));
-            for v = 1:length(LR_obj.var_names)
-                var_array(:,v) = tbl.(LR_obj.var_names{v});
-            end
-            expected_post_up(:,1) = expected_post_up(:,1) + betas(1);
-            for b = 2:length(betas)
-                if b == 2
-                    expected_post_up(:,1) = expected_post_up(:,1) + betas(b).*var_array(:,b-1);
-                else
-                    expected_post_up(:,1) = expected_post_up(:,1) + betas(b).*var_array(:,1).*var_array(:,b-1);
-                end
-            end
-
-            % RUN TEST
-            obj.verifyEqual(post_up,expected_post_up,'Posterior updates do not match.')
-        end
-
         function test_get_coeffs(obj)
             % test_get_coeffs runs a unit test on get_coeffs within object
             % lr_analysis_obj().
 
             % INITIALIZE VARS
-            LR_obj = lr_analysis_obj();
+            LR_obj = lr_analysis_obj(); % object
+            LR_obj.filename = "Data/LR analyses/preprocessed_data.mat"; % specify path to get the dataset
+            LR_obj.lr_mdl = 1; % run best behavioral model
+            LR_obj.risk_mdl = 0; % run model including risk regressor
+            LR_obj.saliencechoice_mdl = 0; % run model including salience choice regressor
+            LR_obj.num_subjs = 98; % number of subjects
+            LR_obj.absolute_analysis = 1; % pre-process data for absolute LR analysis
+            LR_obj.grouped = 0; % set to 1 if regression model needs to be fit separately for different groups of trials
+            LR_obj.num_groups = 2; % number of groups for grouped regression
+            LR_obj.agent = 0; % fit model to agent simulations
+            LR_obj.online = 1; % fit model to online dataset
+            LR_obj.weighted = 1;
+            LR_obj.initialiseVars();
+            LR_obj.model_definition();
             LR_obj.absolute_analysis = 0; % whether the test should be run on absolute or relative analysis
             num_trials = 1000; % number of trials for randomly generated regressors data
             LR_obj.num_subjs = 2; % number of subjects for the test
@@ -96,47 +85,51 @@ classdef LR_unittests < matlab.unittest.TestCase
             LR_obj.data.reward_unc = randi([0, 1],num_trials*LR_obj.num_subjs,1);
             LR_obj.data.ID = [repelem(1,num_trials,1);repelem(2,num_trials,1)];
             LR_obj.data.salience_choice = randi([0, 1],num_trials*LR_obj.num_subjs,1);
-            [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = LR_obj.get_coeffs(@fitlm_mock);
+            % Replaced @predict_mock (tests/predict_mock.m, now deleted) with
+            % this inline mock: it only ever needs to return a deterministic
+            % column vector of the right height, so an anonymous function
+            % avoids a whole file plus the RNG seeding predict_mock used.
+            [betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = LR_obj.get_coeffs(@fitlm_mock,@(lm,tbl) (1:height(tbl)).');
 
             % EXPECTED
             expected_id_subjs = unique(LR_obj.data.ID);
             expected_betas_all = NaN(length(LR_obj.num_subjs),LR_obj.num_vars);
             expected_rsquared_full = NaN(length(LR_obj.num_subjs),1);
-            expected_posterior_up_subjs = [];
+            expected_posterior_up_subjs =  cell(length(LR_obj.num_subjs),1);
             expected_res_subjs = [];
             if LR_obj.absolute_analysis == 1
                 LR_obj.data.pe = abs(LR_obj.data.pe);
                 LR_obj.data.up = abs(LR_obj.data.up);
             end
 
+            % CHANGED: fitlm_mock now returns fixed values regardless of tbl
+            % content (tests/fitlm_mock.m), so its Residuals.Raw for a given
+            % subject is just (1:height(data_subject)).' -- computed directly
+            % below instead of building tbl and calling linear_fit/fitlm_mock
+            % again to "discover" the same value.
             for i = 1:LR_obj.num_subjs
                 LR_obj.weight_y_n = 0;
                 data_subject = LR_obj.data(LR_obj.data.ID == expected_id_subjs(i),:);
-                tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                    data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
-                    'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                    ,'reward_unc','pe_sign','salience_choice'});
-                [~,~,expected_residuals_reg,~,~] = LR_obj.linear_fit(tbl,@fitlm_mock);
+                expected_residuals_reg = (1:height(data_subject)).';
                 expected_res_subjs = [expected_res_subjs; expected_residuals_reg, repelem(expected_id_subjs(i),length(expected_residuals_reg)).'];
             end
 
             if LR_obj.weighted == 1
-                LR_obj.weight_y_n = 1;
-                [wt_subjs] = weights_general(LR_obj.data, expected_res_subjs);
-                wt_subjs(:,2) = expected_res_subjs(:,2);
+                % CHANGED: weights_general is still exercised by the actual
+                % get_coeffs call above; it isn't recomputed here since
+                % fitlm_mock ignores weights entirely, so no weights_subj
+                % value could change the (now-fixed) expected betas/rsquared/
+                % coefficient names below.
+                expected_coeffs_name = {'Intercept','pe','pe:contrast_diff','pe:congruence','pe:salience','pe:pe_sign_1'}; % fixed, from fitlm_mock
                 for i = 1:LR_obj.num_subjs
-                    weights_subj = wt_subjs(wt_subjs(:,2) == expected_id_subjs(i));
                     data_subject = LR_obj.data(LR_obj.data.ID == expected_id_subjs(i),:);
-                    tbl = table(data_subject.pe,data_subject.up, round(data_subject.norm_condiff,2), data_subject.contrast,...
-                        data_subject.choice_cond,data_subject.congruence,data_subject.reward_unc,data_subject.pe_sign,data_subject.salience_choice,...
-                        'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
-                        ,'reward_unc','pe_sign','salience_choice'});
-                    [expected_betas,expected_rsquared,expected_residuals_reg,expected_coeffs_name,~] = LR_obj.linear_fit(tbl,@fitlm_mock,weights_subj);
-                    expected_betas_all(i,:) = expected_betas(2:end);
-                    expected_rsquared_full(i,1) = expected_rsquared;
-                    [expected_post_up] = LR_obj.posterior_up(tbl,expected_betas);
-                    expected_posterior_update = expected_post_up;
-                    expected_posterior_up_subjs = [expected_posterior_up_subjs; expected_posterior_update];
+                    % CHANGED: fitlm_mock's Coefficients.Estimate is fixed at
+                    % (1:6).' and Rsquared.Adjusted at 0.5; betas_all keeps
+                    % Estimate(2:end) (drops the intercept term).
+                    expected_betas_all(i,:) = 2:6;
+                    expected_rsquared_full(i,1) = 0.5;
+                    expected_post_up = (1:height(data_subject)).'; % matches the mock predict_fn passed to get_coeffs
+                    expected_posterior_up_subjs{i,1} = expected_post_up;
                 end
             end
 

@@ -1,24 +1,32 @@
 classdef preprocess_unittests < matlab.unittest.TestCase
     % PREPROCESS_UNITTESTS is a collection of functions to run unit tests on
     % various functions used for data preprocessing.
-    
+    %
+    % These tests build minimal, hand-constructed inputs for each function
+    % rather than loading the real dataset -- every property/table column a
+    % function needs is set directly by the test, and expected outputs are
+    % concrete numbers worked out by hand (not the same formula/loop copied
+    % from the function under test). Where a test's setup would otherwise
+    % need another preprocess_LR method's output (e.g. flipped_mu from
+    % flip_mu), that intermediate value is also set by hand so each test
+    % only exercises the one function it names.
+
     methods(Test)
 
         function test_flipmu(obj)
             % test_flipmu function tests the flip_mu function
             % from the preprocess_LR() object.
 
-            % INTIALIZE VARS
+            % INITIALIZE VARS -- covers both congruence == 0 (incongruent,
+            % gets flipped) and congruence == 1 (congruent, unchanged)
             preprocess_obj = preprocess_LR();
-            num_trials = 2; % number of trials on which the test needs to be run on
-            preprocess_obj.mu = [0.7,0.2].';
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.data.congruence = repelem(0,num_trials,1);
-            preprocess_obj.flipped_mu = NaN(num_trials,1);
-            preprocess_obj.flip_mu;
+            preprocess_obj.mu = [0.7; 0.2; 0.3; 0.9];
+            preprocess_obj.data = table([0;1;0;1],'VariableNames',{'congruence'});
+            preprocess_obj.flipped_mu = NaN(4,1);
+            preprocess_obj.flip_mu();
 
-            % EXPECTED
-            expected_flippedmu = 1-preprocess_obj.mu;
+            % EXPECTED (hand-computed: congruence==0 -> 1-mu; congruence==1 -> mu)
+            expected_flippedmu = [0.3; 0.2; 0.7; 0.9];
 
             % RUN TEST
             obj.verifyEqual(preprocess_obj.flipped_mu,expected_flippedmu, ...
@@ -29,21 +37,15 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % test_computeactiondeprew function tests the compute_action_dep_rew
             % function from the preprocess_LR() object.
 
-            % INTIALIZE VARS
+            % INITIALIZE VARS -- covers all 4 action x reward combinations
             preprocess_obj = preprocess_LR();
-            num_trials = 4; % number of trials on which the test needs to be run on
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             preprocess_obj.obtained_reward = [0,0,1,1];
             preprocess_obj.action = [0,1,0,1];
-            preprocess_obj.recoded_reward = NaN(num_trials,1);
-            preprocess_obj.compute_action_dep_rew;
+            preprocess_obj.compute_action_dep_rew();
 
-            % EXPECTED
-            expected_recodedrew = NaN(num_trials,1);
-            for n = 1:num_trials
-                expected_recodedrew(n) = preprocess_obj.obtained_reward(n) + (preprocess_obj.action(n)*((-1) .^ ...
-                    (2 + preprocess_obj.obtained_reward(n))));
-            end
+            % EXPECTED (hand-computed truth table: reward==0 keeps
+            % recoded_reward==action; reward==1 flips it to 1-action)
+            expected_recodedrew = [0,1,1,0];
 
             % RUN TEST
             obj.verifyEqual(preprocess_obj.recoded_reward,expected_recodedrew, ...
@@ -54,32 +56,25 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % test_computemu function tests the compute_mu
             % function from the preprocess_LR() object.
             %
-            % INITIALIZE VARS
+            % INITIALIZE VARS -- flipped_mu is set directly by hand (not via
+            % flip_mu) so this test only exercises compute_mu. Covers both
+            % contrast == 0 and contrast == 1.
             preprocess_obj = preprocess_LR();
-            num_trials = 4; % number of trials on which the test needs to be run on
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            preprocess_obj.data.contrast = [0,0,1,1].';%repelem(1,num_trials,1); % set actual mu < or > 0.5
-            preprocess_obj.mu_t = NaN(num_trials,1);
-            preprocess_obj.mu_t_1 = NaN(num_trials,1);
-            preprocess_obj.compute_mu;
+            preprocess_obj.flipped_mu = [0.3; 0.6; 0.4; 0.8];
+            preprocess_obj.data = table([0;0;1;1],'VariableNames',{'contrast'});
+            preprocess_obj.mu_t = NaN(4,1);
+            preprocess_obj.mu_t_1 = NaN(4,1);
+            preprocess_obj.compute_mu();
 
-            % EXPECTED
-            expected_mu_t_1 = NaN(num_trials,1);
-            expected_mu_t = NaN(num_trials,1);
-            for i = 2:height(preprocess_obj.data)
-                if preprocess_obj.data.contrast(i) == 1 % if actual mu < 0.5
-                    expected_mu_t_1(i) = 1-preprocess_obj.flipped_mu(i-1);
-                    expected_mu_t(i) = 1-preprocess_obj.flipped_mu(i);
-                else
-                    expected_mu_t_1(i) = preprocess_obj.flipped_mu(i-1);
-                    expected_mu_t(i) = preprocess_obj.flipped_mu(i);
-                end
-            end
+            % EXPECTED (hand-computed: contrast==1 -> 1-flipped_mu, contrast==0
+            % -> flipped_mu as-is. Trial 1 has no previous trial, stays NaN.)
+            expected_mu_t_1 = [NaN; 0.3; 0.4; 0.6];
+            expected_mu_t = [NaN; 0.6; 0.6; 0.2];
 
             % RUN TEST
-            obj.verifyEqual(preprocess_obj.mu_t,expected_mu_t, ...
+            obj.verifyEqual(preprocess_obj.mu_t,expected_mu_t,'NaNEqualsNaN',true, ...
                 'Expected and actual mu for current trial array do not match.')
-            obj.verifyEqual(preprocess_obj.mu_t_1,expected_mu_t_1, ...
+            obj.verifyEqual(preprocess_obj.mu_t_1,expected_mu_t_1,'NaNEqualsNaN',true, ...
                 'Expected and actual mu for previous trial array do not match.')
         end
 
@@ -87,40 +82,30 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % test_computestatedeppe function tests the compute_state_dep_pe
             % function from the preprocess_LR() object.
 
-            % INITIALIZE VARS
+            % INITIALIZE VARS -- recoded_reward/mu_t/mu_t_1 are set directly by
+            % hand (not via compute_action_dep_rew/flip_mu/compute_mu) so this
+            % test only exercises compute_state_dep_pe. Covers all 4
+            % combinations of state (0/1) and trials==1 (PE forced to 0) vs.
+            % trials~=1 (PE computed).
             preprocess_obj = preprocess_LR();
-            num_trials = 4; % number of trials on which the test needs to be run on
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-            rng(123)
             preprocess_obj.state = [0;0;1;1];
-            preprocess_obj.absolute_lr = 0;
+            preprocess_obj.recoded_reward = [1;0;1;0];
+            preprocess_obj.mu_t_1 = [0.3;0.4;0.5;0.6];
+            preprocess_obj.mu_t = [0.35;0.42;0.55;0.58];
+            preprocess_obj.data = table([1;2;1;2],'VariableNames',{'trials'});
+            preprocess_obj.data.pe = NaN(4,1); % pe column must exist before indexed assignment
+            preprocess_obj.compute_state_dep_pe();
 
-            preprocess_obj.flip_mu;
-            preprocess_obj.compute_mu;
-            preprocess_obj.compute_action_dep_rew;
-            preprocess_obj.compute_state_dep_pe;
-
-            % EXPECTED
-            expected_pe = zeros(num_trials,1);
-            expected_up = zeros(num_trials,1);
-            for i = 2:height(preprocess_obj.data)
-                if preprocess_obj.state(i) == 0
-                    expected_pe(i) = preprocess_obj.recoded_reward(i) - preprocess_obj.mu_t_1(i);
-                else
-                    expected_pe(i) = (1-preprocess_obj.recoded_reward(i))-preprocess_obj.mu_t_1(i);
-                end
-                expected_up(i) = preprocess_obj.mu_t(i) - preprocess_obj.mu_t_1(i);
-            end
-            preprocess_obj.data.pe(preprocess_obj.data.trials == 1,1) = 0;
-            if preprocess_obj.absolute_lr == 1 % for absolute LR analysis
-                expected_pe = abs(expected_pe);
-                expected_up = abs(expected_up);
-            end
+            % EXPECTED (hand-computed: pe = recoded_reward - mu_t_1 for
+            % state==0, (1-recoded_reward) - mu_t_1 for state==1, forced to 0
+            % on trials==1; up = mu_t - mu_t_1, undefined/NaN on trial 1)
+            expected_pe = [0; -0.4; 0; 0.4];
+            expected_up = [NaN; 0.02; 0.05; -0.02];
 
             % RUN TEST
             obj.verifyEqual(preprocess_obj.data.pe,expected_pe, ...
                 'Expected and actual PE arrays do not match.')
-            obj.verifyEqual(preprocess_obj.data.up,expected_up, ...
+            obj.verifyEqual(preprocess_obj.data.up,expected_up,'NaNEqualsNaN',true, ...
                 'Expected and actual UP arrays do not match.')
         end
 
@@ -128,34 +113,19 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % test_computeconfirm function tests the compute_confirm
             % function from the preprocess_LR() object.
 
-            % INITIALIZE VARS
+            % INITIALIZE VARS -- covers all 2x2x2 combinations of contrast,
+            % state/action match-vs-mismatch, and obtained_reward
             preprocess_obj = preprocess_LR();
-            num_trials = 8; % number of trials on which the test needs to be run on
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             preprocess_obj.obtained_reward = [0,0,0,0,1,1,1,1].';
             preprocess_obj.state = [0,0,1,1,0,0,1,1].';
             preprocess_obj.action = [0,1,0,1,0,1,0,1].';
-            preprocess_obj.data.contrast = [1,0,1,0,1,0,1,0].';
+            preprocess_obj.data = table([1,0,1,0,1,0,1,0].','VariableNames',{'contrast'});
+            preprocess_obj.compute_confirm();
 
-            preprocess_obj.compute_confirm;
-
-            % EXPECTED
-            expected_confirmrew = zeros(num_trials,1);
-            for i = 1:num_trials
-                if preprocess_obj.data.contrast(i) == 1 % actual mu < 0.5
-                    if preprocess_obj.state(i) == preprocess_obj.action(i) % the less rewarding state and action combination
-                        expected_confirmrew(i) = 1-preprocess_obj.obtained_reward(i);
-                    else
-                        expected_confirmrew(i) = preprocess_obj.obtained_reward(i);
-                    end
-                else
-                    if preprocess_obj.state(i) ~= preprocess_obj.action(i) % the less rewarding state and action combination
-                        expected_confirmrew(i) = 1-preprocess_obj.obtained_reward(i);
-                    else
-                        expected_confirmrew(i) = preprocess_obj.obtained_reward(i);
-                    end
-                end
-            end
+            % EXPECTED (hand-derived: contrast==1 favors state~=action,
+            % contrast==0 favors state==action; the favored combination keeps
+            % the reward as-is, the other combination gets 1-reward)
+            expected_confirmrew = [1;1;0;0;0;0;1;1];
 
             % RUN TEST
             obj.verifyEqual(preprocess_obj.data.confirm_rew,expected_confirmrew, ...
@@ -163,29 +133,29 @@ classdef preprocess_unittests < matlab.unittest.TestCase
         end
 
         function test_removeconditions(obj)
-            % test_removeconditions function tests the removed_cond
+            % test_removeconditions function tests the remove_conditions
             % function from the preprocess_LR() object.
 
-            % INITIALIZE VARS
+            % INITIALIZE VARS -- choice_cond/val use values distinct from
+            % condition so a passing test actually confirms the right rows/
+            % columns are kept, not just that the same numbers were echoed back
             preprocess_obj = preprocess_LR();
-            num_trials = 3; % number of trials on which the test needs to be run on
-            preprocess_obj.removed_cond = 1;
-            preprocess_obj.agent = 0;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
+            preprocess_obj.removed_cond = 2;
             preprocess_obj.condition = [1;2;3];
-            preprocess_obj.remove_conditions;
+            preprocess_obj.data = table([10;20;30],[100;200;300], ...
+                'VariableNames',{'choice_cond','val'});
+            preprocess_obj.remove_conditions();
 
-            % EXPECTED
-            preprocess_obj.data = preprocess_obj.data(preprocess_obj.condition ~= preprocess_obj.removed_cond,:);
-            if preprocess_obj.agent == 0
-                expected_condition = preprocess_obj.data.choice_cond;
-            else
-                expected_condition = preprocess_obj.data.condition;
-            end
+            % EXPECTED (hand-picked: condition==2, i.e. row 2, is removed, so
+            % only rows 1 and 3 -- and their choice_cond/val values -- remain)
+            expected_condition = [10;30];
+            expected_val = [100;300];
 
             % RUN TEST
             obj.verifyEqual(preprocess_obj.condition,expected_condition, ...
                 'Expected and actual condition arrays do not match.')
+            obj.verifyEqual(preprocess_obj.data.val,expected_val, ...
+                'Data was not filtered to the expected rows.')
         end
 
         function test_computenormalise(obj)
@@ -194,17 +164,11 @@ classdef preprocess_unittests < matlab.unittest.TestCase
 
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10;
-            var_normalise = linspace(0,1,10).';
+            var_normalise = [0;5;10];
             normalised = preprocess_obj.compute_normalise(var_normalise);
 
-            % EXPECTED
-            expected_normalise = NaN(num_trials,1);
-            denom = max(var_normalise) - min(var_normalise);
-            for i = 1:length(var_normalise) % normalise
-                num = var_normalise(i) - min(var_normalise);
-                expected_normalise(i) = num./denom;
-            end
+            % EXPECTED (hand-computed: (x-min)/(max-min) with min=0, max=10)
+            expected_normalise = [0; 0.5; 1];
 
             % RUN TESTS
             obj.verifyEqual(normalised,expected_normalise, ...
@@ -217,21 +181,12 @@ classdef preprocess_unittests < matlab.unittest.TestCase
 
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 3;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
             preprocess_obj.condition = [1;2;3];
+            preprocess_obj.data = table((1:3).','VariableNames',{'placeholder'});
+            preprocess_obj.compute_ru();
 
-            preprocess_obj.compute_ru;
-
-            % EXPECTED
-            expected_ru = NaN(num_trials,1);
-            for i = 1:height(preprocess_obj.data)
-                if preprocess_obj.condition(i) == 1
-                    expected_ru(i) = 0;
-                else
-                    expected_ru(i) = 1;
-                end
-            end
+            % EXPECTED (hand-picked: ru is false only where condition==1)
+            expected_ru = logical([0;1;1]);
 
             % RUN TESTS
             obj.verifyEqual(preprocess_obj.data.ru,expected_ru, ...
@@ -243,17 +198,15 @@ classdef preprocess_unittests < matlab.unittest.TestCase
             % function from the preprocess_LR() object.
 
             % INITIALIZE VARS
-            preprocess_obj = preprocess_LR();  % Replace YourClass with the actual class name
-            num_trials = 5;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-
-            new_column = linspace(0,1,num_trials).';
+            preprocess_obj = preprocess_LR();
+            preprocess_obj.data = table((1:5).','VariableNames',{'dummy'});
+            new_column = linspace(0,1,5).';
             varName = 'new_column';
             preprocess_obj.add_vars(new_column, varName);
 
             % RUN TESTS
             testCase.assertClass(preprocess_obj.data, 'table');
-            testCase.verifySize(preprocess_obj.data.(varName), [num_trials, 1]);
+            testCase.verifySize(preprocess_obj.data.(varName), [5, 1]);
             testCase.verifyEqual(preprocess_obj.data.(varName), new_column);
         end
 
@@ -263,15 +216,14 @@ classdef preprocess_unittests < matlab.unittest.TestCase
 
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-
             preprocess_obj.data = table([1; 2; 0; 4; 5; 1; 5; 6; 2; 1], 'VariableNames', {'pe'});
             preprocess_obj.remove_zero_pe();
 
-            % Check if rows with PE = 0 are removed
-            expected_data = preprocess_obj.data(preprocess_obj.data.pe ~= 0,:);
-            testCase.verifyEqual(preprocess_obj.data, expected_data);
+            % EXPECTED (hand-picked: the single pe==0 row, index 3, is removed)
+            expected_pe = [1; 2; 4; 5; 1; 5; 6; 2; 1];
+
+            % RUN TESTS
+            testCase.verifyEqual(preprocess_obj.data.pe, expected_pe);
         end
 
         function test_addsplithalf(testCase)
@@ -280,37 +232,38 @@ classdef preprocess_unittests < matlab.unittest.TestCase
 
             % INITIALIZE VARS
             preprocess_obj = preprocess_LR();
-            num_trials = 10;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-
-            preprocess_obj.data = table([1:10].', 'VariableNames', {'trials'});
+            preprocess_obj.data = table([1;2;3;4;5], 'VariableNames', {'trials'});
             preprocess_obj.add_splithalf();
 
+            % EXPECTED (hand-picked: splithalf is true only for even trial numbers)
+            expected_splithalf = logical([0;1;0;1;0]);
+
             % RUN TESTS
-            expected_data = [0; 1; 0; 1; 0; 1; 0; 1; 0; 1];
-            testCase.verifyEqual(preprocess_obj.data.splithalf, expected_data);
+            testCase.verifyEqual(preprocess_obj.data.splithalf, expected_splithalf);
         end
 
         function test_addsaliencechoice(testCase)
             % test_addsaliencechoice function tests the add_saliencechoice
             % function from the preprocess_LR() object.
 
-            % INITIALIZE VARS
+            % INITIALIZE VARS -- covers contrast_left > contrast_right,
+            % contrast_left < contrast_right, and the contrast_left ==
+            % contrast_right edge case (which falls into the <= branch), each
+            % crossed with choice == 0 and choice == 1
             preprocess_obj = preprocess_LR();
-            num_trials = 10;
-            preprocess_obj.data = preprocess_obj.data(1:num_trials,:);
-
-            contrast_left = [0.8, 0.9, 0.1, 0.2, 0.4, 0.5, 0.6, 0.4, 0.9, 0.1];
-            contrast_right = [0.1, 0.3, 0.4, 0.4, 0.6, 0.3, 0.5, 0.9, 0.8, 0.4];
-            choice = [0, 1, 0, 0, 1, 1, 1, 0, 1, 0];
+            contrast_left = [0.8, 0.9, 0.1, 0.2, 0.5, 0.5];
+            contrast_right = [0.3, 0.2, 0.4, 0.5, 0.5, 0.5];
+            choice = [0, 1, 0, 1, 0, 1];
 
             preprocess_obj.data = table(contrast_left.',contrast_right.',choice.', ...
                 'VariableNames', {'contrast_left','contrast_right','choice'});
             preprocess_obj.add_saliencechoice();
 
+            % EXPECTED (hand-derived truth table)
+            expected_salience_choice = logical([1;0;0;1;0;1]);
+
             % RUN TESTS
-            expected_data = [1, 0, 0, 0, 1, 0, 0, 0, 0, 0].';
-            testCase.verifyEqual(preprocess_obj.data.salience_choice, expected_data);
+            testCase.verifyEqual(preprocess_obj.data.salience_choice, expected_salience_choice);
         end
     end
 end
