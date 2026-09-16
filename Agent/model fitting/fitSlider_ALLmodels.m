@@ -133,11 +133,13 @@ classdef fitSlider_ALLmodels
                 % Beta parameters for likelihood
                 a = q_transformed * kappa;
                 b = (1 - q_transformed) * kappa;
-                % q_0_0 = q_transformed;
 
                 % Avoid invalid beta params
                 if a <= 0 || b <= 0
-                    disp("Invalid beta params");
+                    % just here for debugging purposes. will remove it at a
+                    % later stage
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, alpha, sigma);
                     a = max(eps, a);
                     b = max(eps, b);
                 end
@@ -281,7 +283,12 @@ classdef fitSlider_ALLmodels
 
                 % Avoid invalid beta params
                 if a <= 0 || b <= 0
-                    disp("Invalid beta params");
+                    fprintf('Invalid beta params at trial %d: q=%.3g (basicRL=%.3g, RLSigma=%.3g, lambda=%.3g), kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, q_basicRL, q_RLSigma, lambda, kappa, a, b, alpha, sigma);
+                    qSimGrid = lambda * voi_matrix_RLSigma(:,1) + (1 - lambda) * voi_matrix_basicRL(:,1);
+                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, qSimGrid, ...
+                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
+                        sprintf('alpha=%.3g, sigma=%.3g, lambda=%.3g', alpha, sigma, lambda));
                     a = max(eps, a);
                     b = max(eps, b);
                 end
@@ -379,7 +386,11 @@ classdef fitSlider_ALLmodels
 
                 % Avoid invalid beta params
                 if a <= 0 || b <= 0
-                    disp("Invalid beta params");
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, alpha, sigma);
+                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, voi_matrix(:,1), ...
+                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
+                        sprintf('alpha=%.3g, sigma=%.3g', alpha, sigma));
                     a = max(eps, a);
                     b = max(eps, b);
                 end
@@ -496,7 +507,11 @@ classdef fitSlider_ALLmodels
 
                 % Avoid invalid beta params
                 if a <= 0 || b <= 0
-                    disp("Invalid beta params");
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (confirmBias=%.3g, noconfirmBias=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, confirmBias, noconfirmBias, sigma);
+                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, voi_matrix(:,1), ...
+                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
+                        sprintf('confirmBias=%.3g, noconfirmBias=%.3g, sigma=%.3g', confirmBias, noconfirmBias, sigma));
                     a = max(eps, a);
                     b = max(eps, b);
                 end
@@ -592,7 +607,11 @@ classdef fitSlider_ALLmodels
 
                 % Avoid invalid beta params
                 if a <= 0 || b <= 0
-                    disp("Invalid beta params");
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (confirmBias=%.3g, noconfirmBias=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, confirmBias, noconfirmBias, sigma);
+                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, voi_matrix(:,1), ...
+                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
+                        sprintf('confirmBias=%.3g, noconfirmBias=%.3g, sigma=%.3g', confirmBias, noconfirmBias, sigma));
                     a = max(eps, a);
                     b = max(eps, b);
                 end
@@ -906,11 +925,13 @@ classdef fitSlider_ALLmodels
                     if any(a <= 0 | b <= 0)
                         disp('Invalid a or b detected:');
                         disp([a(:), b(:)]);
+                        a = max(eps, a);
+                        b = max(eps, b);
                     end
 
                     % Log-likelihood for this trial
                     p = betapdf(mu_hatBlocks(t), a, b);
-                    nll_trial(t,bl) = log(p);
+                    nll_trial(t,bl) = log(p + eps);
                     mu = [mu;agent.G];
                 end
             end
@@ -962,17 +983,66 @@ classdef fitSlider_ALLmodels
                     if any(a <= 0 | b <= 0)
                         disp('Invalid a or b detected:');
                         disp([a(:), b(:)]);
+                        a = max(eps, a);
+                        b = max(eps, b);
                     end
 
                     % Log-likelihood for this trial
                     p = betapdf(mu_hatBlocks(t), a, b);
-                    nll_trial(t,bl) = log(p);
+                    nll_trial(t,bl) = log(p + eps);
                     mu = [mu;agent.G];
                 end
             end
             nll = -nansum(nll_trial,"all");
         end
 
+        %% ===================================================================
+        %  PERCEPTUAL CHOICE MODEL
+        %  -------------------------------------------------------------------
+        %  Negative log-likelihood of a subject's binary perceptual choices
+        %  given sigma, using a Bayesian ideal-observer agent (Agent class).
+        %  Used to fit a subject's perceptual sensitivity independent of any
+        %  reward-learning model (see fitPerceptualChoice.m).
+        %  Inputs:
+        %    params  - [sigma], perceptual sensitivity (observation noise) parameter
+        %    data    - subject's trial table (must include blocks, choice, condiff_relative)
+        %    nBlocks - number of blocks
+        %    nTrials - number of trials per block
+        %    blocks  - block index for each trial
+        % ====================================================================
+        function nll = nll_perceptualChoice(params, data, nBlocks, nTrials, blocks)
+            sigma = params(1);
+            nll_trial = NaN(nTrials,nBlocks);   % Per-trial log-likelihood, laid out [trial x block]
+            uniqueBlocks = unique(blocks);
+
+            for bl = 1:nBlocks
+                % Fresh Bayesian agent for each block, evaluated at the candidate sigma
+                agent = Agent();
+                agent.task_agent_analysis = 1;   % Restrict agent to perceptual-choice mode
+                agent.confirmation_bias = 0;     % No confirmation bias in this model
+                agent.sigma = sigma;
+
+                % This block's trials
+                dataBlocks = data(data.blocks == uniqueBlocks(bl),:);
+                choices = dataBlocks.choice;
+                condiff = dataBlocks.condiff_relative;
+
+                for t = 1:height(dataBlocks)
+
+                    % Bayesian agent inference steps
+                    agent.o_t = condiff(t);      % Set this trial's perceptual observation
+                    agent.p_s_giv_o(agent.o_t);  % Compute posterior over states given the observation
+                    agent.decide_p();            % Compute the agent's perceptual choice probabilities
+
+                    % Probability the agent assigns to the choice actually made,
+                    % clipped away from 0/1 to avoid -Inf from log()
+                    p = max(min(agent.p_d_t(choices(t) + 1), 1 - 1e-10), 1e-10);
+                    nll_trial(t,bl) = log(p);
+                end
+            end
+            % Sum log-likelihoods across all trials/blocks and negate -> total NLL
+            nll = -nansum(nll_trial,"all");
+        end
 
         %% ===================================================================
         %  AIC/BIC COMPUTATION
@@ -1025,22 +1095,112 @@ classdef fitSlider_ALLmodels
         %  "both" (mixed reward + perceptual) and perceptual-only condition
         %  subsets used by the fitting scripts.
         %  Outputs:
-        %    data           - both-condition trials (condition == 1), with
-        %                      reward-condition trials (choice_cond == 3)
-        %                      removed and condiff_relative precomputed
-        %    dataPerceptual - perceptual-condition trials (condition == 2)
-        %    uniqueID       - unique subject IDs (vector)
-        %    numSubjs       - number of subjects (scalar)
+        %    data                - both-condition trials (condition == 1);
+        %                          reward-condition trials (choice_cond == 3)
+        %                          removed and condiff_relative precomputed
+        %                          upstream by preprocessAllData.m
+        %    dataPerceptual      - perceptual-condition trials (condition == 2)
+        %    uniqueID            - unique subject IDs (vector)
+        %    numSubjs            - number of subjects (scalar)
+        %    dataPerceptualChoice - dataPerceptual, further restricted to
+        %                          fitPerceptualChoice.m's needs: warm-up
+        %                          trials (trials <= 5) dropped, and choice
+        %                          recoded into a fixed reference frame
+        %                          (flipped when contrast == 1) so it's
+        %                          comparable across contrast conditions.
+        %                          Appended as a 5th output so existing
+        %                          4-output callers are unaffected.
         % ====================================================================
-        function [data, dataPerceptual, uniqueID, numSubjs] = load_fitting_data()
+        function [data, dataPerceptual, uniqueID, numSubjs, dataPerceptualChoice] = load_fitting_data()
             data = importdata("preprocessed_dataFitting.mat");
             uniqueID = unique(data.ID);
-            data = data(data.choice_cond ~= 3,:);
             numSubjs = length(uniqueID);
-            % Precompute contrast difference
-            data.condiff_relative = (data.contrast_left - data.contrast_right) ./ 2;
             dataPerceptual = data(data.condition ~= 1,:);
             data(data.condition == 2,:) = [];
+
+            dataPerceptualChoice = dataPerceptual(dataPerceptual.trials > 5,:);
+            flipRows = dataPerceptualChoice.contrast == 1;
+            dataPerceptualChoice.choice(flipRows) = 1 - dataPerceptualChoice.choice(flipRows);
+        end
+
+        %% ===================================================================
+        %  PLOT BETA DIAGNOSTICS
+        %  -------------------------------------------------------------------
+        %  Visualizes why a trial's Beta(a, b) likelihood parameters went
+        %  invalid (called from the "Invalid beta params" checks in the
+        %  nll_* functions above, right where a/b are computed):
+        %    1. how peaked the observation-likelihood is around condiff,
+        %       given sigma (a narrow spike means little averaging);
+        %    2. whether the hypothetical Q-value collapses to the same
+        %       value across the whole observation grid (e.g. a large
+        %       alpha/confirmBias makes q_sim jump straight to the reward,
+        %       leaving nothing to average over);
+        %    3. the resulting Beta(a, b) density against the observed
+        %       mu_hat for that trial.
+        %
+        %  NOTE: parfor workers cannot display figures, so this is a no-op
+        %  when called from inside a parfor loop (e.g. the fitting loops in
+        %  fitReducedModelSpace.m) -- it only renders when running on the
+        %  client. Even then, fmincon can call the objective function (and
+        %  so this) many times per fit, so expect multiple figure windows
+        %  if this keeps triggering during a single run.
+        %  Inputs:
+        %    trial_idx     - trial index (n) where a<=0 or b<=0
+        %    set_o         - discretized hypothetical-observation grid
+        %    p_o_given_u   - observation-likelihood weights over set_o
+        %                    (already normalized to sum to 1)
+        %    qSimGrid      - hypothetical Q-value at each set_o point
+        %                    (e.g. voi_matrix(:,1))
+        %    condiff_n     - true contrast difference for this trial
+        %    mu_hat_n      - observed slider value for this trial
+        %    q_transformed - integrated belief that produced a/b
+        %    a, b          - the (invalid) Beta shape parameters
+        %    kappa         - concentration parameter
+        %    paramLabel    - string describing the candidate free
+        %                    parameters (e.g. 'alpha=1, sigma=0.00708')
+        % ====================================================================
+        function plot_beta_diagnostics(trial_idx, set_o, p_o_given_u, qSimGrid, ...
+                condiff_n, mu_hat_n, q_transformed, a, b, kappa, paramLabel)
+            if ~isempty(getCurrentTask())
+                return % on a parfor worker -- can't display a figure here
+            end
+
+            figure('Position', [100, 100, 800, 750]);
+
+            subplot(3,1,1);
+            bar(set_o, p_o_given_u, 'FaceColor', [0.3 0.5 0.8]);
+            xline(condiff_n, 'r--', 'condiff', 'LineWidth', 1.5);
+            xlabel('Hypothetical observation (set_o)');
+            ylabel('P(o | u)');
+            title(sprintf('Observation likelihood at trial %d', trial_idx));
+            grid on;
+
+            subplot(3,1,2);
+            bar(set_o, qSimGrid, 'FaceColor', [0.8 0.4 0.3]);
+            xlabel('Hypothetical observation (set_o)');
+            ylabel('Simulated Q-value (q_{sim})');
+            title(sprintf('Hypothetical belief update per observation (%s)', paramLabel));
+            ylim([-0.05 1.05]);
+            grid on;
+
+            subplot(3,1,3);
+            if a > 0 && b > 0
+                x = linspace(0.001, 0.999, 200);
+                plot(x, betapdf(x, a, b), 'LineWidth', 2, 'Color', [0.2 0.6 0.3]);
+            else
+                text(0.5, 0.5, sprintf('Beta(%.3g, %.3g) is degenerate (a or b <= 0)', a, b), ...
+                    'HorizontalAlignment', 'center');
+                xlim([0 1]); ylim([0 1]);
+            end
+            hold on;
+            xline(mu_hat_n, 'k--', 'observed mu_hat', 'LineWidth', 1.5);
+            xlabel('mu_hat');
+            ylabel('Density');
+            title(sprintf('Resulting Beta(%.3g, %.3g), kappa=%.4g', a, b, kappa));
+            grid on;
+
+            sgtitle(sprintf('Trial %d: q = %.4g \\rightarrow a = %.4g, b = %.4g', ...
+                trial_idx, q_transformed, a, b));
         end
 
     end % methods

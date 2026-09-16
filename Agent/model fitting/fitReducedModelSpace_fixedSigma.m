@@ -12,23 +12,54 @@
 %  ========================================================================
 clc; clearvars;
 rng(123); % for reproducability
+
+% PATH STUFF -- anchor the read location to Agent/model fitting/, where
+% fitPerceptualChoice.m saves sigma_perceptualChoice.mat, regardless of
+% MATLAB's current folder.
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    desiredPath = currentDir;
+else
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
+
 %% =================== LOAD AND PREPARE DATA =============================
 [dataBoth, dataPerceptual, uniqueID, numSubjs] = fitSlider_ALLmodels.load_fitting_data();
 
 % Load each subject's fixed sigma from the perceptual-choice fit. uniqueID
 % here and in fitPerceptualChoice.m are both derived as unique(data.ID)
 % from the same raw preprocessed_dataFitting.mat, so subject order matches.
-perceptualSigma = importdata("sigma_perceptualChoice.mat");
+perceptualSigma = importdata(fullfile(save_dir, 'sigma_perceptualChoice.mat'));
 fixedSigma = perceptualSigma.sigma;
+
+% Multi-start: fmincon is a local optimizer, so draw multiple random
+% starting points per subject within each model's [lb, ub] and keep the
+% lowest-NLL fit, to reduce the risk of converging to a local minimum.
+% Sigma is fixed here, but the remaining free parameters (alpha/kappa)
+% still carry the same local-minimum risk as in fitReducedModelSpace.m.
+n_startingPoints = 10;
+
+% Progress bar setup: parfor workers can't open/update a figure directly,
+% so each completed (subject, starting point) combination is sent via
+% DataQueue to the client, which updates a waitbar window (progress_bar,
+% defined at the end of this file). progress_bar('reset', ...) is called
+% before each parfor block to relabel the bar and restart it at 0%.
+progressQueue = parallel.pool.DataQueue;
 
 %% =================== BASIC RL MODEL ====================================
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_basicRL = NaN(numSubjs, 1);
-init_params = [0.1, 5]; % [alpha, kappa]; sigma is fixed, not fit
 lb = [0, 1];
 ub = [1, 100];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Both, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Both, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -36,27 +67,38 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated( ...
         [params(1), params(2), sigma_n], subj.mu_hat, subj.blocks, rewards, subj.condiff);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    alphaParameter(n) = params(1);
-    kappaParameter(n) = params(2);
+
+    best_nll = Inf;
+    best_params = NaN(1,2);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
     sigmaParameter(n) = sigma_n;
-    nll_basicRL(n) = nll;
-
-    fprintf('Subject number: %d\n', n);
-
+    nll_basicRL(n) = best_nll;
 end
 params_basicRL.alpha = alphaParameter;
 params_basicRL.kappa = kappaParameter;
 params_basicRL.sigma = sigmaParameter;
-safe_saveall('params_basicRL_fixedSigma_Both.mat', params_basicRL);
-safe_saveall('nll_basicRL_fixedSigma_Both.mat', nll_basicRL);
+safe_saveall(fullfile(save_dir, 'params_basicRL_fixedSigma_Both.mat'), params_basicRL);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_fixedSigma_Both.mat'), nll_basicRL);
 %% =================== BAYESIAN AGENT MODEL ==============================
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_bayesianAgent = NaN(numSubjs, 1);
-init_params = 5; % [kappa]; sigma is fixed, not fit
 lb = 1;
 ub = 100;
+initKappa = unifrnd(lb, ub, [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Both, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Both, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.rewards, subj.contrast);
@@ -64,26 +106,38 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_bayesianAgent([params(1), sigma_n], subj.mu_hat, subj.dataTable, ...
         length(unique(subj.blocks)), 25, unique(subj.blocks), rewards);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    kappaParameter(n) = params(1);
-    sigmaParameter(n) = sigma_n;
-    nll_bayesianAgent(n) = nll;
 
-    fprintf('Subject number: %d\n', n);
+    best_nll = Inf;
+    best_params = NaN;
+    for sp = 1:n_startingPoints
+        [params, nll] = fmincon(nll_fun, initKappa(n,sp), [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    kappaParameter(n) = best_params(1);
+    sigmaParameter(n) = sigma_n;
+    nll_bayesianAgent(n) = best_nll;
 end
 params_bayesianAgent.sigma = sigmaParameter;
 params_bayesianAgent.kappa = kappaParameter;
-safe_saveall('params_bayesianAgent_fixedSigma_Both.mat', params_bayesianAgent);
-safe_saveall('nll_bayesianAgent_fixedSigma_Both.mat', nll_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'params_bayesianAgent_fixedSigma_Both.mat'), params_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'nll_bayesianAgent_fixedSigma_Both.mat'), nll_bayesianAgent);
 
 %% =================== RL + EST SENSITIVITY MODEL ========================
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_RLsigma = NaN(numSubjs, 1);
-init_params = [0.1, 5]; % [alpha, kappa]; sigma is fixed, not fit
 lb = [0, 1];
 ub = [1, 100];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -91,24 +145,34 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI( ...
         [params(1), params(2), sigma_n], subj.mu_hat, subj.blocks, rewards, subj.condiff);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    alphaParameter(n) = params(1);
-    kappaParameter(n) = params(2);
-    sigmaParameter(n) = sigma_n;
-    nll_RLsigma(n) = nll;
 
-    fprintf('Subject number: %d\n', n);
+    best_nll = Inf;
+    best_params = NaN(1,2);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = sigma_n;
+    nll_RLsigma(n) = best_nll;
 end
 params_RLsigma.alpha = alphaParameter;
 params_RLsigma.sigma = sigmaParameter;
 params_RLsigma.kappa = kappaParameter;
-safe_saveall('params_RLsigma_fixedSigma_Both.mat', params_RLsigma);
-safe_saveall('nll_RLsigma_fixedSigma_Both.mat', nll_RLsigma);
+safe_saveall(fullfile(save_dir, 'params_RLsigma_fixedSigma_Both.mat'), params_RLsigma);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_fixedSigma_Both.mat'), nll_RLsigma);
 
 %% =================== COMPUTE AND SAVE AIC/BIC ==========================
-nll_basicRL = importdata("nll_basicRL_fixedSigma_Both.mat");
-nll_RLsigma = importdata("nll_RLsigma_fixedSigma_Both.mat");
-nll_bayesianAgent = importdata("nll_bayesianAgent_fixedSigma_Both.mat");
+nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_fixedSigma_Both.mat"));
+nll_RLsigma = importdata(fullfile(save_dir, "nll_RLsigma_fixedSigma_Both.mat"));
+nll_bayesianAgent = importdata(fullfile(save_dir, "nll_bayesianAgent_fixedSigma_Both.mat"));
 
 disp('Computing AIC and BIC for all models (sigma fixed)...');
 % Number of trials per subject (assuming all subjects have same number)
@@ -134,7 +198,7 @@ AICBIC_table.delta_BIC_basicRL = delta_BIC(:,1);
 AICBIC_table.delta_BIC_RLsigma = delta_BIC(:,2);
 AICBIC_table.delta_BIC_BayesianAgent = delta_BIC(:,3);
 % Save updated table
-safe_saveall('AICBIC_fixedSigma_Both_reducedMS.mat', AICBIC_table);
+safe_saveall(fullfile(save_dir, 'AICBIC_fixedSigma_Both_reducedMS.mat'), AICBIC_table);
 disp('All model parameters and AIC/BIC estimated and saved (sigma fixed).');
 
 %% Plot proportion of subjects best described by each model
@@ -499,7 +563,7 @@ results_summary.model_probabilities = model_prob;
 results_summary.model_exceedance_probabilities = model_xp;
 
 % Save to file
-save('family_wise_BMS_results_fixedSigma_both.mat', 'results_summary', 'posterior', 'out');
+save(fullfile(save_dir, 'family_wise_BMS_results_fixedSigma_both.mat'), 'results_summary', 'posterior', 'out');
 fprintf('\nResults saved to: family_wise_BMS_results_fixedSigma_both.mat\n');
 
 %% 7. Additional Analysis: Model Contributions within Families
@@ -637,9 +701,12 @@ alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_basicRL = NaN(numSubjs, 1);
-init_params = [0.1, 5]; % [alpha, kappa]; sigma is fixed, not fit
 lb = [0, 1];
 ub = [1, 100];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Perceptual, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Perceptual, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -647,27 +714,38 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated( ...
         [params(1), params(2), sigma_n], subj.mu_hat, subj.blocks, rewards, subj.condiff);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    alphaParameter(n) = params(1);
-    kappaParameter(n) = params(2);
+
+    best_nll = Inf;
+    best_params = NaN(1,2);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
     sigmaParameter(n) = sigma_n;
-    nll_basicRL(n) = nll;
-
-    fprintf('Subject number: %d\n', n);
-
+    nll_basicRL(n) = best_nll;
 end
 params_basicRL.alpha = alphaParameter;
 params_basicRL.kappa = kappaParameter;
 params_basicRL.sigma = sigmaParameter;
-safe_saveall('params_basicRL_fixedSigma_Perceptual.mat', params_basicRL);
-safe_saveall('nll_basicRL_fixedSigma_Perceptual.mat', nll_basicRL);
+safe_saveall(fullfile(save_dir, 'params_basicRL_fixedSigma_Perceptual.mat'), params_basicRL);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_fixedSigma_Perceptual.mat'), nll_basicRL);
 %% =================== BAYESIAN AGENT MODEL (PERCEPTUAL) ==================
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_bayesianAgent = NaN(numSubjs, 1);
-init_params = 5; % [kappa]; sigma is fixed, not fit
 lb = 1;
 ub = 100;
+initKappa = unifrnd(lb, ub, [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.rewards, subj.contrast);
@@ -675,26 +753,38 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_bayesianAgent([params(1), sigma_n], subj.mu_hat, subj.dataTable, ...
         length(unique(subj.blocks)), 25, unique(subj.blocks), rewards);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    kappaParameter(n) = params(1);
-    sigmaParameter(n) = sigma_n;
-    nll_bayesianAgent(n) = nll;
 
-    fprintf('Subject number: %d\n', n);
+    best_nll = Inf;
+    best_params = NaN;
+    for sp = 1:n_startingPoints
+        [params, nll] = fmincon(nll_fun, initKappa(n,sp), [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    kappaParameter(n) = best_params(1);
+    sigmaParameter(n) = sigma_n;
+    nll_bayesianAgent(n) = best_nll;
 end
 params_bayesianAgent.sigma = sigmaParameter;
 params_bayesianAgent.kappa = kappaParameter;
-safe_saveall('params_bayesianAgent_fixedSigma_Perceptual.mat', params_bayesianAgent);
-safe_saveall('nll_bayesianAgent_fixedSigma_Perceptual.mat', nll_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'params_bayesianAgent_fixedSigma_Perceptual.mat'), params_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'nll_bayesianAgent_fixedSigma_Perceptual.mat'), nll_bayesianAgent);
 
 %% =================== RL + EST SENSITIVITY MODEL (PERCEPTUAL) ============
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_RLsigma = NaN(numSubjs, 1);
-init_params = [0.1, 5]; % [alpha, kappa]; sigma is fixed, not fit
 lb = [0, 1];
 ub = [1, 100];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual, fixed sigma)');
+afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual, fixed sigma)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -702,24 +792,35 @@ parfor n = 1:numSubjs
     nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI( ...
         [params(1), params(2), sigma_n], subj.mu_hat, subj.blocks, rewards, subj.condiff);
     options = optimset('Display', 'off');
-    [params, nll] = fmincon(nll_fun, init_params, [], [], [], [], lb, ub, [], options);
-    alphaParameter(n) = params(1);
-    kappaParameter(n) = params(2);
-    sigmaParameter(n) = sigma_n;
-    nll_RLsigma(n) = nll;
 
-    fprintf('Subject number: %d\n', n);
+    best_nll = Inf;
+    best_params = NaN(1,2);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = sigma_n;
+    nll_RLsigma(n) = best_nll;
 end
 params_RLsigma.alpha = alphaParameter;
 params_RLsigma.sigma = sigmaParameter;
 params_RLsigma.kappa = kappaParameter;
-safe_saveall('params_RLsigma_fixedSigma_Perceptual.mat', params_RLsigma);
-safe_saveall('nll_RLsigma_fixedSigma_Perceptual.mat', nll_RLsigma);
+safe_saveall(fullfile(save_dir, 'params_RLsigma_fixedSigma_Perceptual.mat'), params_RLsigma);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_fixedSigma_Perceptual.mat'), nll_RLsigma);
+progress_bar('close'); % done fitting -- close the waitbar window
 
 %% =================== COMPUTE AND SAVE AIC/BIC (PERCEPTUAL) ==============
-nll_basicRL = importdata("nll_basicRL_fixedSigma_Perceptual.mat");
-nll_RLsigma = importdata("nll_RLsigma_fixedSigma_Perceptual.mat");
-nll_bayesianAgent = importdata("nll_bayesianAgent_fixedSigma_Perceptual.mat");
+nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_fixedSigma_Perceptual.mat"));
+nll_RLsigma = importdata(fullfile(save_dir, "nll_RLsigma_fixedSigma_Perceptual.mat"));
+nll_bayesianAgent = importdata(fullfile(save_dir, "nll_bayesianAgent_fixedSigma_Perceptual.mat"));
 
 disp('Computing AIC and BIC for all models (perceptual condition, sigma fixed)...');
 % Number of trials per subject (assuming all subjects have same number)
@@ -745,7 +846,7 @@ AICBIC_table.delta_BIC_basicRL = delta_BIC(:,1);
 AICBIC_table.delta_BIC_RLsigma = delta_BIC(:,2);
 AICBIC_table.delta_BIC_BayesianAgent = delta_BIC(:,3);
 % Save updated table
-safe_saveall('AICBIC_fixedSigma_Perceptual_reducedMS.mat', AICBIC_table);
+safe_saveall(fullfile(save_dir, 'AICBIC_fixedSigma_Perceptual_reducedMS.mat'), AICBIC_table);
 disp('All model parameters and AIC/BIC estimated and saved (perceptual condition, sigma fixed).');
 
 %% Plot proportion of subjects best described by each model (Perceptual)
@@ -1049,7 +1150,7 @@ results_summary.model_names = model_names;
 results_summary.model_probabilities = model_prob;
 results_summary.model_exceedance_probabilities = model_xp;
 
-save('family_wise_BMS_results_fixedSigma_perceptual.mat', 'results_summary', 'posterior', 'out');
+save(fullfile(save_dir, 'family_wise_BMS_results_fixedSigma_perceptual.mat'), 'results_summary', 'posterior', 'out');
 fprintf('\nResults saved to: family_wise_BMS_results_fixedSigma_perceptual.mat\n');
 
 %% Additional Analysis: Model Contributions within Families (Perceptual)
@@ -1231,4 +1332,48 @@ function [posterior, out] = manual_family_BMS(lme, families, family_names)
     end
 
     fprintf('Manual family BMS completed.\n');
+end
+
+%% ========================================================================
+%  Local function: graphical progress bar for parfor multi-start fitting
+%  ------------------------------------------------------------------------
+%  parfor workers can't open/update a figure directly, so each completed
+%  (subject, starting point) combination is sent through a
+%  parallel.pool.DataQueue and drawn here, on the client, via afterEach.
+%  All state (the waitbar handle, current count, total) is kept in one
+%  function via persistent variables, since separate local functions
+%  can't share persistent state with each other.
+%
+%    progress_bar('reset', numSubjs, n_startingPoints, label) - relabel
+%       and restart the bar at 0% (call before each parfor block)
+%    progress_bar('update', [n, sp], numSubjs, n_startingPoints, label) -
+%       advance the bar by one (subject, starting point) update
+%    progress_bar('close') - close the waitbar window
+%  ========================================================================
+function progress_bar(mode, varargin)
+    persistent h count total
+
+    switch mode
+        case 'reset'
+            [numSubjs, n_startingPoints, label] = varargin{:};
+            count = 0;
+            total = numSubjs * n_startingPoints;
+            if isempty(h) || ~isvalid(h)
+                h = waitbar(0, '', 'Name', 'Model fitting progress');
+            end
+            waitbar(0, h, sprintf('%s: subject 0/%d, start 0/%d', label, numSubjs, n_startingPoints));
+
+        case 'update'
+            [data, numSubjs, n_startingPoints, label] = varargin{:};
+            count = count + 1;
+            n = data(1);
+            sp = data(2);
+            waitbar(min(count / total, 1), h, ...
+                sprintf('%s: subject %d/%d, start %d/%d', label, n, numSubjs, sp, n_startingPoints));
+
+        case 'close'
+            if ~isempty(h) && isvalid(h)
+                close(h);
+            end
+    end
 end

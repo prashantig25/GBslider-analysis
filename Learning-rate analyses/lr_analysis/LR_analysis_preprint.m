@@ -1,5 +1,8 @@
-% LR_analysis_preprint implements the preprocessing and model-based
-% learning rate analyses for the participants' data.
+% LR_analysis_preprint implements the model-based learning rate analyses
+% for the participants' data. Preprocessing is done by
+% preprocessAllData.m (Learning-rate analyses/preprocessing/), which
+% must be run first to produce preprocessed_data.mat and its splithalf
+% files.
 
 clc
 clearvars
@@ -18,56 +21,15 @@ end
 save_dir = strcat(desiredPath, filesep, 'Data', filesep, 'LR analyses');
 mkdir(save_dir);
 
-% SETTING ALL THE VARIABLES FOR THE PREPROCESSING
-
-preprocess_obj = preprocess_LR(); % initialise object with all required variables and functions
-preprocess_obj.filename = strcat(desiredPath, filesep, "Data", filesep, "descriptive data", filesep, "main study", filesep, "study2.txt"); % specify path to get the dataset
-data = readtable(preprocess_obj.filename);
-subjIDs = unique(data.ID);
-preprocess_obj.num_subjs = length(subjIDs); % number of subjects
-preprocess_obj.online = 1; % running preprocessing for participants' data
-preprocess_obj.agent = 0; % not r
-preprocess_obj.initivaliseVars;
-
-% COMPUTE VARS FOR LINEAR FIT
-
-preprocess_obj.flip_mu(); % compute reported contingency parameter, after correcting for congruence
-preprocess_obj.compute_action_dep_rew(); % compute action dependent reward
-preprocess_obj.compute_mu(); % recode mu, contingent on if actual mu < 0.5 or not
-preprocess_obj.compute_state_dep_pe(); % compute state dependent PE and UP
-preprocess_obj.compute_ru(); % reward uncertainty
-preprocess_obj.compute_confirm(); % confirming outcome
-preprocess_obj.removed_cond = 3; % code for the experimental condition to be removed
-preprocess_obj.remove_conditions(); % remove conditions
-norm_condiff = preprocess_obj.compute_normalise(abs(preprocess_obj.data.con_diff_choice)); % normalised contrast difference
-preprocess_obj.add_splithalf(); % add variable to calculate splithalf reliability
-preprocess_obj.add_saliencechoice(); % add variable wrt to whether the salient choice was made on a trial
-
-% ADD VARIABLES TO THE DATA TABLE
-
-preprocess_obj.add_vars(norm_condiff,{'norm_condiff'}); % normalised contrast difference
-preprocess_obj.add_vars(preprocess_obj.data.ru,'reward_unc'); % reward uncertainty
-preprocess_obj.add_vars(preprocess_obj.data.confirm_rew,'pe_sign'); % confirmating outcome
-
-% EXCLUDE TRIALS
-
-preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
-
-% SAVE PREPROCESSED FILE
-
-safe_saveall(fullfile(save_dir,'preprocessed_data.mat'),preprocess_obj.data);
-
-% SAVE FILES SEPARATELY FOR GROUPED REGRESSION
+% LOAD PREPROCESSED DATA
 
 data = importdata(fullfile(save_dir,'preprocessed_data.mat'));
-safe_saveall(fullfile(save_dir,'preprocessed_subj_split1.mat'),data(data.splithalf == 1,:));
-safe_saveall(fullfile(save_dir,'preprocessed_subj_split0.mat'),data(data.splithalf == 0,:));
+subjIDs = unique(data.ID);
 
 %% FIT ALL VERSIONS OF THE ABSOLUTE MODEL
 
 lr_analysis = lr_analysis_obj();
 % lr_analysis.pupil = 0;
-lr_analyis.baseline_mdl = 0;
 lr_analysis.filename = strcat(desiredPath, filesep, "Data", filesep, "LR analyses", filesep, "preprocessed_data.mat"); % specify path to get the dataset
 lr_analysis.lr_mdl = 1; % run best behavioral model
 lr_analysis.risk_mdl = 0; % run model including risk regressor
@@ -119,7 +81,7 @@ lr_analysis.num_groups = 2; % number of groups for grouped regression
 lr_analysis.online = 1; % fit model to online dataset
 lr_analysis.weighted = 1;
 % lr_analysis.pupil = 0;
-lr_analysis.baseline_mdl = 0;
+% lr_analysis.baseline_mdl = 0;
 lr_analysis.initialiseVars();
 lr_analysis.model_definition();
 
@@ -151,7 +113,7 @@ safe_saveall(fullfile(save_dir,"betas_signed_salience.mat"),betas_signed_salienc
 
 %% FIT ALL MODELS TO SPLITHALF DATA
 
-lr_analysis = lr_analysis_integrated();
+lr_analysis = lr_analysis_obj();
 lr_analysis.filename = strcat(desiredPath, filesep, "Data", filesep, "LR analyses", filesep, "preprocessed_subj_split1.mat"); % specify path to get the dataset
 lr_analysis.lr_mdl = 1; % run best behavioral model
 lr_analysis.risk_mdl = 0; % run model including risk regressor
@@ -161,8 +123,8 @@ lr_analysis.absolute_analysis = 0; % pre-process data for absolute LR analysis
 lr_analysis.grouped = 1; % set to 1 if regression model needs to be fit separately for different groups of trials
 lr_analysis.num_groups = 2; % number of groups for grouped regression
 lr_analysis.online = 1; % fit model to online dataset
-lr_analysis.pupil = 0; % to fit the model to the pupil dataset
-lr_analysis.baseline_mdl = 0;
+% lr_analysis.pupil = 0; % to fit the model to the pupil dataset
+% lr_analysis.baseline_mdl = 0;
 lr_analysis.weighted = 1;
 lr_analysis.initialiseVars();
 lr_analysis.model_definition();

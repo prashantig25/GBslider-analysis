@@ -9,29 +9,22 @@
 clc                 % Clear command window
 clearvars           % Clear all variables from the workspace
 
-% Load the full preprocessed dataset (all subjects, all conditions)
-data = importdata("preprocessed_dataFitting.mat");
-uniqueID = unique(data.ID);        % List of unique subject IDs
-numSubjs = length(uniqueID);       % Number of subjects to fit
-
-% Relative contrast difference between left and right stimulus (the
-% perceptual evidence available to the agent on each trial)
-data.condiff_relative = (data.contrast_left - data.contrast_right) ./ 2;
-
-% Keep only perceptual-condition trials (condition == 2); drop everything else
-data(data.condition ~= 2,:) = [];
-
-% Drop the first 5 trials of each block (warm-up trials)
-data(data.trials <=5,:) = [];
-
-% Recode choice so it is always relative to the same reference stimulus:
-% when contrast == 1 (the "flipped" contrast condition), invert the
-% recorded choice (0 <-> 1) so choices are comparable across contrast conditions
-for h = 1:height(data)
-    if data.contrast(h) == 1
-        data.choice(h) = 1-data.choice(h);
-    end
+% PATH STUFF -- anchor the save location to Agent/model fitting/ so output
+% always lands next to this script, regardless of MATLAB's current folder.
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    desiredPath = currentDir;
+else
+    desiredPath = createSavePaths(currentDir, reqPath);
 end
+save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
+
+% Load the preprocessed dataset, already restricted to perceptual-condition
+% trials with warm-up trials dropped and choice recoded into a fixed
+% reference frame (see fitSlider_ALLmodels.load_fitting_data()).
+[~, ~, uniqueID, numSubjs, data] = fitSlider_ALLmodels.load_fitting_data();
 
 % Preallocate per-subject outputs
 sigmaParameter = NaN(numSubjs, 1);    % Best-fitting sigma for each subject
@@ -48,12 +41,17 @@ ub = 0.1;
 n_startingPoints = 15;
 initSigma = unifrnd(lb, ub, [numSubjs, n_startingPoints]);
 
+% Graphical progress bar (mirrors the progress_bar helper in
+% fitReducedModelSpace.m; no DataQueue/afterEach needed here since this
+% loop is serial, not parfor, so waitbar can be called directly).
+progress_bar('reset', numSubjs, n_startingPoints, 'Perceptual sigma');
+
 for n = 1:numSubjs
     % Extract and preprocess this subject's trials (pupil flag unused here, set to 0)
     subj = preprocess_fitSlider(data, uniqueID(n), 0);
 
     % Objective function: NLL of this subject's perceptual choices given sigma
-    nll_fun = @(params) nll_perceptualChoice(params, subj.dataTable, ...
+    nll_fun = @(params) fitSlider_ALLmodels.nll_perceptualChoice(params, subj.dataTable, ...
         length(unique(subj.blocks)), 20, unique(subj.blocks));
 
     options = optimset('Display', 'off');   % Suppress fmincon iteration output
@@ -67,20 +65,20 @@ for n = 1:numSubjs
             best_nll = nll;
             best_sigma = params(1);
         end
+        progress_bar('update', [n, sp], numSubjs, n_startingPoints, 'Perceptual sigma');
     end
 
     sigmaParameter(n) = best_sigma;   % Store this subject's best-fitting sigma
     nll_bayesianAgent(n) = best_nll;  % Store NLL at the best fit
 
-    fprintf('Subject number: %d\n', n);
-
     % 3. Plot likelihood landscape for one subject
     % sigma_range = linspace(0.01, 0.5, 50);
-    % nll_values = arrayfun(@(s) nll_perceptualChoice(s, subj.dataTable, ...
+    % nll_values = arrayfun(@(s) fitSlider_ALLmodels.nll_perceptualChoice(s, subj.dataTable, ...
     %     length(unique(subj.blocks)), 20, unique(subj.blocks)), sigma_range);
     % hold on; plot(sigma_range, nll_values);
     % xlabel('Sigma'); ylabel('Negative Log-Likelihood');
 end
+progress_bar('close');
 
 % Package fitted sigmas into a struct (named to match the convention used
 % elsewhere, e.g. plotSigma.m, even though this isn't a full learning-model fit)
@@ -88,10 +86,10 @@ params_bayesianAgent.sigma = sigmaParameter;
 
 % Persist results to disk (consumed by fitReducedModelSpace_fixedSigma.m,
 % which fixes sigma to these fitted values instead of fitting it jointly)
-safe_saveall('sigma_perceptualChoice.mat', params_bayesianAgent);
-safe_saveall('nll_perceptualChoice.mat', nll_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'sigma_perceptualChoice.mat'), params_bayesianAgent);
+safe_saveall(fullfile(save_dir, 'nll_perceptualChoice.mat'), nll_bayesianAgent);
 
-%% Plot fitted sigma parameter
+%% Plot fitted sigma parameter - will remove it later. just here to see quick results
 % Mean and SEM of the fitted sigma across subjects
 mean_sigma = nanmean(sigmaParameter);
 SEM_sigma = nanstd(sigmaParameter) ./ sqrt(sum(~isnan(sigmaParameter)));
@@ -104,45 +102,30 @@ bar_plots_pval(sigmaParameter, mean_sigma, SEM_sigma, numSubjs, 1, 1, ...
 
 %%
 
-% Negative log-likelihood of a subject's perceptual choices given sigma.
-%   params  - [sigma], perceptual sensitivity (observation noise) parameter
-%   data    - subject's trial table (must include blocks, choice, condiff_relative)
-%   nBlocks - number of blocks
-%   nTrials - number of trials per block
-%   blocks  - block index for each trial
-function nll = nll_perceptualChoice(params, data, nBlocks, nTrials, blocks)
-sigma = params(1);
-nll_trial = NaN(nTrials,nBlocks);   % Per-trial log-likelihood, laid out [trial x block]
-uniqueBlocks = unique(blocks);
-
-for bl = 1:nBlocks
-    % Fresh Bayesian agent for each block, evaluated at the candidate sigma
-    agent = Agent();
-    agent.task_agent_analysis = 1;   % Restrict agent to perceptual-choice mode
-    agent.confirmation_bias = 0;     % No confirmation bias in this model
-    agent.sigma = sigma;
-
-    % This block's trials
-    dataBlocks = data(data.blocks == uniqueBlocks(bl),:);
-    choices = dataBlocks.choice;
-    condiff = dataBlocks.condiff_relative;
-
-   for t = 1:height(dataBlocks)
-
-        % Bayesian agent inference steps
-        agent.o_t = condiff(t);      % Set this trial's perceptual observation
-        agent.p_s_giv_o(agent.o_t);  % Compute posterior over states given the observation
-        agent.decide_p();            % Compute the agent's perceptual choice probabilities
-
-        % Log-likelihood for this trial
-        % nll_trial(t,bl) = log(agent.p_d_t(choices(t) + 1));
-
-        % Probability the agent assigns to the choice actually made,
-        % clipped away from 0/1 to avoid -Inf from log()
-        p = max(min(agent.p_d_t(choices(t) + 1), 1 - 1e-10), 1e-10);
-        nll_trial(t,bl) = log(p);
-    end
+% Graphical progress bar, shared pattern with fitReducedModelSpace.m.
+%   'reset'  - (numSubjs, n_startingPoints, label): open/reset the bar
+%   'update' - ([n, sp], numSubjs, n_startingPoints, label): advance it
+%   'close'  - (): close the bar window
+function progress_bar(mode, varargin)
+persistent h count total
+switch mode
+    case 'reset'
+        [numSubjs, n_startingPoints, label] = varargin{:};
+        count = 0;
+        total = numSubjs * n_startingPoints;
+        if isempty(h) || ~isvalid(h)
+            h = waitbar(0, '', 'Name', 'Model fitting progress');
+        end
+        waitbar(0, h, sprintf('%s: subject 0/%d, start 0/%d', label, numSubjs, n_startingPoints));
+    case 'update'
+        [data, numSubjs, n_startingPoints, label] = varargin{:};
+        count = count + 1;
+        n = data(1); sp = data(2);
+        waitbar(min(count / total, 1), h, ...
+            sprintf('%s: subject %d/%d, start %d/%d', label, n, numSubjs, sp, n_startingPoints));
+    case 'close'
+        if ~isempty(h) && isvalid(h)
+            close(h);
+        end
 end
-% Sum log-likelihoods across all trials/blocks and negate -> total NLL
-nll = -nansum(nll_trial,"all");
 end

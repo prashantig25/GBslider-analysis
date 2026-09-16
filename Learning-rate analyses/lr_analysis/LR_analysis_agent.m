@@ -1,57 +1,40 @@
-% Todo: summary
-% - and failed to run to error
+% LR_analysis_agent implements the model-based learning rate analyses
+% for the agent simulations. Preprocessing is done by
+% preprocessAllData.m (Learning-rate analyses/preprocessing/), which
+% must be run first to produce preprocessed_agentpupil0.06.mat.
 
 clc
-clearvars 
-% SCRIPT TO RUN MODEL BASED ANALYSIS OF LEARNING RATES
+clearvars
 
-preprocess_obj = preprocess_LR(); % initialise object with all required variables and functions
+% PATH STUFF
 
-% ADD SIMULATION IDs
-simulation_ids = [1:99];
-ids = [];
-for s = simulation_ids
-    ids = [ids; repelem(s,100,1)];
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
 end
-all_ids = repmat(ids,3,1);
-preprocess_obj.data.ID = all_ids;
-preprocess_obj.compute_action_dep_rew(); % compute action dependent reward
-for i = 2:height(preprocess_obj.data) % compute mu and previous trial's mu
-    preprocess_obj.mu_t_1(i) = preprocess_obj.flipped_mu(i-1);
-    preprocess_obj.mu_t(i) = preprocess_obj.flipped_mu(i);
-end
-preprocess_obj.compute_state_dep_pe(); % compute state dependent PE and UP
-
-% COMPUTE VARS FOR LINEAR FIT
-preprocess_obj.compute_ru(); % reward uncertainty
-preprocess_obj.compute_confirm(); % confirming outcome
-preprocess_obj.remove_conditions(); % remove conditions
-norm_condiff = preprocess_obj.compute_normalise(abs(preprocess_obj.data.contrast_diff)); % normalised contrast difference
-preprocess_obj.add_splithalf(); % add variable to calculate splithalf reliability
-
-% ADD VARIABLES TO THE DATA TABLE
-preprocess_obj.add_vars(norm_condiff,{'norm_condiff'}); % normalised contrast difference
-preprocess_obj.add_vars(preprocess_obj.data.ru,'reward_unc'); % reward uncertainty
-preprocess_obj.add_vars(preprocess_obj.data.confirm_rew,'pe_sign'); % confirmating outcome
-
-% EXCLUDE TRIALS
-preprocess_obj.remove_zero_pe(); % remove trials with PE = 0
-
-% Get the current working directory
-currentDir = pwd;
-
-% CHANGE DIRECTORY ACCORDINGLY
-save_dir = strcat('Data', filesep, 'LR analyses' , filesep, 'agent'); 
-if ~exist(save_dir)
-    mkdir(save_dir);
-end
-
-% SAVE PREPROCESSED FILE
-safe_saveall(fullfile(save_dir,'preprocessed_agent.xlsx'),preprocess_obj.data);
+save_dir = strcat(desiredPath, filesep, 'Data', filesep, 'model fitting', filesep, 'agent simulations for mu range', filesep, 'range mu');
 
 % FIT THE MODEL
 
 lr_analysis = lr_analysis_obj();
-lr_analysis.model_definition();
-[betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = lr_analysis.get_coeffs(@fitlm);
-safe_saveall(fullfile(save_dir,"betas_agent_recoding_wo_rewunc.mat"),betas_all); % save betas as betas_signed if running signed analysis
+lr_analysis.filename = fullfile(save_dir, 'preprocessed_agentpupil0.06.mat');
+lr_analysis.lr_mdl = 1; % run best behavioral model
+lr_analysis.risk_mdl = 0; % not run model including risk regressor
+lr_analysis.saliencechoice_mdl = 0; % not run model including salience choice regressor
+lr_analysis.num_subjs = 99; % number of subjects
+lr_analysis.absolute_analysis = 0; % not pre-process data for absolute LR analysis
+lr_analysis.grouped = 0; % set to 1 if regression model needs to be fit separately for different groups of trials
+lr_analysis.num_groups = 2; % number of groups for grouped regression
+lr_analysis.agent = 1; % fit model to agent simulations
+lr_analysis.online = 0; % dont fit model to online dataset
+lr_analysis.weighted = 1; % fit weighted regression
+lr_analysis.initialiseVars(); % initalize vars for modelling LR
+lr_analysis.model_definition(); % define required model
+[betas_all,rsquared_full,residuals_reg,coeffs_name,posterior_up_subjs] = lr_analysis.get_coeffs(@fitlm, @predict);
+safe_saveall(fullfile(save_dir,"betas_agent_recoding_wo_rewunc.mat"),betas_all); % save betas 
