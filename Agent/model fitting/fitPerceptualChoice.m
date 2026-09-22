@@ -8,6 +8,10 @@
 %  ========================================================================
 clc                 % Clear command window
 clearvars           % Clear all variables from the workspace
+rng(123); % for reproducability -- same seed as fitReducedModelSpace.m /
+% fitReducedModelSpace_fixedSigma.m, so re-running produces the same
+% random starting points (and hence the same fmincon result) each time,
+% instead of safe_saveall flagging harmless numerical noise as "different"
 
 % PATH STUFF -- anchor the save location to Agent/model fitting/ so output
 % always lands next to this script, regardless of MATLAB's current folder.
@@ -29,6 +33,9 @@ save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
 % Preallocate per-subject outputs
 sigmaParameter = NaN(numSubjs, 1);    % Best-fitting sigma for each subject
 nll_bayesianAgent = NaN(numSubjs, 1); % Negative log-likelihood at that fit
+matchRate = NaN(numSubjs, 1);         % Posterior predictive check: per-subject
+                                       % fraction of trials where the simulated
+                                       % choice matches the observed choice
 
 % fmincon settings: single free parameter (sigma) with bounds
 lb = 0.001;
@@ -41,14 +48,22 @@ ub = 0.1;
 n_startingPoints = 15;
 initSigma = unifrnd(lb, ub, [numSubjs, n_startingPoints]);
 
-% Graphical progress bar (mirrors the progress_bar helper in
+% Graphical progress bar (fitSlider_ALLmodels.progress_bar, shared with
 % fitReducedModelSpace.m; no DataQueue/afterEach needed here since this
 % loop is serial, not parfor, so waitbar can be called directly).
-progress_bar('reset', numSubjs, n_startingPoints, 'Perceptual sigma');
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Perceptual sigma');
+
+% Accumulators for the posterior predictive check below: pooled across all
+% subjects' trials, so trial counts must line up 1:1 across the 3 arrays.
+allCondiff = [];
+allChoicesObserved = [];
+allChoicesSimulated = [];
 
 for n = 1:numSubjs
-    % Extract and preprocess this subject's trials (pupil flag unused here, set to 0)
-    subj = preprocess_fitSlider(data, uniqueID(n), 0);
+    % Extract and preprocess this subject's trials (pupil flag unused here, set to 0).
+    % requireMuHat = false: this model only needs choice/condiff/blocks, so
+    % trials with a valid choice but a missing slider (mu) response are kept.
+    subj = preprocess_fitSlider(data, uniqueID(n), 0, false);
 
     % Objective function: NLL of this subject's perceptual choices given sigma
     nll_fun = @(params) fitSlider_ALLmodels.nll_perceptualChoice(params, subj.dataTable, ...
@@ -65,11 +80,22 @@ for n = 1:numSubjs
             best_nll = nll;
             best_sigma = params(1);
         end
-        progress_bar('update', [n, sp], numSubjs, n_startingPoints, 'Perceptual sigma');
+        fitSlider_ALLmodels.progress_bar('update', [n, sp], numSubjs, n_startingPoints, 'Perceptual sigma');
     end
 
     sigmaParameter(n) = best_sigma;   % Store this subject's best-fitting sigma
     nll_bayesianAgent(n) = best_nll;  % Store NLL at the best fit
+
+    % Posterior predictive check: simulate one replicate of this subject's
+    % choices using their own real trial sequence (condiff, blocks) and
+    % their just-fitted sigma, for comparison against their observed
+    % choices below.
+    nBlocksSubj = length(unique(subj.blocks));
+    simulated_choices = fitSlider_ALLmodels.simulate_perceptualChoice(best_sigma, subj.condiff, subj.blocks, nBlocksSubj);
+    allCondiff = [allCondiff; subj.condiff];
+    allChoicesObserved = [allChoicesObserved; subj.choices];
+    allChoicesSimulated = [allChoicesSimulated; simulated_choices(:)];
+    matchRate(n) = mean(simulated_choices(:) == subj.choices); % this subject's trial-level agreement
 
     % 3. Plot likelihood landscape for one subject
     % sigma_range = linspace(0.01, 0.5, 50);
@@ -78,7 +104,7 @@ for n = 1:numSubjs
     % hold on; plot(sigma_range, nll_values);
     % xlabel('Sigma'); ylabel('Negative Log-Likelihood');
 end
-progress_bar('close');
+fitSlider_ALLmodels.progress_bar('close');
 
 % Package fitted sigmas into a struct (named to match the convention used
 % elsewhere, e.g. plotSigma.m, even though this isn't a full learning-model fit)
@@ -100,32 +126,66 @@ bar_plots_pval(sigmaParameter, mean_sigma, SEM_sigma, numSubjs, 1, 1, ...
     {'Perceptual choice model'}, 1, {'sigma'}, 'Fitted perceptual sigma', ...
     '', 'sigma', 0, 1, 20, 1, 12, 1, 'Arial', 1, lines(1));
 
-%%
+%% POSTERIOR PREDICTIVE CHECK -- single replicate
+% Compares the psychometric curve (P(choice = 1) vs. contrast difference)
+% between observed choices and one simulated replicate per subject,
+% pooled across all subjects' trials. Each replicate was generated above
+% using that subject's own fitted sigma and real trial sequence, so this
+% checks whether the fitted model reproduces the real data's psychometric
+% pattern -- a single replicate is a first pass; a proper check would draw
+% many replicates per subject and compare against the resulting predictive
+% distribution rather than one simulated curve.
+nBins = 10;
+edges = linspace(min(allCondiff), max(allCondiff), nBins+1);
+binCenters = (edges(1:end-1) + edges(2:end)) / 2;
+binIdx = discretize(allCondiff, edges);
 
-% Graphical progress bar, shared pattern with fitReducedModelSpace.m.
-%   'reset'  - (numSubjs, n_startingPoints, label): open/reset the bar
-%   'update' - ([n, sp], numSubjs, n_startingPoints, label): advance it
-%   'close'  - (): close the bar window
-function progress_bar(mode, varargin)
-persistent h count total
-switch mode
-    case 'reset'
-        [numSubjs, n_startingPoints, label] = varargin{:};
-        count = 0;
-        total = numSubjs * n_startingPoints;
-        if isempty(h) || ~isvalid(h)
-            h = waitbar(0, '', 'Name', 'Model fitting progress');
-        end
-        waitbar(0, h, sprintf('%s: subject 0/%d, start 0/%d', label, numSubjs, n_startingPoints));
-    case 'update'
-        [data, numSubjs, n_startingPoints, label] = varargin{:};
-        count = count + 1;
-        n = data(1); sp = data(2);
-        waitbar(min(count / total, 1), h, ...
-            sprintf('%s: subject %d/%d, start %d/%d', label, n, numSubjs, sp, n_startingPoints));
-    case 'close'
-        if ~isempty(h) && isvalid(h)
-            close(h);
-        end
+propObserved = NaN(nBins,1);
+propSimulated = NaN(nBins,1);
+for b = 1:nBins
+    inBin = binIdx == b;
+    propObserved(b) = mean(allChoicesObserved(inBin));
+    propSimulated(b) = mean(allChoicesSimulated(inBin));
 end
-end
+
+figure('Position', [100, 100, 400, 350]);
+plot(binCenters, propObserved, 'o-', 'LineWidth', 1.5, 'Color', [0.2 0.2 0.2], 'DisplayName', 'Observed');
+hold on;
+plot(binCenters, propSimulated, 's--', 'LineWidth', 1.5, 'Color', [0.8 0.3 0.3], 'DisplayName', 'Simulated (1 replicate)');
+xlabel('Contrast difference (condiff relative)');
+ylabel('P(choice = 1)');
+title('Posterior predictive check: perceptual choice');
+legend('Location', 'best');
+grid on;
+
+%% POSTERIOR PREDICTIVE CHECK -- group-level summary
+% The pooled psychometric curve above can look fine even if it's masking
+% subjects whose fit is bad in opposite directions (one too sensitive, one
+% not sensitive enough, averaging out). matchRate(n), computed in the
+% fitting loop above, is a per-subject summary that doesn't have this
+% problem: the fraction of that subject's trials where the (single-
+% replicate) simulated choice matches their actual observed choice. A
+% subject whose fitted sigma badly misses their real behavior will show up
+% here even if the group-average curve looks reasonable.
+mean_matchRate = nanmean(matchRate);
+SEM_matchRate = nanstd(matchRate) ./ sqrt(sum(~isnan(matchRate)));
+fprintf('Posterior predictive check: mean simulated-observed choice match rate = %.3f (SEM = %.3f) across %d subjects.\n', ...
+    mean_matchRate, SEM_matchRate, numSubjs);
+fprintf('Range across subjects: [%.3f, %.3f]. Subjects below 0.7 match rate: %d/%d.\n', ...
+    min(matchRate), max(matchRate), sum(matchRate < 0.7), numSubjs);
+
+figure('Position', [100, 100, 200, 200]);
+bar_plots_pval(matchRate, mean_matchRate, SEM_matchRate, numSubjs, 1, 1, ...
+    {'Perceptual choice model'}, 1, {'match rate'}, 'Simulated-observed choice agreement', ...
+    '', 'proportion trials matched', 0, 1, 20, 1, 12, 1, 'Arial', 1, lines(1));
+
+%% PARAMETER RECOVERY -- validate the fit above by simulating synthetic
+% choice data at known sigma values, re-fitting sigma from that data, and
+% comparing recovered vs. true sigma (fitSlider_ALLmodels.m owns the
+% simulation/fitting/plotting logic; this just chooses the study parameters).
+n_parameters = 20;     % number of synthetic subjects/sigma values to test
+n_recoveryStartingPoints = 20;  % random fmincon starting points per subject
+n_recoveryTrials = 1000;        % simulated trials per subject
+
+[sigmaRange, best_recovered_sigmas, best_nlls] = fitSlider_ALLmodels.recover_perceptualChoiceSigma(n_parameters, n_recoveryStartingPoints, n_recoveryTrials);
+fitSlider_ALLmodels.plot_perceptualChoiceRecovery(sigmaRange, best_recovered_sigmas);

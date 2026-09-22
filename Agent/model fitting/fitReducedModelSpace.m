@@ -26,11 +26,13 @@ n_startingPoints = 10;
 
 % Progress bar setup: parfor workers can't open/update a figure directly,
 % so each completed (subject, starting point) combination is sent via
-% DataQueue to the client, which updates a waitbar window (progress_bar,
-% defined at the end of this file). progress_bar('reset', ...) is called
-% before each parfor block to relabel the bar and restart it at 0%.
-progressQueue = parallel.pool.DataQueue;
-
+% DataQueue to the client, which updates a waitbar window
+% (fitSlider_ALLmodels.progress_bar). progress_bar('reset', ...) is called
+% before each parfor block to relabel the bar and restart it at 0%. A
+% fresh DataQueue is created before each block's afterEach() call, since
+% afterEach() adds a new listener rather than replacing the previous one
+% -- reusing one queue across blocks would leave earlier blocks' listeners
+% (with their stale captured label) still firing and overwriting the bar.
 %% =================== BASIC RL MODEL ====================================
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
@@ -41,8 +43,9 @@ ub = [1, 100, 0.1]; %, 1];
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Both)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Both)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Both)'));
 for n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -81,8 +84,9 @@ ub = [100, 0.1]; %,1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initKappa = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Both)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Both)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Both)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.rewards, subj.contrast);
@@ -123,8 +127,9 @@ ub = [1, 100, 0.1]; %, 1];
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Both)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -241,6 +246,15 @@ for i = 1:3
     fprintf('%s: %.1f%% of subjects (%d/%d)\n', ...
             model_names{i}, model_proportions(i)*100, model_counts(i), length(best_model_idx));
 end
+
+% Save per-subject best-fitting model (free-sigma fits, Both condition).
+bestModel_table = table();
+bestModel_table.SubjectID = AICBIC_table.SubjectID;
+bestModel_table.best_model = model_names(best_model_idx)'; % model_names is a 1xN row vector, so indexing it returns a row regardless of best_model_idx's shape -- transpose to match the table's Nx1 column height
+bestModel_table.delta_BIC_basicRL = AICBIC_table.delta_BIC_basicRL;
+bestModel_table.delta_BIC_RLsigma = AICBIC_table.delta_BIC_RLsigma;
+bestModel_table.delta_BIC_BayesianAgent = AICBIC_table.delta_BIC_BayesianAgent;
+safe_saveall(fullfile(save_dir, 'bestModel_Both_multiSP.mat'), bestModel_table);
 
 %%
 
@@ -699,8 +713,9 @@ ub = [1, 100, 0.1]; %, 1];
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Perceptual)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Perceptual)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Perceptual)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -739,8 +754,9 @@ ub = [100, 0.1]; %,1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initKappa = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Bayesian Agent (Perceptual)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.rewards, subj.contrast);
@@ -781,8 +797,9 @@ ub = [1, 100, 0.1]; %, 1];
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
-progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual)');
-afterEach(progressQueue, @(data) progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual)'));
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity (Perceptual)'));
 parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
@@ -812,7 +829,7 @@ params_RLsigma.sigma = sigmaParameter;
 params_RLsigma.kappa = kappaParameter;
 safe_saveall(fullfile(save_dir, 'params_RLSigma_RBVoi_Perceptual_multiSP.mat'), params_RLsigma);
 safe_saveall(fullfile(save_dir, 'nll_RLSigma_RBVoi_Perceptual_multiSP.mat'), nll_RLsigma);
-progress_bar('close'); % done fitting -- close the waitbar window
+fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar window
 
 %% =================== COMPUTE AND SAVE AIC/BIC (PERCEPTUAL) ==============
 nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_sigma_RBVoi_Perceptual_multiSP.mat"));
@@ -887,6 +904,15 @@ for i = 1:3
     fprintf('%s: %.1f%% of subjects (%d/%d)\n', ...
             model_names{i}, model_proportions(i)*100, model_counts(i), length(best_model_idx));
 end
+
+% Save per-subject best-fitting model (free-sigma fits, Perceptual condition)
+bestModel_table = table();
+bestModel_table.SubjectID = AICBIC_table.SubjectID;
+bestModel_table.best_model = model_names(best_model_idx)'; % model_names is a 1xN row vector, so indexing it returns a row regardless of best_model_idx's shape -- transpose to match the table's Nx1 column height
+bestModel_table.delta_BIC_basicRL = AICBIC_table.delta_BIC_basicRL;
+bestModel_table.delta_BIC_RLsigma = AICBIC_table.delta_BIC_RLsigma;
+bestModel_table.delta_BIC_BayesianAgent = AICBIC_table.delta_BIC_BayesianAgent;
+safe_saveall(fullfile(save_dir, 'bestModel_Perceptual_multiSP.mat'), bestModel_table);
 
 %%
 
@@ -1328,48 +1354,4 @@ function [posterior, out] = manual_family_BMS(lme, families, family_names)
     end
     
     fprintf('Manual family BMS completed.\n');
-end
-
-%% ========================================================================
-%  Local function: graphical progress bar for parfor multi-start fitting
-%  ------------------------------------------------------------------------
-%  parfor workers can't open/update a figure directly, so each completed
-%  (subject, starting point) combination is sent through a
-%  parallel.pool.DataQueue and drawn here, on the client, via afterEach.
-%  All state (the waitbar handle, current count, total) is kept in one
-%  function via persistent variables, since separate local functions
-%  can't share persistent state with each other.
-%
-%    progress_bar('reset', numSubjs, n_startingPoints, label) - relabel
-%       and restart the bar at 0% (call before each parfor block)
-%    progress_bar('update', [n, sp], numSubjs, n_startingPoints, label) -
-%       advance the bar by one (subject, starting point) update
-%    progress_bar('close') - close the waitbar window
-%  ========================================================================
-function progress_bar(mode, varargin)
-    persistent h count total
-
-    switch mode
-        case 'reset'
-            [numSubjs, n_startingPoints, label] = varargin{:};
-            count = 0;
-            total = numSubjs * n_startingPoints;
-            if isempty(h) || ~isvalid(h)
-                h = waitbar(0, '', 'Name', 'Model fitting progress');
-            end
-            waitbar(0, h, sprintf('%s: subject 0/%d, start 0/%d', label, numSubjs, n_startingPoints));
-
-        case 'update'
-            [data, numSubjs, n_startingPoints, label] = varargin{:};
-            count = count + 1;
-            n = data(1);
-            sp = data(2);
-            waitbar(min(count / total, 1), h, ...
-                sprintf('%s: subject %d/%d, start %d/%d', label, n, numSubjs, sp, n_startingPoints));
-
-        case 'close'
-            if ~isempty(h) && isvalid(h)
-                close(h);
-            end
-    end
 end

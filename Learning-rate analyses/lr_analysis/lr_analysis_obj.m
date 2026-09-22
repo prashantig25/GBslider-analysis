@@ -90,9 +90,23 @@ classdef lr_analysis_obj < lr_vars
             % INPUT:
             %   obj: current object
             %   tbl: table with predictor vars data
-            %   varargin{1}: weights
             %   fit_fn: function to be used, adjust if using mock fitlm
             %   for unit testing
+            %   varargin{1}: weights (only used when obj.weight_y_n == 1)
+            %   varargin{end}: OPTIONAL reference coefficient names (cell
+            %   array) -- the canonical name/order to match this fit's
+            %   coefficients against (see get_coeffs). When given, betas
+            %   are assigned by matching lm.CoefficientNames against
+            %   reference_names, filling NaN for any expected term fitlm
+            %   dropped for this particular fit (e.g. a categorical
+            %   predictor with only one level present in a single
+            %   subject's trials -- fitlm silently omits that term rather
+            %   than erroring, which would otherwise shift every
+            %   subsequent term into the wrong column under positional
+            %   assignment). When omitted, falls back to the original
+            %   positional assignment, so existing callers that don't
+            %   need this (e.g. esterror_analysis.m, LR_unittests.m)
+            %   are unaffected.
             %
             % OUTPUT:
             %   betas: array containing beta value for each predictor by fitlm
@@ -102,24 +116,43 @@ classdef lr_analysis_obj < lr_vars
             %   lm: fitted model
 
             % FIT THE MODEL USING WEIGHTED/NON-WEIGHTED REGRESSION
+            reference_names = {};
             if obj.weight_y_n == 1
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
                     'CategoricalVars',obj.cat_vars,'Weights',varargin{1});
+                if length(varargin) >= 2
+                    reference_names = varargin{2};
+                end
             else
                 lm = fit_fn(tbl,obj.mdl,'ResponseVar',obj.resp_var,'PredictorVars',obj.pred_vars, ...
                     'CategoricalVars',obj.cat_vars);
+                if length(varargin) >= 1
+                    reference_names = varargin{1};
+                end
             end
 
             % SAVE R-SQUARED, RESIDUALS AND BETA VALUES
             rsquared = lm.Rsquared.Adjusted;
             residuals = lm.Residuals.Raw;
-            betas = nan(1,obj.num_vars+1);
-            SSE = lm.SSE;
-            loglikelihood = lm.LogLikelihood;
-            for b = 1:obj.num_vars+1
-                betas(1,b) = lm.Coefficients.Estimate(b);
-            end
             coeffs_name = lm.CoefficientNames;
+
+            if isempty(reference_names)
+                % No reference given -- original positional assignment.
+                betas = nan(1,obj.num_vars+1);
+                for b = 1:obj.num_vars+1
+                    betas(1,b) = lm.Coefficients.Estimate(b);
+                end
+            else
+                % Match each expected term by name; NaN if fitlm dropped
+                % it for this particular fit.
+                betas = nan(1, length(reference_names));
+                for b = 1:length(reference_names)
+                    match_idx = find(strcmp(lm.CoefficientNames, reference_names{b}), 1);
+                    if ~isempty(match_idx)
+                        betas(1,b) = lm.Coefficients.Estimate(match_idx);
+                    end
+                end
+            end
         end
 
         function tbl = build_subject_table(obj,data_subject)
@@ -180,12 +213,27 @@ classdef lr_analysis_obj < lr_vars
                 obj.data.up = abs(obj.data.up);
             end
 
+            % REFERENCE COEFFICIENT NAMES: fit once on the full
+            % (all-subjects pooled) dataset, which is virtually
+            % guaranteed to have every categorical term's levels present,
+            % to get the canonical name/order for this formula. Every
+            % per-subject fit below is then matched against these names
+            % (see linear_fit) rather than assumed to land at a fixed
+            % position -- a subject with sparse (e.g. condition-filtered)
+            % data can have fitlm silently drop a term whose categorical
+            % predictor has only one level in their trials, which would
+            % otherwise shift every subsequent term into the wrong
+            % column under positional assignment.
+            obj.weight_y_n = 0;
+            reference_tbl = obj.build_subject_table(obj.data);
+            [~,~,~,reference_names,~] = obj.linear_fit(reference_tbl,fit_fn);
+
             % FIT THE MODEL TO GET RESIDUALS (non-weighted)
             for i = 1:obj.num_subjs
                 obj.weight_y_n = 0; % non-weighted
                 data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                 tbl = obj.build_subject_table(data_subject);
-                [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn);
+                [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,reference_names);
                 obj.res_subjs = [obj.res_subjs; residuals_reg, repelem(id_subjs(i),length(residuals_reg)).'];
             end
 
@@ -198,7 +246,7 @@ classdef lr_analysis_obj < lr_vars
                     data_subject = obj.data(obj.data.ID == id_subjs(i),:); % single-subject data
                     weights_subj = wt_subjs(wt_subjs(:,2) == id_subjs(i));
                     tbl = obj.build_subject_table(data_subject);
-                    [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj);
+                    [betas,rsquared,residuals_reg,coeffs_name,lm] = obj.linear_fit(tbl,fit_fn,weights_subj,reference_names);
                     betas_all(i,:) = betas(2:end);
                     rsquared_full(i,1) = rsquared;
                     [post_up] = predict_fn(lm,tbl);

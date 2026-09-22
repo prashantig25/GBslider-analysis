@@ -33,10 +33,10 @@ classdef fitSlider_ALLmodels
             mu_hat(mu_hat >= 1) = 1 - eps;
             q_0_0 = 0.5; % Initial Q-value
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q-value at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
@@ -83,34 +83,31 @@ classdef fitSlider_ALLmodels
             % Discretize observation space (like obj.set_o)
             set_o = linspace(-0.1, 0.1, 20); % adjust resolution if needed
 
-            for n = 1:length(mu_hat)-1
+            % Belief state (pi_0/pi_1) at each hypothetical observation is
+            % computed via Agent.p_s_giv_o -- the same formula/bounds as
+            % agentvars.m's set_o/kappa_max defaults used here -- instead
+            % of duplicating it inline. The RL update rule below stays
+            % specific to this model.
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
                 % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
                 % Observation likelihood under current internal estimate
-                p_o_given_u = normpdf(set_o, condiff(n), sigma);
-                p_o_given_u = p_o_given_u / sum(p_o_given_u); % normalize
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
 
                 % Initialize matrix to hold hypothetical Q-values
                 voi_matrix = NaN(length(set_o), 2);
 
                 for i = 1:length(set_o)
-                    % Belief update based on simulated observation
-
-                    % MY ORIGINAL METHOD
-                    % belief_state = normcdf(set_o(i), 0, sigma);
-                    % pi_0 = 1 - belief_state;
-                    % pi_1 = belief_state;
-
-                    % HOW ITS DONE IN RASMUS'S PREPRINT
-                    u = normcdf(0, set_o(i), sigma);     % P(X <= 0)
-                    v = normcdf(-0.1, set_o(i), sigma); % P(X <= -kappa)
-                    w = normcdf(0.1, set_o(i), sigma);  % P(X <= kappa)
-                    normalization_constant = w - v;
-                    pi_0 = (u - v) / normalization_constant;
-                    pi_1 = (w - u) / normalization_constant;
+                    % Belief state at this hypothetical observation
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
 
                     % Simulate Q-value update under this hypothetical observation
                     q_sim = q_0_0;
@@ -152,154 +149,202 @@ classdef fitSlider_ALLmodels
             nll = -nansum(nll_trial,"all");
         end
 
-
-        function nll = nll_basicRL_integrated_fast(params, mu_hat, blocks, rewards, condiff)
-            % Optimized version of nll_basicRL_integrated
+        %% ===================================================================
+        %  BASIC RL MODEL - GENERATIVE SIMULATION (WITH INTEGRATION)
+        %  -------------------------------------------------------------------
+        %  Simulates synthetic mu_hat slider responses from the basic RL
+        %  model, using the same observation-noise integration as
+        %  nll_basicRL_integrated (rather than sampling a single noisy
+        %  observation per trial), so that data generated here matches what
+        %  that likelihood function actually assumes -- for a parameter
+        %  recovery study, fit the result back with nll_basicRL_integrated.
+        %  Inputs:
+        %    params  - [alpha, kappa, sigma]
+        %    blocks  - block index per trial (vector)
+        %    rewards - state-0-referenced reward outcomes (vector)
+        %    condiff - contrast difference per trial (vector)
+        %  Outputs:
+        %    mu_hat    - simulated slider responses (vector)
+        %    q_0_0_trace - underlying integrated belief per trial, before
+        %                  Beta sampling (vector); useful for diagnosing
+        %                  whether the belief update itself looks sensible,
+        %                  separate from Beta-sampling noise in mu_hat
+        % ====================================================================
+        function [mu_hat, q_0_0_trace] = simulate_basicRL_integrated(params, blocks, rewards, condiff)
             alpha = params(1);
             kappa = params(2);
             sigma = params(3);
 
-            eps_val = 1e-9;
-            mu_hat(mu_hat <= 0) = eps_val;
-            mu_hat(mu_hat >= 1) = 1 - eps_val;
-
-            nTrials = length(mu_hat);
-            nll_trial = zeros(nTrials-1,1);
-
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            q_0_0_trace = NaN(n_trials, 1);
             q_0_0 = 0.5;
 
-            % Discretize observation space
-            set_o = linspace(-0.1, 0.1, 20);  % can reduce to 10-15 for speed
+            set_o = linspace(-0.1, 0.1, 20);
 
-            % Precompute belief states for all set_o values
-            belief_grid = normcdf(set_o, 0, sigma);
-            pi_0_grid = 1 - belief_grid;
-            pi_1_grid = belief_grid;
+            agent = Agent();
+            agent.sigma = sigma;
 
-            for n = 1:nTrials-1
-                % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+            for n = 1:n_trials
+                % Reset belief at the start of a new block
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
-                % Observation likelihood vectorized
-                p_o_given_u = normpdf(set_o, condiff(n), sigma);
-                p_o_given_u = p_o_given_u / sum(p_o_given_u);
-
-                % Vectorized Q-value updates for all set_o
-                q_sim = q_0_0 + alpha * ((pi_1_grid >= pi_0_grid) .* (rewards(n) - q_0_0) + ...
-                    (pi_0_grid > pi_1_grid) .* ((1 - rewards(n)) - q_0_0));
-
-                % Integrate over all observations
-                q_0_0 = sum(q_sim .* p_o_given_u);
-
-                % Beta parameters for likelihood
-                a = q_0_0 * kappa;
-                b = (1 - q_0_0) * kappa;
-                if a <= 0 || b <= 0
-                    a = max(eps_val, a);
-                    b = max(eps_val, b);
-                end
-
-                % Log-likelihood
-                p = betapdf(mu_hat(n), a, b);
-                nll_trial(n) = log(p + eps_val);
-            end
-
-            nll = -sum(nll_trial);
-        end
-
-
-
-        function nll = nll_mixture_integrated(params, mu_hat, blocks, rewards, condiff)
-            % Basic RL model with integration over observations (state uncertainty)
-            % This creates state confusion on some trials, unlike the original version
-            % that had access to the true state
-
-            alpha = params(1);
-            kappa = params(2);
-            sigma = params(3);
-            lambda = params(4);
-
-            nll_trial = NaN(length(mu_hat),1);
-            eps = 1e-9;
-            mu_hat(mu_hat <= 0) = eps;
-            mu_hat(mu_hat >= 1) = 1 - eps;
-
-            q_0_0 = 0.5;
-
-            % Discretize observation space (like obj.set_o)
-            set_o = linspace(-0.1, 0.1, 20); % adjust resolution if needed
-
-            for n = 1:length(mu_hat)-1
-                % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
-                    q_0_0 = 0.5;
-                end
-
-                % Observation likelihood under current internal estimate (computed once)
-                p_o_given_u = normpdf(set_o, condiff(n), sigma);
-                p_o_given_u = p_o_given_u / sum(p_o_given_u); % normalize
-
-                % Initialize matrices to hold hypothetical Q-values for both models
-                voi_matrix_basicRL = NaN(length(set_o), 2);
-                voi_matrix_RLSigma = NaN(length(set_o), 2);
-
+                % Integrate the hypothetical Q-value update over the agent's
+                % observation-noise distribution around condiff(n) -- same
+                % mechanism as nll_basicRL_integrated.
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+                voi_matrix = NaN(length(set_o), 2);
                 for i = 1:length(set_o)
-                    % Belief update based on simulated observation (computed once)
-                    belief_state = normcdf(set_o(i), 0, sigma);
-                    pi_0 = 1 - belief_state;
-                    pi_1 = belief_state;
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
 
-                    % Simulate Q-value update for Basic RL model
-                    q_sim_basic = q_0_0;
+                    q_sim = q_0_0;
                     if pi_0 >= pi_1
-                        q_sim_basic = q_sim_basic + alpha * (rewards(n) - q_sim_basic);
+                        q_sim = q_sim + alpha * (rewards(n) - q_sim);
                     else
-                        q_sim_basic = q_sim_basic + alpha * ((1 - rewards(n)) - q_sim_basic);
+                        q_sim = q_sim + alpha * ((1 - rewards(n)) - q_sim);
                     end
-                    voi_matrix_basicRL(i, :) = [q_sim_basic, 1 - q_sim_basic];
-
-                    % Simulate Q-value update for RL-Sigma model
-                    q_sim_sigma = q_0_0;
-                    if pi_0 >= pi_1
-                        q_sim_sigma = q_sim_sigma + pi_0 * alpha * (rewards(n) - q_sim_sigma);
-                    else
-                        q_sim_sigma = q_sim_sigma + pi_1 * alpha * ((1 - rewards(n)) - q_sim_sigma);
-                    end
-                    voi_matrix_RLSigma(i, :) = [q_sim_sigma, 1 - q_sim_sigma];
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
                 end
+                q_0_0 = sum(voi_matrix(:,1) .* p_o_given_u');
+                q_0_0_trace(n) = q_0_0;
 
-                % Integrate over all possible observations for both models
-                q_basicRL = sum(voi_matrix_basicRL(:,1) .* p_o_given_u');
-                q_RLSigma = sum(voi_matrix_RLSigma(:,1) .* p_o_given_u');
-
-                % Mixture of the two models
-                q_transformed = q_RLSigma * lambda + q_basicRL * (1-lambda);
-
-                % Beta parameters for likelihood
-                a = q_transformed * kappa;
-                b = (1 - q_transformed) * kappa;
-
-                % Avoid invalid beta params
-                if a <= 0 || b <= 0
-                    fprintf('Invalid beta params at trial %d: q=%.3g (basicRL=%.3g, RLSigma=%.3g, lambda=%.3g), kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
-                        n, q_transformed, q_basicRL, q_RLSigma, lambda, kappa, a, b, alpha, sigma);
-                    qSimGrid = lambda * voi_matrix_RLSigma(:,1) + (1 - lambda) * voi_matrix_basicRL(:,1);
-                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, qSimGrid, ...
-                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
-                        sprintf('alpha=%.3g, sigma=%.3g, lambda=%.3g', alpha, sigma, lambda));
-                    a = max(eps, a);
-                    b = max(eps, b);
-                end
-
-                % Log-likelihood
-                p = betapdf(mu_hat(n), a, b);
-                nll_trial(n) = log(p + eps);
+                % Simulated slider response: Beta-distributed around the
+                % belief, with concentration kappa (mirrors betapdf(mu_hat,
+                % a, b) in nll_basicRL_integrated's likelihood).
+                a = max(q_0_0 * kappa, 1e-9);
+                b = max((1 - q_0_0) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b);
             end
-
-            nll = -nansum(nll_trial,"all");
         end
+
+        %% ===================================================================
+        %  BASIC RL MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE
+        %  -------------------------------------------------------------------
+        %  Like simulate_basicRL_integrated, but also generates the economic
+        %  choice and reward each trial, instead of taking reward as given.
+        %  Choice is generated from integrated action values -- combining
+        %  this trial's integrated perceptual belief (pi_0/pi_1, marginalized
+        %  over the same set_o observation-noise grid used everywhere else)
+        %  with the CURRENT tracked value belief q_0_0, via the same formula
+        %  Agent.compute_valence() uses (v_a_0 = (pi_0-pi_1)*q_0_0 + pi_1) --
+        %  then a softmax with a fixed beta (not one of basicRL's own
+        %  parameters; sigma/alpha/kappa are the only things being tested for
+        %  recovery, so beta is fixed here rather than estimated). Reward is
+        %  then drawn from a state-action contingency (reward the choice with
+        %  probability p_reward_correct if it matches the true state, else
+        %  1-p_reward_correct), and fed as-is into the same integrated
+        %  delta-rule belief update simulate_basicRL_integrated uses -- its
+        %  own pi_0>=pi_1 branch already does the perceptual-belief-based
+        %  recoding, so no separate true-state recoding step is needed.
+        %  Choice generation and belief-update both integrate over the same
+        %  set_o grid (option A from the design discussion), for consistency
+        %  with what's assumed elsewhere in this trial: an agent doesn't have
+        %  privileged access to one single "true" observation when computing
+        %  its response, it always marginalizes over its own perceptual
+        %  uncertainty.
+        %  Inputs:
+        %    params            - [alpha, kappa, sigma]
+        %    blocks            - block index per trial (vector)
+        %    state             - ground-truth state per trial, 0 or 1 (vector)
+        %    condiff           - contrast difference per trial (vector)
+        %    beta              - fixed softmax inverse-temperature for choice
+        %                        (not estimated; higher = more deterministic)
+        %    p_reward_correct  - P(reward=1 | choice matches state)
+        %  Outputs:
+        %    mu_hat      - simulated slider responses (vector)
+        %    choice      - simulated economic choice, 0 or 1 (vector)
+        %    reward      - simulated reward outcome, 0 or 1 (vector)
+        %    q_0_0_trace - underlying integrated value belief per trial (vector)
+        % ====================================================================
+        function [mu_hat, choice, reward, q_0_0_trace] = simulate_basicRL_integrated_choice(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_0_0_trace = NaN(n_trials, 1);
+            q_0_0 = 0.5;
+
+            set_o = linspace(-0.1, 0.1, 20);
+            n_o = length(set_o);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:n_trials
+                % Reset belief at the start of a new block
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_0_0 = 0.5;
+                end
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                % --- Pass 1: integrated action values -> softmax choice ---
+                % (uses q_0_0 from BEFORE this trial's update -- the agent
+                % chooses based on what it believed walking into the trial)
+                pi_0_grid = NaN(n_o, 1);
+                pi_1_grid = NaN(n_o, 1);
+                v_a0_grid = NaN(n_o, 1);
+                for i = 1:n_o
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0_grid(i) = agent.pi_0;
+                    pi_1_grid(i) = agent.pi_1;
+                    % Agent.compute_valence()'s formula, with q_0_0 playing
+                    % the role of the tracked contingency belief (E_mu_t)
+                    v_a0_grid(i) = (pi_0_grid(i) - pi_1_grid(i)) * q_0_0 + pi_1_grid(i);
+                end
+                v_a0 = sum(v_a0_grid .* p_o_given_u');
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0); % 0 w.p. p_choice0, else 1
+
+                % --- Reward: state-action contingency ---
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                % Recode reward relative to action 0 before it feeds the
+                % belief update: reward(n)=1 means "action 0 was reinforced"
+                % if choice(n)==0, but means "action 1 was reinforced" (i.e.
+                % evidence AGAINST action 0) if choice(n)==1. Without this,
+                % reward=1 would be treated identically regardless of which
+                % action produced it -- and since choice(n) itself depends on
+                % q_0_0, that confound creates a self-reinforcing feedback
+                % loop with no reliable link to the true state.
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % --- Pass 2: integrated belief update using this reward ---
+                % (reuses pi_0_grid/pi_1_grid from pass 1 -- same trial, same
+                % observation-noise distribution, no need to recompute)
+                voi_matrix = NaN(n_o, 2);
+                for i = 1:n_o
+                    q_sim = q_0_0;
+                    if pi_0_grid(i) >= pi_1_grid(i)
+                        q_sim = q_sim + alpha * (recoded_reward - q_sim);
+                    else
+                        q_sim = q_sim + alpha * ((1 - recoded_reward) - q_sim);
+                    end
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+                q_0_0 = sum(voi_matrix(:,1) .* p_o_given_u');
+                q_0_0_trace(n) = q_0_0;
+
+                a = max(q_0_0 * kappa, 1e-9);
+                b = max((1 - q_0_0) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b);
+            end
+        end
+
         %% ===================================================================
         %  RL SIGMA MODEL
         %  -------------------------------------------------------------------
@@ -328,37 +373,32 @@ classdef fitSlider_ALLmodels
             % Discretize observation space (like obj.set_o)
             set_o = linspace(-0.1, 0.1, 20);  % adjust resolution if needed
 
-            for n = 1:length(mu_hat)-1
+            % Belief state (pi_0/pi_1) at each hypothetical observation is
+            % computed via Agent.p_s_giv_o -- the same formula/bounds as
+            % agentvars.m's set_o/kappa_max defaults used here -- instead
+            % of duplicating it inline. The RL update rule below (belief-
+            % weighted learning rate) stays specific to this model.
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
 
                 % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
                 % Observation likelihood under current internal estimate
-                p_o_given_u = normpdf(set_o, condiff(n), sigma);
-                p_o_given_u = p_o_given_u / sum(p_o_given_u); % normalize
-
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
 
                 % Initialize matrix to hold hypothetical Q-values
                 voi_matrix = NaN(length(set_o), 2);
 
                 for i = 1:length(set_o)
-                    % Belief update based on simulated observation
-                    % MY ORIGINAL METHOD
-                    % belief_state = normcdf(set_o(i), 0, sigma);
-                    % pi_0 = 1 - belief_state;
-                    % pi_1 = belief_state;
-
-                    % HOW ITS DONE IN RASMUS'S PREPRINT
-                    u = normcdf(0, set_o(i), sigma);     % P(X <= 0)
-                    v = normcdf(-0.1, set_o(i), sigma); % P(X <= -kappa)
-                    w = normcdf(0.1, set_o(i), sigma);  % P(X <= kappa)
-                    normalization_constant = w - v;
-                    pi_0 = (u - v) / normalization_constant;
-                    pi_1 = (w - u) / normalization_constant;
-
-                  
+                    % Belief state at this hypothetical observation
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
 
                     % Simulate Q-value update under this hypothetical observation
                     q_sim = q_0_0;
@@ -403,6 +443,109 @@ classdef fitSlider_ALLmodels
         end
 
         %% ===================================================================
+        %  RL SIGMA MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE
+        %  -------------------------------------------------------------------
+        %  Like simulate_basicRL_integrated_choice, but the belief update
+        %  uses RLsigma's belief-weighted learning rate (pi_0/pi_1 scaling
+        %  alpha) -- matching nll_RLsigma_VOI's update rule -- instead of
+        %  basicRL's plain alpha update. Choice generation (softmax over
+        %  integrated action values) and the state-action-reward
+        %  contingency are identical to simulate_basicRL_integrated_choice,
+        %  since that economic-choice layer sits on top of whichever
+        %  value-update rule is being tested and isn't itself part of what
+        %  distinguishes the two models.
+        %  Inputs:
+        %    params            - [alpha, kappa, sigma]
+        %    blocks            - block index per trial (vector)
+        %    state             - ground-truth state per trial, 0 or 1 (vector)
+        %    condiff           - contrast difference per trial (vector)
+        %    beta              - fixed softmax inverse-temperature for choice
+        %                        (not estimated; higher = more deterministic)
+        %    p_reward_correct  - P(reward=1 | choice matches state)
+        %  Outputs:
+        %    mu_hat      - simulated slider responses (vector)
+        %    choice      - simulated economic choice, 0 or 1 (vector)
+        %    reward      - simulated reward outcome, 0 or 1 (vector)
+        %    q_0_0_trace - underlying integrated value belief per trial (vector)
+        % ====================================================================
+        function [mu_hat, choice, reward, q_0_0_trace] = simulate_RLsigma_integrated_choice(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_0_0_trace = NaN(n_trials, 1);
+            q_0_0 = 0.5;
+
+            set_o = linspace(-0.1, 0.1, 20);
+            n_o = length(set_o);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:n_trials
+                % Reset belief at the start of a new block
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_0_0 = 0.5;
+                end
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                % --- Pass 1: integrated action values -> softmax choice ---
+                pi_0_grid = NaN(n_o, 1);
+                pi_1_grid = NaN(n_o, 1);
+                v_a0_grid = NaN(n_o, 1);
+                for i = 1:n_o
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0_grid(i) = agent.pi_0;
+                    pi_1_grid(i) = agent.pi_1;
+                    v_a0_grid(i) = (pi_0_grid(i) - pi_1_grid(i)) * q_0_0 + pi_1_grid(i);
+                end
+                v_a0 = sum(v_a0_grid .* p_o_given_u');
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0); % 0 w.p. p_choice0, else 1
+
+                % --- Reward: state-action contingency ---
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                % Recode reward relative to action 0 before it feeds the
+                % belief update (same reasoning as
+                % simulate_basicRL_integrated_choice).
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % --- Pass 2: integrated belief update using this reward ---
+                % Belief-weighted learning rate (pi_0/pi_1 scaling alpha) --
+                % matches nll_RLsigma_VOI's update rule, unlike basicRL's
+                % plain alpha update.
+                voi_matrix = NaN(n_o, 2);
+                for i = 1:n_o
+                    q_sim = q_0_0;
+                    if pi_0_grid(i) >= pi_1_grid(i)
+                        q_sim = q_sim + pi_0_grid(i) * alpha * (recoded_reward - q_sim);
+                    else
+                        q_sim = q_sim + pi_1_grid(i) * alpha * ((1 - recoded_reward) - q_sim);
+                    end
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+                q_0_0 = sum(voi_matrix(:,1) .* p_o_given_u');
+                q_0_0_trace(n) = q_0_0;
+
+                a = max(q_0_0 * kappa, 1e-9);
+                b = max((1 - q_0_0) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b);
+            end
+        end
+
+        %% ===================================================================
         %  RL SIGMA MODEL
         %  -------------------------------------------------------------------
         %  Q-learning with perceptual uncertainty (sigma) affecting belief state.
@@ -433,10 +576,10 @@ classdef fitSlider_ALLmodels
             % Discretize observation space (like obj.set_o)
             set_o = linspace(-0.1, 0.1, 20);  % adjust resolution if needed
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
@@ -543,10 +686,10 @@ classdef fitSlider_ALLmodels
             % Discretize observation space (like obj.set_o)
             set_o = linspace(-0.1, 0.1, 20);  % adjust resolution if needed
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
@@ -639,10 +782,10 @@ classdef fitSlider_ALLmodels
 
             q_0_0 = 0.5;
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
@@ -720,10 +863,10 @@ classdef fitSlider_ALLmodels
             mu_hat(mu_hat >= 1) = 1 - eps;
             q_0_0 = 0.5;
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q-value at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                 end
 
@@ -785,10 +928,10 @@ classdef fitSlider_ALLmodels
             q_1_1 = q_0_0;
             q_0_1 = 1 - q_0_0;
 
-            for n = 1:length(mu_hat)-1
+            for n = 1:length(mu_hat)
 
                 % Reset Q-values at block transitions
-                if blocks(n+1) - blocks(n) == 1
+                if n == 1 || blocks(n) ~= blocks(n-1)
                     q_0_0 = 0.5;
                     q_1_0 = 1-q_0_0;
                     q_1_1 = q_0_0;
@@ -938,6 +1081,94 @@ classdef fitSlider_ALLmodels
             nll = -nansum(nll_trial,"all");
         end
 
+        %% ===================================================================
+        %  BAYESIAN AGENT MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE
+        %  -------------------------------------------------------------------
+        %  Simulates synthetic mu_hat/choice/reward data by driving the real
+        %  Agent class the exact same way nll_bayesianAgent does: a fresh
+        %  Agent() per block (nll_bayesianAgent's own block-reset mechanism
+        %  -- a brand-new agent each block, rather than resetting a scalar
+        %  belief like the RL models), agent.task_agent_analysis = 1,
+        %  single-observation agent.p_s_giv_o/compute_valence/softmax for
+        %  choice, agent.learn(reward) for the value update, and mu_hat
+        %  drawn Beta(G*kappa, (1-G)*kappa) from whatever agent.G holds
+        %  after learn(). This deliberately reproduces agent.G's real
+        %  current behavior (including the one-trial-lag side effect of
+        %  compute_q() inside integrate_voi, discussed separately) rather
+        %  than a corrected version, so this dataset exercises exactly what
+        %  nll_bayesianAgent actually computes today.
+        %  Choice is sampled from the agent's own softmax (agent.p_a_t,
+        %  using agent.beta as-is -- agentvars.m's default of 100, since
+        %  nll_bayesianAgent never overrides it), and reward from a
+        %  state-action contingency (matching the basicRL/RLsigma choice
+        %  simulators). Reward is passed to agent.learn() RAW (not
+        %  pre-recoded) -- the Agent class recodes it internally via
+        %  compute_action_dep_rew using agent.a_t (set to the sampled
+        %  choice beforehand), exactly like nll_bayesianAgent's own
+        %  agent.a_t = choices(t); agent.learn(rewardsBlocks(t)) call.
+        %  Inputs:
+        %    params            - [kappa, sigma]
+        %    blocks            - block index per trial (vector)
+        %    state             - ground-truth state per trial, 0 or 1 (vector)
+        %    condiff           - contrast difference per trial (vector)
+        %    p_reward_correct  - P(reward=1 | choice matches state)
+        %  Outputs:
+        %    mu_hat  - simulated slider responses (vector)
+        %    choice  - simulated economic choice, 0 or 1 (vector)
+        %    reward  - simulated RAW reward outcome, 0 or 1 (vector)
+        %    G_trace - agent.G read right after learn() each trial (vector);
+        %              useful for diagnosing the one-trial-lag behavior
+        %              separately from Beta-sampling noise in mu_hat
+        % ====================================================================
+        function [mu_hat, choice, reward, G_trace] = simulate_bayesianAgent_integrated_choice(params, blocks, state, condiff, p_reward_correct)
+            kappa = params(1);
+            sigma = params(2);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            G_trace = NaN(n_trials, 1);
+
+            uniqueBlocks = unique(blocks);
+            for bl = 1:length(uniqueBlocks)
+                % Fresh Agent() per block -- matches nll_bayesianAgent's own
+                % block-reset mechanism (see design note above).
+                agent = Agent();
+                agent.task_agent_analysis = 1;
+                agent.confirmation_bias = 0;
+                agent.sigma = sigma;
+
+                trial_idx = find(blocks == uniqueBlocks(bl));
+                for k = 1:length(trial_idx)
+                    n = trial_idx(k);
+
+                    % --- Choice: single-observation belief -> valence -> softmax ---
+                    agent.o_t = condiff(n);
+                    agent.p_s_giv_o(agent.o_t);
+                    agent.compute_valence();
+                    agent.softmax();
+                    choice(n) = binornd(1, agent.p_a_t(2));
+
+                    % --- Reward: state-action contingency ---
+                    if choice(n) == state(n)
+                        reward(n) = double(rand < p_reward_correct);
+                    else
+                        reward(n) = double(rand < (1 - p_reward_correct));
+                    end
+
+                    % --- Value update: raw reward, Agent recodes internally ---
+                    agent.a_t = choice(n);
+                    agent.learn(reward(n));
+
+                    G_trace(n) = agent.G;
+                    a = max(agent.G * kappa, 1e-9);
+                    b = max((1 - agent.G) * kappa, 1e-9);
+                    mu_hat(n) = betarnd(a, b);
+                end
+            end
+        end
+
         function nll = nll_bayesianAgent_confirmBias(params, mu_hat, data, nBlocks, nTrials, blocks, rewards)
             kappa = params(1);
             sigma = params(2);
@@ -1018,7 +1249,7 @@ classdef fitSlider_ALLmodels
             for bl = 1:nBlocks
                 % Fresh Bayesian agent for each block, evaluated at the candidate sigma
                 agent = Agent();
-                agent.task_agent_analysis = 1;   % Restrict agent to perceptual-choice mode
+                agent.task_agent_analysis = 1;   
                 agent.confirmation_bias = 0;     % No confirmation bias in this model
                 agent.sigma = sigma;
 
@@ -1031,7 +1262,6 @@ classdef fitSlider_ALLmodels
 
                     % Bayesian agent inference steps
                     agent.o_t = condiff(t);      % Set this trial's perceptual observation
-                    agent.p_s_giv_o(agent.o_t);  % Compute posterior over states given the observation
                     agent.decide_p();            % Compute the agent's perceptual choice probabilities
 
                     % Probability the agent assigns to the choice actually made,
@@ -1042,6 +1272,131 @@ classdef fitSlider_ALLmodels
             end
             % Sum log-likelihoods across all trials/blocks and negate -> total NLL
             nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  PERCEPTUAL CHOICE MODEL - GENERATIVE SIMULATION
+        %  -------------------------------------------------------------------
+        %  Simulates a Bayesian ideal-observer agent's binary perceptual
+        %  choices at a given sigma -- the generative counterpart of
+        %  nll_perceptualChoice, used for parameter recovery.
+        %  Inputs:
+        %    params  - [sigma], perceptual sensitivity (observation noise) parameter
+        %    condiff - relative contrast difference per trial (vector)
+        %    blocks  - block index for each trial (vector)
+        %    nBlocks - number of blocks
+        %  Outputs:
+        %    choicesAll - simulated choices, laid out [1 x length(condiff)],
+        %                 concatenated block by block (matches condiff's row
+        %                 order, since blocks are matched by ID rather than
+        %                 assumed to be fixed-size contiguous chunks -- same
+        %                 block-handling as nll_perceptualChoice, so this
+        %                 works whether trial counts per block are uniform
+        %                 (synthetic recovery data) or not (real subject data,
+        %                 where a subject can have a different number of
+        %                 trials per block after preprocessing)
+        % ====================================================================
+        function choicesAll = simulate_perceptualChoice(params, condiff, blocks, nBlocks)
+            sigma = params(1);
+            choicesAll = [];
+            agent = Agent();
+            uniqueBlocks = unique(blocks);
+            for bl = 1:nBlocks
+                agent.task_agent_analysis = 1;
+                agent.confirmation_bias = 0;
+                agent.sigma = sigma;
+                condiffBlock = condiff(blocks == uniqueBlocks(bl));
+                choices = NaN(1, length(condiffBlock));
+                for t = 1:length(condiffBlock)
+                    % Bayesian agent inference and learning steps
+                    agent.o_t = condiffBlock(t);
+                    agent.decide_p();
+                    choices(t) = agent.d_t;
+                end
+                choicesAll = [choicesAll, choices];
+            end
+        end
+
+        %% ===================================================================
+        %  PERCEPTUAL CHOICE MODEL - PARAMETER RECOVERY
+        %  -------------------------------------------------------------------
+        %  Validates the perceptual-choice sigma fit: simulates synthetic
+        %  choice data at known sigma values (simulate_perceptualChoice),
+        %  then re-fits sigma from that data (nll_perceptualChoice) with
+        %  multi-start fmincon, and compares recovered vs. true sigma.
+        %  Inputs:
+        %    n_parameters     - number of synthetic subjects/sigma values to test
+        %    n_startingPoints - number of random fmincon starting points per subject
+        %    n_trials         - number of simulated trials per subject
+        %  Outputs:
+        %    sigmaRange            - true (generating) sigma per subject (vector)
+        %    best_recovered_sigmas - best-fitting recovered sigma per subject (vector)
+        %    best_nlls             - NLL at the best fit per subject (vector)
+        % ====================================================================
+        function [sigmaRange, best_recovered_sigmas, best_nlls] = recover_perceptualChoiceSigma(n_parameters, n_startingPoints, n_trials)
+            sigmaRange = unifrnd(0, 0.07, [n_parameters, 1]);
+            initSigma = unifrnd(0, 0.05, [n_parameters, n_startingPoints]);
+            lb = 0;
+            ub = 0.07;
+
+            best_recovered_sigmas = NaN(n_parameters, 1);
+            best_nlls = Inf(n_parameters, 1);
+
+            % Synthetic trial data, shared across all subjects
+            state = randi([0 1], n_trials, 1);
+            condiff = NaN(n_trials, 1);
+            condiff(state == 0) = -0.08 + (0 - (-0.08)) .* rand(sum(state == 0), 1); % uniform in [-0.08, 0]
+            condiff(state == 1) = 0 + (0.08 - 0) .* rand(sum(state == 1), 1);        % uniform in [0, 0.08]
+
+            block_size = 25; % trials per block
+            nBlocks = n_trials / block_size;
+            blocks = repelem(1:nBlocks, block_size)';
+
+            parfor p = 1:n_parameters
+                choices = fitSlider_ALLmodels.simulate_perceptualChoice(sigmaRange(p), condiff, blocks, nBlocks);
+                data = table();
+                data.choice = choices.';
+                data.condiff_relative = condiff;
+                data.blocks = blocks;
+
+                nll_fun = @(params) fitSlider_ALLmodels.nll_perceptualChoice(params, data, nBlocks, block_size, blocks);
+
+                for sp = 1:n_startingPoints
+                    options = optimoptions('fmincon', ...
+                        'Display', 'off', ...
+                        'Algorithm', 'interior-point', ...
+                        'FiniteDifferenceType', 'central', ...
+                        'MaxIterations', 1000, ...
+                        'FunctionTolerance', 1e-6);
+
+                    [recovered_params, nll] = fmincon(nll_fun, initSigma(p,sp), ...
+                        [], [], [], [], lb, ub, [], options);
+
+                    if nll < best_nlls(p)
+                        best_nlls(p) = nll;
+                        best_recovered_sigmas(p) = recovered_params(1);
+                    end
+                end
+                fprintf('Currently processing: Parameter %d/%d\n', p, n_parameters);
+            end
+        end
+
+        %% ===================================================================
+        %  PERCEPTUAL CHOICE MODEL - PLOT PARAMETER RECOVERY
+        %  -------------------------------------------------------------------
+        %  Plots recovered vs. true sigma from recover_perceptualChoiceSigma().
+        % ====================================================================
+        function plot_perceptualChoiceRecovery(sigmaRange, best_recovered_sigmas)
+            color = copper(5);
+            figure
+            scatter(sigmaRange, best_recovered_sigmas, 'filled', 'o', 'MarkerFaceColor', ...
+                color(3,:), 'MarkerEdgeColor', 'k', 'MarkerFaceAlpha', 0.3,'SizeData',50)
+            lsline
+            xlabel('Actual Sigma Parameter')
+            ylabel('Best Recovered Sigma Parameter')
+            title('Sigma Recovery')
+            axis equal
+            grid on
         end
 
         %% ===================================================================
@@ -1062,6 +1417,27 @@ classdef fitSlider_ALLmodels
             % Compute AIC and BIC
             AIC = 2 * num_params - 2 * logL;
             BIC = log(num_trials) * num_params - 2 * logL;
+        end
+
+        %% ===================================================================
+        %  OBSERVATION WEIGHTS
+        %  -------------------------------------------------------------------
+        %  Normalized likelihood of each hypothetical observation on the
+        %  set_o grid, given the true observation and sensory noise sigma.
+        %  Same calculation as Agent.integrate_voi's p_o_giv_u/p_o_giv_u_norm,
+        %  factored out here since nll_basicRL_integrated/nll_RLsigma_VOI use
+        %  their own model-specific update rule and so don't call integrate_voi.
+        %  Inputs:
+        %    set_o - discretized hypothetical-observation grid (vector)
+        %    o_t   - true observation for this trial (scalar)
+        %    sigma - sensory noise (observation SD) parameter (scalar)
+        %  Outputs:
+        %    p_o_given_u - normalized observation-likelihood weights over
+        %                  set_o (sums to 1)
+        % ====================================================================
+        function p_o_given_u = observation_weights(set_o, o_t, sigma)
+            p_o_given_u = normpdf(set_o, o_t, sigma);
+            p_o_given_u = p_o_given_u / sum(p_o_given_u);
         end
 
         %% ===================================================================
@@ -1086,6 +1462,40 @@ classdef fitSlider_ALLmodels
         function rewards = recode_rewards(recoded_rewards, contrast)
             rewards = recoded_rewards .* (contrast == 0) + ...
                 (1 - recoded_rewards) .* (contrast ~= 0);
+        end
+
+        %% ===================================================================
+        %  RECODE REWARD RELATIVE TO ACTION 0 (FOR SIMULATED RECOVERY DATA)
+        %  -------------------------------------------------------------------
+        %  Recodes a raw, choice-relative reward outcome (reward=1 means "the
+        %  action the agent actually chose was reinforced") into a fixed,
+        %  action-0-referenced frame (reward=1 means "action 0 was
+        %  reinforced"), which is what nll_basicRL_integrated's and
+        %  nll_RLsigma_VOI's belief-update delta rule assumes.
+        %  This is a DIFFERENT recoding step from recode_rewards above:
+        %  recode_rewards corrects real subject data for a presentation/
+        %  encoding-convention flip recorded per trial (contrast == 1 means
+        %  "actual mu < 0.5" for that block, see preprocess_LR.m's
+        %  compute_mu) -- an ambiguity that only exists because real trials
+        %  were logged with that flip convention. simulate_basicRL_integrated_
+        %  choice / simulate_RLsigma_integrated_choice generate choice and
+        %  reward directly with no such raw/flipped-presentation duality, so
+        %  the only recoding their output needs before refitting is this
+        %  choice-relative one -- used both internally by those two
+        %  functions (per-trial) and by recovery_ReducedModelSpace.m
+        %  (vectorized, after loading their saved output).
+        %  Inputs:
+        %    reward - raw reward outcome, 1 if the actually-chosen action
+        %             was reinforced, 0 otherwise (scalar or vector)
+        %    choice - the action that was chosen, 0 or 1 (scalar or vector,
+        %             same size as reward)
+        %  Outputs:
+        %    recoded_reward - reward re-expressed relative to action 0
+        %                      (same size as reward)
+        % ====================================================================
+        function recoded_reward = recode_rewards_choice(reward, choice)
+            recoded_reward = reward;
+            recoded_reward(choice == 1) = 1 - recoded_reward(choice == 1);
         end
 
         %% ===================================================================
@@ -1201,6 +1611,50 @@ classdef fitSlider_ALLmodels
 
             sgtitle(sprintf('Trial %d: q = %.4g \\rightarrow a = %.4g, b = %.4g', ...
                 trial_idx, q_transformed, a, b));
+        end
+
+        %% ===================================================================
+        %  PROGRESS BAR
+        %  -------------------------------------------------------------------
+        %  Graphical progress bar shared by all model-fitting scripts.
+        %  parfor workers can't open/update a figure directly, so each
+        %  completed (subject, starting point) combination is sent through a
+        %  parallel.pool.DataQueue and drawn here, on the client, via
+        %  afterEach. For scripts with a serial (non-parfor) fitting loop,
+        %  'update' can be called directly instead.
+        %  IMPORTANT: create a FRESH parallel.pool.DataQueue before each
+        %  afterEach() registration -- afterEach() adds a new listener rather
+        %  than replacing the previous one, so reusing one queue across
+        %  multiple model/condition blocks would leave earlier blocks'
+        %  listeners (with their stale captured label) still firing and
+        %  overwriting the bar.
+        %    'reset'  - (numSubjs, n_startingPoints, label): open/reset the bar
+        %    'update' - ([n, sp], numSubjs, n_startingPoints, label): advance it
+        %    'close'  - (): close the bar window
+        % ====================================================================
+        function progress_bar(mode, varargin)
+            persistent h count total
+            switch mode
+                case 'reset'
+                    [numSubjs, n_startingPoints, label] = varargin{:};
+                    count = 0;
+                    total = numSubjs * n_startingPoints;
+                    if isempty(h) || ~isvalid(h)
+                        h = waitbar(0, '', 'Name', 'Model fitting progress');
+                    end
+                    waitbar(0, h, sprintf('%s: subject 0/%d, start 0/%d', label, numSubjs, n_startingPoints));
+                case 'update'
+                    [data, numSubjs, n_startingPoints, label] = varargin{:};
+                    count = count + 1;
+                    n = data(1);
+                    sp = data(2);
+                    waitbar(min(count / total, 1), h, ...
+                        sprintf('%s: subject %d/%d, start %d/%d', label, n, numSubjs, sp, n_startingPoints));
+                case 'close'
+                    if ~isempty(h) && isvalid(h)
+                        close(h);
+                    end
+            end
         end
 
     end % methods
