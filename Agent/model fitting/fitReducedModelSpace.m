@@ -1,6 +1,36 @@
 %% ========================================================================
 %  Script: Fit RL Models to Participant Data and Save Parameters (+AIC/BIC)
 %  ------------------------------------------------------------------------
+%  Sigma (perceptual sensitivity) is a free parameter here, estimated
+%  jointly with each model's other parameters -- see
+%  fitReducedModelSpace_fixedSigma.m for the counterpart that instead
+%  fixes sigma to each subject's own perceptual-choice-fit value.
+%  ------------------------------------------------------------------------
+%  Structured as four self-contained sections, one per combination of:
+%    - PE type: objective (model's own internally-tracked belief) vs
+%      subjective (belief anchored to the subject's actual previous slider
+%      report, mu_hat(n-1), instead)
+%    - Observation handling: integrated (belief computed by marginalizing
+%      over a discretized grid of hypothetical observations) vs no
+%      integration (belief computed from a single point estimate of the
+%      actual observed condiff)
+%  Section order: 1) Objective PE, Integrated; 2) Subjective PE, Integrated;
+%  3) Objective PE, No Integration; 4) Subjective PE, No Integration. Each
+%  section fits the Both condition, then the Perceptual condition, then
+%  runs its own AIC/BIC/model-selection comparison. All four sections
+%  always run -- there are no PE-type or integration selector toggles; the
+%  only toggle left is run_fitting, which controls whether each section's
+%  fitting blocks (re)run or are skipped in favor of reloading that
+%  section's previously-saved *_multiSP.mat files.
+%  bayesianAgent only appears in Section 1 -- it has no subjective-PE or
+%  no-integration variant (its belief update goes through the Agent
+%  class's own internal mechanism, not a simple alpha-driven delta rule or
+%  the set_o grid-integration Sections 3/4 use instead).
+%  Uses the same shared fitSlider_ALLmodels comparison/plotting helpers
+%  (compute_model_comparison, plot_model_comparison, plot_fitted_params,
+%  compute_family_model_comparison, plot_family_model_comparison,
+%  plot_scatter_spearman) as fitReducedModelSpace_fixedSigma.m.
+%  ========================================================================
 clc; clearvars;
 rng(123); % for reproducability
 
@@ -24,6 +54,20 @@ save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
 % lowest-NLL fit, to reduce the risk of converging to a local minimum.
 n_startingPoints = 10;
 
+% run_fitting toggles whether the fitting blocks below (re)run at all, in
+% all four sections of this script:
+%   true (default)  - run every parfor fit and save fresh params_*/nll_*
+%                      .mat files, as before.
+%   false            - skip all fitting blocks entirely. The comparison
+%                      sections already reload nll_*/params_* from disk
+%                      via importdata() before using them, so with this
+%                      set to false the whole rest of the script (AIC/BIC,
+%                      model-selection, and all plots) runs straight off
+%                      each section's previously-saved *_multiSP.mat
+%                      files, without waiting through the fitting loops
+%                      again.
+run_fitting = true;
+
 % Progress bar setup: parfor workers can't open/update a figure directly,
 % so each completed (subject, starting point) combination is sent via
 % DataQueue to the client, which updates a waitbar window
@@ -33,20 +77,32 @@ n_startingPoints = 10;
 % afterEach() adds a new listener rather than replacing the previous one
 % -- reusing one queue across blocks would leave earlier blocks' listeners
 % (with their stale captured label) still firing and overwriting the bar.
-%% =================== BASIC RL MODEL ====================================
+
+%% ========================================================================
+%  SECTION 1 OF 4: OBJECTIVE PE, INTEGRATED
+%  ------------------------------------------------------------------------
+%  Belief each trial comes from integrating over a discretized grid of
+%  hypothetical observations (nll_basicRL_integrated, nll_RLsigma_VOI,
+%  nll_bayesianAgent), anchored to each model's own internally-tracked
+%  running belief.
+%  ========================================================================
+
+%% ----------------- Both condition: fitting ------------------------------
+%% --- Basic RL model ---
+if run_fitting
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_basicRL = NaN(numSubjs, 1);
-lb = [0, 1, 0]; %, 0];
-ub = [1, 100, 0.1]; %, 1];
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
 fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL (Both)');
 progressQueue = parallel.pool.DataQueue;
 afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL (Both)'));
-for n = 1:numSubjs
+parfor n = 1:numSubjs
     subj = preprocess_fitSlider(dataBoth, uniqueID(n));
     rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
     nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
@@ -74,13 +130,15 @@ params_basicRL.kappa = kappaParameter;
 params_basicRL.sigma = sigmaParameter;
 safe_saveall(fullfile(save_dir, 'params_basicRL_RBVoi_Both_multiSP.mat'), params_basicRL);
 safe_saveall(fullfile(save_dir, 'nll_basicRL_sigma_RBVoi_Both_multiSP.mat'), nll_basicRL);
-%% =================== BAYESIAN AGENT MODEL ==============================
+end
+
+%% --- Bayesian Agent model ---
+if run_fitting
 sigmaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
-% betaParameter = NaN(numSubjs, 1);
 nll_bayesianAgent = NaN(numSubjs, 1);
-lb = [1, 0]; %, 0];
-ub = [100, 0.1]; %,1];
+lb = [1, 0];
+ub = [100, 0.1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initKappa = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
@@ -108,21 +166,22 @@ parfor n = 1:numSubjs
 
     sigmaParameter(n) = best_params(2);
     kappaParameter(n) = best_params(1);
-    % betaParameter(n) = params(3);
     nll_bayesianAgent(n) = best_nll;
 end
 params_bayesianAgent.sigma = sigmaParameter;
 params_bayesianAgent.kappa = kappaParameter;
 safe_saveall(fullfile(save_dir, 'params_bayesianAgent_integratedBoth_multiSP.mat'), params_bayesianAgent);
 safe_saveall(fullfile(save_dir, 'nll_bayesianAgent_integratedBoth_multiSP.mat'), nll_bayesianAgent);
+end
 
-%% =================== RL + EST SENSITIVITY MODEL ========================
+%% --- RL + Est. Sensitivity model ---
+if run_fitting
 alphaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 nll_RLsigma = NaN(numSubjs, 1);
-lb = [0, 1, 0]; %, 0];
-ub = [1, 100, 0.1]; %, 1];
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
@@ -151,7 +210,6 @@ parfor n = 1:numSubjs
     alphaParameter(n) = best_params(1);
     sigmaParameter(n) = best_params(3);
     kappaParameter(n) = best_params(2);
-    % betaParameter(n) = params(4);
     nll_RLsigma(n) = best_nll;
 end
 params_RLsigma.alpha = alphaParameter;
@@ -159,556 +217,17 @@ params_RLsigma.sigma = sigmaParameter;
 params_RLsigma.kappa = kappaParameter;
 safe_saveall(fullfile(save_dir, 'params_RLSigma_RBVoi_Both_multiSP.mat'), params_RLsigma);
 safe_saveall(fullfile(save_dir, 'nll_RLSigma_RBVoi_Both_multiSP.mat'), nll_RLsigma);
-
-%% =================== COMPUTE AND SAVE AIC/BIC ==========================
-nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_sigma_RBVoi_Both_multiSP.mat"));
-nll_RLsigma = importdata(fullfile(save_dir, "nll_RLSigma_RBVoi_Both_multiSP.mat"));
-nll_bayesianAgent = importdata(fullfile(save_dir, "nll_bayesianAgent_integratedBoth_multiSP.mat"));
-
-disp('Computing AIC and BIC for all models...');
-% Number of trials per subject (assuming all subjects have same number)
-num_trials = repelem(200,numSubjs);%arrayfun(@(n) length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat,pupil), 1:numSubjs)';
-% Model parameter counts (updated to include confirmation bias model)
-num_params = [3, 3, 2]; % [basicRL, RLsigma, PWRL, BayesianAgent, BayesianAgent_confirmBias]
-AIC = NaN(numSubjs, 3);
-BIC = NaN(numSubjs, 3);
-for n = 1:numSubjs
-    % nlls = [nll_basicRL(n), nll_RLsigma(n), nll_PWRL(n), nll_bayesianAgent(n), nll_bayesianAgent_confirmBias(n)];
-    nlls = [nll_basicRL(n), nll_RLsigma(n), nll_bayesianAgent(n)];
-    [AIC(n,:), BIC(n,:)] = fitSlider_ALLmodels.compute_aic_bic(nlls, num_params, num_trials(n));
-end
-model_names = {'basicRL','RLsigma','BayesianAgent'};
-AICBIC_table = array2table([AIC, BIC], 'VariableNames', ...
-    {'AIC_basicRL','AIC_RLsigma','AIC_BayesianAgent', ...
-     'BIC_basicRL','BIC_RLsigma','BIC_BayesianAgent'});
-AICBIC_table.SubjectID = uniqueID;
-AICBIC_table = movevars(AICBIC_table, 'SubjectID', 'Before', 1);
-% Compute delta BIC for each subject and model
-% delta_BIC = BIC - min(BIC,[],2)
-delta_BIC = BIC - min(BIC,[],2);
-% Add delta_BIC to the table (updated to include confirmation bias model)
-AICBIC_table.delta_BIC_basicRL = delta_BIC(:,1);
-AICBIC_table.delta_BIC_RLsigma = delta_BIC(:,2);
-AICBIC_table.delta_BIC_BayesianAgent = delta_BIC(:,3);
-% Save updated table
-safe_saveall(fullfile(save_dir, 'AICBIC_integratedBoth_reducedMS_multiSP.mat'), AICBIC_table);
-disp('All model parameters and AIC/BIC estimated and saved.');
-
-%% Plot proportion of subjects best described by each model
-% Extract delta BIC values for each model
-delta_BIC_data = [AICBIC_table.delta_BIC_basicRL, ...
-                  AICBIC_table.delta_BIC_RLsigma, ...
-                  AICBIC_table.delta_BIC_BayesianAgent, ...
-                  ];
-
-% Find best model for each subject (deltaBIC = 0, or closest to 0 due to floating point)
-[~, best_model_idx] = min(abs(delta_BIC_data), [], 2);
-
-% Count proportion of subjects best described by each model
-model_counts = histcounts(best_model_idx, 1:4);
-model_proportions = model_counts / length(best_model_idx);
-
-% Model names and colors
-model_names = {'basicRL', 'RLsigma', 'BayesianAgent'};
-colors = lines(3);
-
-% Create the bar plot
-figure;
-h = bar(1:3, model_proportions, 'FaceColor', 'flat');
-
-% Set individual bar colors and transparency
-for i = 1:3
-    h.CData(i,:) = colors(i,:);
-end
-h.FaceAlpha = 0.4;
-
-% Customize the plot
-set(gca, 'XTickLabel', model_names);
-xlabel('Model');
-ylabel('Proportion of Subjects');
-title('Proportion of Subjects Best Described by Each Model');
-ylim([0, 1]);
-
-% Add value labels on top of bars
-for i = 1:3
-    text(i, model_proportions(i) + 0.02, sprintf('%.2f', model_proportions(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold');
 end
 
-% Add a horizontal grid for easier reading
-grid on;
-set(gca, 'GridAlpha', 0.3);
-
-% Display results in command window
-fprintf('\nModel Selection Results:\n');
-fprintf('------------------------\n');
-for i = 1:3
-    fprintf('%s: %.1f%% of subjects (%d/%d)\n', ...
-            model_names{i}, model_proportions(i)*100, model_counts(i), length(best_model_idx));
-end
-
-% Save per-subject best-fitting model (free-sigma fits, Both condition).
-bestModel_table = table();
-bestModel_table.SubjectID = AICBIC_table.SubjectID;
-bestModel_table.best_model = model_names(best_model_idx)'; % model_names is a 1xN row vector, so indexing it returns a row regardless of best_model_idx's shape -- transpose to match the table's Nx1 column height
-bestModel_table.delta_BIC_basicRL = AICBIC_table.delta_BIC_basicRL;
-bestModel_table.delta_BIC_RLsigma = AICBIC_table.delta_BIC_RLsigma;
-bestModel_table.delta_BIC_BayesianAgent = AICBIC_table.delta_BIC_BayesianAgent;
-safe_saveall(fullfile(save_dir, 'bestModel_Both_multiSP.mat'), bestModel_table);
-
-%%
-
-% Prepare log model evidence matrix (LME = -NLL)
-% Each row = subject, each column = model
-lme = -0.5 * [BIC];
-
-% Run Bayesian Model Selection
-fprintf('Running Bayesian Model Selection...\n');
-[alpha, exp_r, xp] = spm_BMS(lme, 1e6, 1, 0, 1, []);
-
-% Display results
-fprintf('\n=== BAYESIAN MODEL SELECTION RESULTS ===\n\n');
-
-% Model probabilities (expected posterior)
-fprintf('Model Probabilities (exp_r):\n');
-for i = 1:length(model_names)
-    fprintf('  %s: %.4f\n', model_names{i}, exp_r(i));
-end
-
-% Exceedance probabilities  
-fprintf('\nExceedance Probabilities (xp):\n');
-for i = 1:length(model_names)
-    fprintf('  %s: %.4f\n', model_names{i}, xp(i));
-end
-
-% Determine winning model
-[~, winning_model_idx] = max(exp_r);
-fprintf('\nWinning Model: %s (exp_r = %.4f, xp = %.4f)\n', ...
-    model_names{winning_model_idx}, exp_r(winning_model_idx), xp(winning_model_idx));
-
-% Create summary table
-BMS_results = table(model_names', exp_r', xp', ...
-    'VariableNames', {'Model', 'ModelProbability', 'ExceedanceProbability'});
-disp(BMS_results);
-
-%% Bayesian Model Selection Results Visualization
-% Assumes you have: exp_r, xp, model_names from spm_BMS output
-
-% Model names for plotting (shorter labels)
-model_labels = {'Basic RL', 'RL Sigma', 'Bayesian'};
-colors = lines(3); % Custom colors
-
-%% Main Figure with Two Subplots
-fig = figure('Position', [100, 100, 1000, 500]);
-
-% Subplot 1: Model Probabilities
-subplot(1, 2, 1);
-b1 = bar(exp_r, 'FaceColor', 'flat');
-b1.CData = colors;
-b1.FaceAlpha = 0.5;
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Model Probability (exp_r)', 'FontSize', 12, 'FontWeight', 'bold');
-title('Model Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
-ylim([0, max(exp_r) * 1.1]);
-grid on;
-grid minor;
-
-% Add value labels on bars
-for i = 1:length(exp_r)
-    text(i, exp_r(i) + 0.01, sprintf('%.3f', exp_r(i)), ...
-        'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-end
-
-% Subplot 2: Exceedance Probabilities
-subplot(1, 2, 2);
-b2 = bar(xp, 'FaceColor', 'flat');
-b2.CData = colors;
-b2.FaceAlpha = 0.5;
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Exceedance Probability (xp)', 'FontSize', 12, 'FontWeight', 'bold');
-title('Exceedance Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
-ylim([0, 1.05]);
-grid on;
-grid minor;
-
-% Add value labels on bars
-for i = 1:length(xp)
-    if xp(i) < 0.001
-        text(i, xp(i) + 0.02, '< 0.001', ...
-            'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-    else
-        text(i, xp(i) + 0.02, sprintf('%.3f', xp(i)), ...
-            'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-    end
-end
-
-% Add overall title
-sgtitle('Bayesian Model Selection Results', 'FontSize', 16, 'FontWeight', 'bold');
-
-%% Detailed Figure: Combined Plot with Winning Model Highlighted
-fig2 = figure('Position', [150, 150, 800, 600]);
-
-% Find winning model
-[~, winner_idx] = max(xp);
-
-% Create bar plot
-x_pos = 1:length(model_names);
-b = bar(x_pos, [exp_r; xp]', 'grouped');
-
-% Set colors
-b(1).FaceColor = [0.3 0.5 0.8]; % Model probabilities
-b(2).FaceColor = [0.8 0.4 0.3]; % Exceedance probabilities
-
-% Highlight winning model
-b(1).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
-b(2).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
-
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Model Comparison: Probabilities and Exceedance', 'FontSize', 14, 'FontWeight', 'bold');
-legend({'Model Probability (exp_r)', 'Exceedance Probability (xp)'}, ...
-    'Location', 'northeast', 'FontSize', 11);
-grid on;
-ylim([0, 1.05]);
-
-% Add text annotation for winner
-text(winner_idx, max([exp_r(winner_idx), xp(winner_idx)]) + 0.1, ...
-    sprintf('WINNER\n%s', model_labels{winner_idx}), ...
-    'HorizontalAlignment', 'center', 'FontSize', 12, 'FontWeight', 'bold', ...
-    'Color', [0.1 0.7 0.1]);
-
-
-%% Family-wise Model Comparison using VBA Toolbox - FIXED VERSION
-
-% 1. Prepare Log Model Evidence Matrix
-% Convert from information criteria to log model evidence
-BIC_matrix = [AICBIC_table.BIC_basicRL, ...
-                  AICBIC_table.BIC_RLsigma, ...
-                  AICBIC_table.BIC_BayesianAgent];
-lme = -0.5 * BIC_matrix;  % Convert BIC to log model evidence
-
-% Check dimensions
-[n_subjects, n_models] = size(lme);
-fprintf('Data: %d subjects, %d models\n', n_subjects, n_models);
-
-% 2. Define Model Families
-family_names = {'Basic_RL', 'LR_Modulation'};
-% Define which models belong to which family
-families{1} = [1];           % BasicRL (models 1 and 6)
-families{2} = [2, 3];    % LR modulation models (2-5)
-
-%% 3. Run Family-wise Bayesian Model Selection
-fprintf('Running family-wise model comparison...\n');
-% Set up VBA options structure
-options_vba = struct();
-options_vba.families = families;
-options_vba.verbose = 1;
-options_vba.DisplayWin = 0;
-
-try
-    % VBA_groupBMC with proper options structure
-    [posterior, out] = VBA_groupBMC(lme', options_vba);
-    fprintf('VBA_groupBMC completed successfully!\n');
-    vba_success = true;
-catch ME
-    fprintf('VBA_groupBMC failed with error: %s\n', ME.message);
-    fprintf('Using manual implementation instead...\n');
-    [posterior, out] = manual_family_BMS(lme, families, family_names);
-    vba_success = false;
-end
-
-%% 4. Extract and Display Results - FIXED VERSION
-if vba_success
-    % VBA succeeded - extract results correctly
-    family_prob = out.families.Ef;        % Family probabilities
-    family_xp = out.families.ep;          % Family exceedance probabilities
-    model_prob = out.Ef;                  % Individual model probabilities
-    model_xp = out.ep;                    % Individual model exceedance probabilities
-    
-    fprintf('\n=== VBA FAMILY-WISE RESULTS ===\n');
-else
-    % Manual implementation results
-    family_prob = posterior.r;            % Family probabilities
-    family_xp = out.families.ep;          % Family exceedance probabilities
-    model_prob = posterior.r_model;       % Individual model probabilities
-    model_xp = out.ep;                    % Individual model exceedance probabilities
-    
-    fprintf('\n=== MANUAL FAMILY-WISE RESULTS ===\n');
-end
-
-% Display family results
-for i = 1:length(families)
-    fprintf('Family %d (%s):\n', i, family_names{i});
-    fprintf('  Probability: %.3f\n', family_prob(i));
-    fprintf('  Exceedance Probability: %.3f\n', family_xp(i));
-    fprintf('  Models included: %s\n', mat2str(families{i}));
-    fprintf('\n');
-end
-
-% Display model results
-fprintf('=== MODEL-LEVEL RESULTS ===\n');
-model_names = {'BasicRL', 'RLSigma', 'RLSigma + CS', 'Agent', 'Agent + CS', 'BasicRL + CS'};
-for i = 1:n_models
-    fprintf('Model %d (%s): Prob=%.3f, XP=%.3f\n', i, model_names{i}, model_prob(i), model_xp(i));
-end
-
-%% 5. Enhanced Visualization with Copper Colormap
-% Create copper colormap colors with alpha
-copper_colors = copper(length(families) + n_models);
-dark_gray = [0.3, 0.3, 0.3];  % Dark gray for text
-
-% Create main figure
-fig = figure('Position', [100, 100, 1400, 500], 'Color', 'white');
-
-%% Plot 1: Family Probabilities
-subplot(1, 3, 1);
-h1 = bar(family_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
-
-% Set copper colormap colors for families
-h1.CData(1,:) = copper_colors(1, 1:3);  % First copper color
-h1.CData(2,:) = copper_colors(2, 1:3);  % Second copper color
-
-% Styling - remove grid and use normal font
-ylim([0, 1]);
-ylabel('Family Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Family Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-set(gca, 'XTickLabel', {'Basic RL', 'LR Modulation'}, 'FontSize', 11, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;  % Explicitly remove grid
-
-% Add value labels on bars
-for i = 1:length(family_prob)
-    text(i, family_prob(i) + 0.03, sprintf('%.3f', family_prob(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-         'FontSize', 11, 'Color', dark_gray);
-end
-
-ax1 = gca;
-ax1.Color = [0.98, 0.98, 0.98];
-
-%% Plot 2: Family Exceedance Probabilities  
-subplot(1, 3, 2);
-h2 = bar(family_xp, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
-
-% Set copper colormap colors for families (slightly darker)
-h2.CData(1,:) = copper_colors(1, 1:3) * 0.8;
-h2.CData(2,:) = copper_colors(2, 1:3) * 0.8;
-
-% Styling - remove grid and use normal font
-ylim([0, 1]);
-ylabel('Exceedance Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Family Exceedance Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-set(gca, 'XTickLabel', {'Basic RL', 'LR Modulation'}, 'FontSize', 11, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;  % Explicitly remove grid
-
-% Add value labels
-for i = 1:length(family_xp)
-    text(i, family_xp(i) + 0.03, sprintf('%.3f', family_xp(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-         'FontSize', 11, 'Color', dark_gray);
-end
-
-ax2 = gca;
-ax2.Color = [0.98, 0.98, 0.98];
-
-%% Plot 3: Individual Model Probabilities
-subplot(1, 3, 3);
-
-% Create color array for each model using copper colormap
-model_copper_colors = copper(n_models);
-bar_colors = model_copper_colors(:, 1:3);  % Remove alpha channel
-
-% Create bar plot with copper colors and alpha
-h3 = bar(1:n_models, model_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.7, 'FaceAlpha', 0.3);
-h3.CData = bar_colors;
-
-% Styling - remove grid and use normal font
-ylim([0, max(model_prob) * 1.15]);
-xlabel('Model', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Model Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Individual Model Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-
-% Better x-axis labels
-set(gca, 'XTick', 1:n_models, 'XTickLabel', model_names, ...
-    'XTickLabelRotation', 45, 'FontSize', 10, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;  % Explicitly remove grid
-
-% Add value labels on bars
-for i = 1:n_models
-    if model_prob(i) > 0.01  % Only label bars with meaningful height
-        text(i, model_prob(i) + max(model_prob) * 0.02, sprintf('%.3f', model_prob(i)), ...
-             'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-             'FontSize', 9, 'Color', dark_gray);
-    end
-end
-
-ax3 = gca;
-ax3.Color = [0.98, 0.98, 0.98];
-
-%% Overall figure improvements
-% sgtitle('Family-wise Bayesian Model Selection Results', ...
-%     'FontSize', 16, 'FontWeight', 'normal', 'Color', colors.dark_gray);
-
-% Adjust subplot spacing
-set(fig, 'Units', 'normalized');
-subplot(1,3,1); pos1 = get(gca, 'Position'); pos1(1) = 0.08; set(gca, 'Position', pos1);
-subplot(1,3,2); pos2 = get(gca, 'Position'); pos2(1) = 0.38; set(gca, 'Position', pos2);
-subplot(1,3,3); pos3 = get(gca, 'Position'); pos3(1) = 0.68; pos3(3) = 0.28; set(gca, 'Position', pos3);
-
-%% 6. Save Results
-results_summary = struct();
-results_summary.family_names = family_names;
-results_summary.families = families;
-results_summary.family_probabilities = family_prob;
-results_summary.family_exceedance_probabilities = family_xp;
-results_summary.model_names = model_names;
-results_summary.model_probabilities = model_prob;
-results_summary.model_exceedance_probabilities = model_xp;
-
-% Save to file
-save(fullfile(save_dir, 'family_wise_BMS_results_both_multiSP.mat'), 'results_summary', 'posterior', 'out');
-fprintf('\nResults saved to: family_wise_BMS_results_both_multiSP.mat\n');
-
-%% 7. Additional Analysis: Model Contributions within Families
-fprintf('\n=== WITHIN-FAMILY MODEL CONTRIBUTIONS ===\n');
-for f = 1:length(families)
-    fprintf('\nFamily %d (%s):\n', f, family_names{f});
-    models_in_family = families{f};
-    family_model_probs = model_prob(models_in_family);
-    
-    % Normalize to get relative contributions within family
-    if sum(family_model_probs) > 0
-        relative_contrib = family_model_probs / sum(family_model_probs);
-        for m = 1:length(models_in_family)
-            model_idx = models_in_family(m);
-            fprintf('  %s (Model %d): %.3f (%.1f%% of family)\n', ...
-                model_names{model_idx}, model_idx, family_model_probs(m), ...
-                relative_contrib(m) * 100);
-        end
-    end
-end
-
-% ---------- Stacked bars per-family (no hard-coded probs) ----------
-num_families = length(families);
-
-% Choose base colors for each family (customize if you want)
-if num_families == 1
-    family_colors = [0.2 0.6 0.9];
-elseif num_families == 2
-    family_colors = [
-        0.0000 0.4470 0.7410;   % blue-ish
-        0.9 0.3250 0.0980    % orange-ish
-    ];
-else
-    family_colors = parula(num_families); % fallback for >2 families
-end
-
-figure;
-hold on;
-handles = gobjects(0);   % for legend handles
-labels  = {};            % for legend labels
-
-% Plot each family as a single stacked bar (so colors can be set per-family)
-for f = 1:num_families
-    models_in_family = families{f};
-    family_model_probs = model_prob(models_in_family);
-    if sum(family_model_probs) > 0
-        rel = family_model_probs / sum(family_model_probs);  % relative contributions
-    else
-        rel = zeros(size(family_model_probs));
-    end
-
-    % Create shades for models within the family (darker -> lighter)
-    n = numel(rel);
-    % shades from 0.55 (darker) to 1.0 (base color)
-    shades = linspace(0.35, 1.00, n)';  
-    base = family_colors(min(f,size(family_colors,1)), :);
-    model_colors = bsxfun(@times, shades, base); % n x 3 matrix
-
-    % Draw a single stacked bar at x = f
-    b = bar(f, rel, 0.6, 'stacked');   % b is an array of Bar objects (one per segment)
-    for i = 1:numel(b)
-        % set color for this segment (this family only)
-        b(i).FaceColor = model_colors(i,:);
-        b(i).EdgeColor = 'none';
-
-        % store handle & label for legend (label with model name + family)
-        model_idx = models_in_family(i);
-        handles(end+1) = b(i); %#ok<SAGROW>
-        labels{end+1} = sprintf('%s (Family: %s)', model_names{model_idx}, family_names{f});
-    end
-
-    % optional: add text labels inside segments (percent)
-    cum = 0;
-    for i = 1:n
-        h = rel(i);
-        if h > 0
-            yc = cum + h/2;
-            % choose text color for contrast
-            rgb = model_colors(i,:);
-            lum = 0.299*rgb(1) + 0.587*rgb(2) + 0.114*rgb(3);
-            txtc = 'w';
-            if lum > 0.7, txtc = 'k'; end
-            text(f, yc, sprintf('%.1f%%', h*100), ...
-                 'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
-                 'FontSize',9, 'Color', txtc);
-        end
-        cum = cum + h;
-    end
-end
-
-% Format axes & legend
-xlim([0.5, num_families+0.5]);
-set(gca, 'XTick', 1:num_families, 'XTickLabel', family_names, 'FontSize', 12);
-ylabel('Relative Model Contribution (within family)');
-title('Within-Family Model Contributions (stacked)');
-ylim([0 1]);
-grid on; box on;
-
-% Legend (one entry per model segment)
-legend(handles, labels, 'Location', 'eastoutside');
-
-hold off;
-
-
-
-%% 8. Statistical Summary
-fprintf('\n=== STATISTICAL SUMMARY ===\n');
-fprintf('Winning Family: %s (Prob = %.3f, XP = %.3f)\n', ...
-    family_names{find(family_prob == max(family_prob))}, ...
-    max(family_prob), max(family_xp));
-fprintf('Winning Model: %s (Prob = %.3f, XP = %.3f)\n', ...
-    model_names{find(model_prob == max(model_prob))}, ...
-    max(model_prob), max(model_xp));
-
-% Evidence strength interpretation
-if max(family_xp) > 0.95
-    evidence_strength = 'Very Strong';
-elseif max(family_xp) > 0.90
-    evidence_strength = 'Strong';
-elseif max(family_xp) > 0.75
-    evidence_strength = 'Moderate';
-else
-    evidence_strength = 'Weak';
-end
-fprintf('Evidence Strength: %s (XP = %.3f)\n', evidence_strength, max(family_xp));
-
-%% ========================================================================
-%  PERCEPTUAL CONDITION
-%  ------------------------------------------------------------------------
-%  Same fitting + model-selection pipeline as above, run on the
-%  perceptual-condition data (dataPerceptual) instead of the both-condition
-%  data (dataBoth).
-%  ========================================================================
-%% =================== BASIC RL MODEL (PERCEPTUAL) ========================
+%% ----------------- Perceptual condition: fitting -------------------------
+%% --- Basic RL model (Perceptual) ---
+if run_fitting
 alphaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 nll_basicRL = NaN(numSubjs, 1);
-lb = [0, 1, 0]; %, 0];
-ub = [1, 100, 0.1]; %, 1];
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
@@ -744,13 +263,15 @@ params_basicRL.kappa = kappaParameter;
 params_basicRL.sigma = sigmaParameter;
 safe_saveall(fullfile(save_dir, 'params_basicRL_RBVoi_Perceptual_multiSP.mat'), params_basicRL);
 safe_saveall(fullfile(save_dir, 'nll_basicRL_sigma_RBVoi_Perceptual_multiSP.mat'), nll_basicRL);
-%% =================== BAYESIAN AGENT MODEL (PERCEPTUAL) ==================
+end
+
+%% --- Bayesian Agent model (Perceptual) ---
+if run_fitting
 sigmaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
-% betaParameter = NaN(numSubjs, 1);
 nll_bayesianAgent = NaN(numSubjs, 1);
-lb = [1, 0]; %, 0];
-ub = [100, 0.1]; %,1];
+lb = [1, 0];
+ub = [100, 0.1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initKappa = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initSigma = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
@@ -778,21 +299,22 @@ parfor n = 1:numSubjs
 
     sigmaParameter(n) = best_params(2);
     kappaParameter(n) = best_params(1);
-    % betaParameter(n) = params(3);
     nll_bayesianAgent(n) = best_nll;
 end
 params_bayesianAgent.sigma = sigmaParameter;
 params_bayesianAgent.kappa = kappaParameter;
 safe_saveall(fullfile(save_dir, 'params_bayesianAgent_integratedPerceptual_multiSP.mat'), params_bayesianAgent);
 safe_saveall(fullfile(save_dir, 'nll_bayesianAgent_integratedPerceptual_multiSP.mat'), nll_bayesianAgent);
+end
 
-%% =================== RL + EST SENSITIVITY MODEL (PERCEPTUAL) ============
+%% --- RL + Est. Sensitivity model (Perceptual) ---
+if run_fitting
 alphaParameter = NaN(numSubjs, 1);
 sigmaParameter = NaN(numSubjs, 1);
 kappaParameter = NaN(numSubjs, 1);
 nll_RLsigma = NaN(numSubjs, 1);
-lb = [0, 1, 0]; %, 0];
-ub = [1, 100, 0.1]; %, 1];
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
 % Multi-start (see BASIC RL MODEL section above for rationale).
 initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
 initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
@@ -821,7 +343,6 @@ parfor n = 1:numSubjs
     alphaParameter(n) = best_params(1);
     sigmaParameter(n) = best_params(3);
     kappaParameter(n) = best_params(2);
-    % betaParameter(n) = params(4);
     nll_RLsigma(n) = best_nll;
 end
 params_RLsigma.alpha = alphaParameter;
@@ -829,529 +350,969 @@ params_RLsigma.sigma = sigmaParameter;
 params_RLsigma.kappa = kappaParameter;
 safe_saveall(fullfile(save_dir, 'params_RLSigma_RBVoi_Perceptual_multiSP.mat'), params_RLsigma);
 safe_saveall(fullfile(save_dir, 'nll_RLSigma_RBVoi_Perceptual_multiSP.mat'), nll_RLsigma);
-fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar window
+end
 
-%% =================== COMPUTE AND SAVE AIC/BIC (PERCEPTUAL) ==============
+%% ----------------- Model comparison ---------------------------------------
+%% --- Both condition ---
+nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_sigma_RBVoi_Both_multiSP.mat"));
+nll_RLsigma = importdata(fullfile(save_dir, "nll_RLSigma_RBVoi_Both_multiSP.mat"));
+nll_bayesianAgent = importdata(fullfile(save_dir, "nll_bayesianAgent_integratedBoth_multiSP.mat"));
+% Reloaded (rather than reused in-memory) for the same reason as
+% fitReducedModelSpace_fixedSigma.m: these variable names get overwritten
+% by the Perceptual-condition fitting blocks above.
+params_basicRL = importdata(fullfile(save_dir, "params_basicRL_RBVoi_Both_multiSP.mat"));
+params_RLsigma = importdata(fullfile(save_dir, "params_RLSigma_RBVoi_Both_multiSP.mat"));
+params_bayesianAgent = importdata(fullfile(save_dir, "params_bayesianAgent_integratedBoth_multiSP.mat"));
+
+disp('Computing AIC and BIC for all models...');
+% Number of trials per subject -- NOT a fixed 200: each condition (Both/
+% Perceptual) only gets 4 of the task's 12 blocks (100 trials), and
+% requireMuHat further drops any trials with a missing slider response,
+% so this is computed per subject rather than assumed. Named per-condition
+% (num_trials_both, not a shared num_trials) so the Perceptual block below
+% can't silently overwrite the value this Both-condition comparison needs.
+num_trials_both = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_both(n) = length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat);
+end
+% Model parameter counts -- sigma is a free parameter here (unlike
+% fitReducedModelSpace_fixedSigma.m), so each model has one more parameter
+% than its fixed-sigma counterpart. [basicRL, RLsigma, BayesianAgent]
+num_params = [3, 3, 2];
+model_names = {'basicRL','RLsigma','BayesianAgent'};
+% One call computes AIC/BIC/delta-BIC per subject and model, finds each
+% subject's best-fitting model, and runs Bayesian Model Selection (BMS)
+% across subjects -- see fitSlider_ALLmodels.compute_model_comparison.
+[AICBIC_table, bestModel_table, BMS_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL, nll_RLsigma, nll_bayesianAgent], model_names, num_params, num_trials_both, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_integratedBoth_reducedMS_multiSP.mat'), AICBIC_table);
+safe_saveall(fullfile(save_dir, 'bestModel_Both_multiSP.mat'), bestModel_table);
+disp('All model parameters and AIC/BIC estimated and saved.');
+
+% Plot proportion-best-fit bar chart, BMS probability/exceedance bars, and
+% the winner-highlighted summary figure -- see plot_model_comparison.
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_table, bestModel_table, BMS_table, model_names, 'Both condition');
+
+% Plot fitted alpha/kappa/sigma across models, plus summed AIC/BIC and
+% mean delta-BIC. sigma is fitted (not fixed) here, unlike
+% fitReducedModelSpace_fixedSigma.m -- sigma_title reflects that.
+bic_ax_both_obj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL, params_RLsigma, params_bayesianAgent}, model_names, AICBIC_table, 'Both condition', 'sigma (fitted)');
+
+% Family-wise Model Comparison using VBA Toolbox: convert BIC to log model
+% evidence and group models into families: Basic RL alone vs. the two
+% LR-modulation models (RLsigma, BayesianAgent).
+BIC_matrix = [AICBIC_table.BIC_basicRL, ...
+                  AICBIC_table.BIC_RLsigma, ...
+                  AICBIC_table.BIC_BayesianAgent]; % numSubjs x 3 matrix of BIC values, one column per model
+lme = -0.5 * BIC_matrix; % convert BIC to (approximate) log model evidence
+family_names = {'Basic_RL', 'LR_Modulation'};
+families{1} = [1];       % BasicRL -- column index into lme/BIC_matrix/model_names
+families{2} = [2, 3];    % LR modulation models (RLsigma, BayesianAgent)
+
+fprintf('Running family-wise model comparison...\n');
+% Runs VBA_groupBMC (falling back to a manual approximation if that
+% toolbox call fails) to get family- and model-level probabilities.
+[results_summary, posterior, out] = fitSlider_ALLmodels.compute_family_model_comparison(lme, families, family_names, model_names);
+save(fullfile(save_dir, 'family_wise_BMS_results_both_multiSP.mat'), 'results_summary', 'posterior', 'out');
+fprintf('\nResults saved to: family_wise_BMS_results_both_multiSP.mat\n');
+
+% Plots family probabilities/exceedance probabilities, individual model
+% probabilities, a within-family stacked bar, and prints a text summary.
+fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Both condition');
+
+%% --- Perceptual condition ---
 nll_basicRL = importdata(fullfile(save_dir, "nll_basicRL_sigma_RBVoi_Perceptual_multiSP.mat"));
 nll_RLsigma = importdata(fullfile(save_dir, "nll_RLSigma_RBVoi_Perceptual_multiSP.mat"));
 nll_bayesianAgent = importdata(fullfile(save_dir, "nll_bayesianAgent_integratedPerceptual_multiSP.mat"));
+% Reloaded for the same reason as the Both-condition block above: these
+% variable names were last overwritten by this script's own fitting
+% blocks, so reloading from disk guarantees the Perceptual-condition fit.
+params_basicRL = importdata(fullfile(save_dir, "params_basicRL_RBVoi_Perceptual_multiSP.mat"));
+params_RLsigma = importdata(fullfile(save_dir, "params_RLSigma_RBVoi_Perceptual_multiSP.mat"));
+params_bayesianAgent = importdata(fullfile(save_dir, "params_bayesianAgent_integratedPerceptual_multiSP.mat"));
 
 disp('Computing AIC and BIC for all models (perceptual condition)...');
-% Number of trials per subject (assuming all subjects have same number)
-num_trials = repelem(200,numSubjs);
-% Model parameter counts (updated to include confirmation bias model)
-num_params = [3, 3, 2]; % [basicRL, RLsigma, PWRL, BayesianAgent, BayesianAgent_confirmBias]
-AIC = NaN(numSubjs, 3);
-BIC = NaN(numSubjs, 3);
+num_trials_perceptual = NaN(numSubjs, 1);
 for n = 1:numSubjs
-    nlls = [nll_basicRL(n), nll_RLsigma(n), nll_bayesianAgent(n)];
-    [AIC(n,:), BIC(n,:)] = fitSlider_ALLmodels.compute_aic_bic(nlls, num_params, num_trials(n));
+    num_trials_perceptual(n) = length(preprocess_fitSlider(dataPerceptual, uniqueID(n)).mu_hat);
 end
+num_params = [3, 3, 2];
 model_names = {'basicRL','RLsigma','BayesianAgent'};
-AICBIC_table = array2table([AIC, BIC], 'VariableNames', ...
-    {'AIC_basicRL','AIC_RLsigma','AIC_BayesianAgent', ...
-     'BIC_basicRL','BIC_RLsigma','BIC_BayesianAgent'});
-AICBIC_table.SubjectID = uniqueID;
-AICBIC_table = movevars(AICBIC_table, 'SubjectID', 'Before', 1);
-% Compute delta BIC for each subject and model
-delta_BIC = BIC - min(BIC,[],2);
-AICBIC_table.delta_BIC_basicRL = delta_BIC(:,1);
-AICBIC_table.delta_BIC_RLsigma = delta_BIC(:,2);
-AICBIC_table.delta_BIC_BayesianAgent = delta_BIC(:,3);
-% Save updated table
+[AICBIC_table, bestModel_table, BMS_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL, nll_RLsigma, nll_bayesianAgent], model_names, num_params, num_trials_perceptual, uniqueID);
 safe_saveall(fullfile(save_dir, 'AICBIC_integratedPerceptual_reducedMS_multiSP.mat'), AICBIC_table);
+safe_saveall(fullfile(save_dir, 'bestModel_Perceptual_multiSP.mat'), bestModel_table);
 disp('All model parameters and AIC/BIC estimated and saved (perceptual condition).');
 
-%% Plot proportion of subjects best described by each model (Perceptual)
-delta_BIC_data = [AICBIC_table.delta_BIC_basicRL, ...
-                  AICBIC_table.delta_BIC_RLsigma, ...
-                  AICBIC_table.delta_BIC_BayesianAgent, ...
-                  ];
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_table, bestModel_table, BMS_table, model_names, 'Perceptual condition');
 
-[~, best_model_idx] = min(abs(delta_BIC_data), [], 2);
-
-model_counts = histcounts(best_model_idx, 1:4);
-model_proportions = model_counts / length(best_model_idx);
-
-model_names = {'basicRL', 'RLsigma', 'BayesianAgent'};
-colors = lines(3);
-
-figure;
-h = bar(1:3, model_proportions, 'FaceColor', 'flat');
-
-for i = 1:3
-    h.CData(i,:) = colors(i,:);
-end
-h.FaceAlpha = 0.4;
-
-set(gca, 'XTickLabel', model_names);
-xlabel('Model');
-ylabel('Proportion of Subjects');
-title('Proportion of Subjects Best Described by Each Model (Perceptual condition)');
-ylim([0, 1]);
-
-for i = 1:3
-    text(i, model_proportions(i) + 0.02, sprintf('%.2f', model_proportions(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold');
-end
-
-grid on;
-set(gca, 'GridAlpha', 0.3);
-
-fprintf('\nModel Selection Results (Perceptual condition):\n');
-fprintf('------------------------\n');
-for i = 1:3
-    fprintf('%s: %.1f%% of subjects (%d/%d)\n', ...
-            model_names{i}, model_proportions(i)*100, model_counts(i), length(best_model_idx));
-end
-
-% Save per-subject best-fitting model (free-sigma fits, Perceptual condition)
-bestModel_table = table();
-bestModel_table.SubjectID = AICBIC_table.SubjectID;
-bestModel_table.best_model = model_names(best_model_idx)'; % model_names is a 1xN row vector, so indexing it returns a row regardless of best_model_idx's shape -- transpose to match the table's Nx1 column height
-bestModel_table.delta_BIC_basicRL = AICBIC_table.delta_BIC_basicRL;
-bestModel_table.delta_BIC_RLsigma = AICBIC_table.delta_BIC_RLsigma;
-bestModel_table.delta_BIC_BayesianAgent = AICBIC_table.delta_BIC_BayesianAgent;
-safe_saveall(fullfile(save_dir, 'bestModel_Perceptual_multiSP.mat'), bestModel_table);
-
-%%
-
-lme = -0.5 * [BIC];
-
-fprintf('Running Bayesian Model Selection (perceptual condition)...\n');
-[alpha, exp_r, xp] = spm_BMS(lme, 1e6, 1, 0, 1, []);
-
-fprintf('\n=== BAYESIAN MODEL SELECTION RESULTS (PERCEPTUAL) ===\n\n');
-
-fprintf('Model Probabilities (exp_r):\n');
-for i = 1:length(model_names)
-    fprintf('  %s: %.4f\n', model_names{i}, exp_r(i));
-end
-
-fprintf('\nExceedance Probabilities (xp):\n');
-for i = 1:length(model_names)
-    fprintf('  %s: %.4f\n', model_names{i}, xp(i));
-end
-
-[~, winning_model_idx] = max(exp_r);
-fprintf('\nWinning Model: %s (exp_r = %.4f, xp = %.4f)\n', ...
-    model_names{winning_model_idx}, exp_r(winning_model_idx), xp(winning_model_idx));
-
-BMS_results = table(model_names', exp_r', xp', ...
-    'VariableNames', {'Model', 'ModelProbability', 'ExceedanceProbability'});
-disp(BMS_results);
-
-%% Bayesian Model Selection Results Visualization (Perceptual)
-model_labels = {'Basic RL', 'RL Sigma', 'Bayesian'};
-colors = lines(3); % Custom colors
-
-%% Main Figure with Two Subplots (Perceptual)
-fig = figure('Position', [100, 100, 1000, 500]);
-
-subplot(1, 2, 1);
-b1 = bar(exp_r, 'FaceColor', 'flat');
-b1.CData = colors;
-b1.FaceAlpha = 0.5;
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Model Probability (exp_r)', 'FontSize', 12, 'FontWeight', 'bold');
-title('Model Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
-ylim([0, max(exp_r) * 1.1]);
-grid on;
-grid minor;
-
-for i = 1:length(exp_r)
-    text(i, exp_r(i) + 0.01, sprintf('%.3f', exp_r(i)), ...
-        'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-end
-
-subplot(1, 2, 2);
-b2 = bar(xp, 'FaceColor', 'flat');
-b2.CData = colors;
-b2.FaceAlpha = 0.5;
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Exceedance Probability (xp)', 'FontSize', 12, 'FontWeight', 'bold');
-title('Exceedance Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
-ylim([0, 1.05]);
-grid on;
-grid minor;
-
-for i = 1:length(xp)
-    if xp(i) < 0.001
-        text(i, xp(i) + 0.02, '< 0.001', ...
-            'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-    else
-        text(i, xp(i) + 0.02, sprintf('%.3f', xp(i)), ...
-            'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
-    end
-end
-
-sgtitle('Bayesian Model Selection Results (Perceptual condition)', 'FontSize', 16, 'FontWeight', 'bold');
-
-%% Detailed Figure: Combined Plot with Winning Model Highlighted (Perceptual)
-fig2 = figure('Position', [150, 150, 800, 600]);
-
-[~, winner_idx] = max(xp);
-
-x_pos = 1:length(model_names);
-b = bar(x_pos, [exp_r; xp]', 'grouped');
-
-b(1).FaceColor = [0.3 0.5 0.8]; % Model probabilities
-b(2).FaceColor = [0.8 0.4 0.3]; % Exceedance probabilities
-
-b(1).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
-b(2).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
-
-set(gca, 'XTickLabel', model_labels, 'XTickLabelRotation', 45);
-ylabel('Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Model Comparison: Probabilities and Exceedance (Perceptual condition)', 'FontSize', 14, 'FontWeight', 'bold');
-legend({'Model Probability (exp_r)', 'Exceedance Probability (xp)'}, ...
-    'Location', 'northeast', 'FontSize', 11);
-grid on;
-ylim([0, 1.05]);
-
-text(winner_idx, max([exp_r(winner_idx), xp(winner_idx)]) + 0.1, ...
-    sprintf('WINNER\n%s', model_labels{winner_idx}), ...
-    'HorizontalAlignment', 'center', 'FontSize', 12, 'FontWeight', 'bold', ...
-    'Color', [0.1 0.7 0.1]);
-
-
-%% Family-wise Model Comparison using VBA Toolbox (Perceptual)
+bic_ax_perc_obj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL, params_RLsigma, params_bayesianAgent}, model_names, AICBIC_table, 'Perceptual condition', 'sigma (fitted)');
 
 BIC_matrix = [AICBIC_table.BIC_basicRL, ...
                   AICBIC_table.BIC_RLsigma, ...
                   AICBIC_table.BIC_BayesianAgent];
-lme = -0.5 * BIC_matrix;  % Convert BIC to log model evidence
-
-[n_subjects, n_models] = size(lme);
-fprintf('Data: %d subjects, %d models\n', n_subjects, n_models);
-
+lme = -0.5 * BIC_matrix;
 family_names = {'Basic_RL', 'LR_Modulation'};
-families{1} = [1];           % BasicRL
-families{2} = [2, 3];    % LR modulation models
+families{1} = [1];
+families{2} = [2, 3];
 
 fprintf('Running family-wise model comparison (perceptual condition)...\n');
-options_vba = struct();
-options_vba.families = families;
-options_vba.verbose = 1;
-options_vba.DisplayWin = 0;
-
-try
-    [posterior, out] = VBA_groupBMC(lme', options_vba);
-    fprintf('VBA_groupBMC completed successfully!\n');
-    vba_success = true;
-catch ME
-    fprintf('VBA_groupBMC failed with error: %s\n', ME.message);
-    fprintf('Using manual implementation instead...\n');
-    [posterior, out] = manual_family_BMS(lme, families, family_names);
-    vba_success = false;
-end
-
-if vba_success
-    family_prob = out.families.Ef;        % Family probabilities
-    family_xp = out.families.ep;          % Family exceedance probabilities
-    model_prob = out.Ef;                  % Individual model probabilities
-    model_xp = out.ep;                    % Individual model exceedance probabilities
-
-    fprintf('\n=== VBA FAMILY-WISE RESULTS (PERCEPTUAL) ===\n');
-else
-    family_prob = posterior.r;            % Family probabilities
-    family_xp = out.families.ep;          % Family exceedance probabilities
-    model_prob = posterior.r_model;       % Individual model probabilities
-    model_xp = out.ep;                    % Individual model exceedance probabilities
-
-    fprintf('\n=== MANUAL FAMILY-WISE RESULTS (PERCEPTUAL) ===\n');
-end
-
-for i = 1:length(families)
-    fprintf('Family %d (%s):\n', i, family_names{i});
-    fprintf('  Probability: %.3f\n', family_prob(i));
-    fprintf('  Exceedance Probability: %.3f\n', family_xp(i));
-    fprintf('  Models included: %s\n', mat2str(families{i}));
-    fprintf('\n');
-end
-
-fprintf('=== MODEL-LEVEL RESULTS (PERCEPTUAL) ===\n');
-model_names = {'BasicRL', 'RLSigma', 'RLSigma + CS', 'Agent', 'Agent + CS', 'BasicRL + CS'};
-for i = 1:n_models
-    fprintf('Model %d (%s): Prob=%.3f, XP=%.3f\n', i, model_names{i}, model_prob(i), model_xp(i));
-end
-
-%% Enhanced Visualization with Copper Colormap (Perceptual)
-copper_colors = copper(length(families) + n_models);
-dark_gray = [0.3, 0.3, 0.3];  % Dark gray for text
-
-fig = figure('Position', [100, 100, 1400, 500], 'Color', 'white');
-
-subplot(1, 3, 1);
-h1 = bar(family_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
-
-h1.CData(1,:) = copper_colors(1, 1:3);
-h1.CData(2,:) = copper_colors(2, 1:3);
-
-ylim([0, 1]);
-ylabel('Family Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Family Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-set(gca, 'XTickLabel', {'Basic RL', 'LR Modulation'}, 'FontSize', 11, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;
-
-for i = 1:length(family_prob)
-    text(i, family_prob(i) + 0.03, sprintf('%.3f', family_prob(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-         'FontSize', 11, 'Color', dark_gray);
-end
-
-ax1 = gca;
-ax1.Color = [0.98, 0.98, 0.98];
-
-subplot(1, 3, 2);
-h2 = bar(family_xp, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
-
-h2.CData(1,:) = copper_colors(1, 1:3) * 0.8;
-h2.CData(2,:) = copper_colors(2, 1:3) * 0.8;
-
-ylim([0, 1]);
-ylabel('Exceedance Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Family Exceedance Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-set(gca, 'XTickLabel', {'Basic RL', 'LR Modulation'}, 'FontSize', 11, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;
-
-for i = 1:length(family_xp)
-    text(i, family_xp(i) + 0.03, sprintf('%.3f', family_xp(i)), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-         'FontSize', 11, 'Color', dark_gray);
-end
-
-ax2 = gca;
-ax2.Color = [0.98, 0.98, 0.98];
-
-subplot(1, 3, 3);
-
-model_copper_colors = copper(n_models);
-bar_colors = model_copper_colors(:, 1:3);
-
-h3 = bar(1:n_models, model_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.7, 'FaceAlpha', 0.3);
-h3.CData = bar_colors;
-
-ylim([0, max(model_prob) * 1.15]);
-xlabel('Model', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Model Probability', 'FontSize', 12, 'FontWeight', 'bold');
-title('Individual Model Probabilities', 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
-
-set(gca, 'XTick', 1:n_models, 'XTickLabel', model_names, ...
-    'XTickLabelRotation', 45, 'FontSize', 10, ...
-    'Box', 'off', 'LineWidth', 1.2);
-grid off;
-
-for i = 1:n_models
-    if model_prob(i) > 0.01
-        text(i, model_prob(i) + max(model_prob) * 0.02, sprintf('%.3f', model_prob(i)), ...
-             'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
-             'FontSize', 9, 'Color', dark_gray);
-    end
-end
-
-ax3 = gca;
-ax3.Color = [0.98, 0.98, 0.98];
-
-sgtitle('Family-wise Bayesian Model Selection Results (Perceptual condition)', 'FontSize', 16, 'FontWeight', 'normal', 'Color', dark_gray);
-
-set(fig, 'Units', 'normalized');
-subplot(1,3,1); pos1 = get(gca, 'Position'); pos1(1) = 0.08; set(gca, 'Position', pos1);
-subplot(1,3,2); pos2 = get(gca, 'Position'); pos2(1) = 0.38; set(gca, 'Position', pos2);
-subplot(1,3,3); pos3 = get(gca, 'Position'); pos3(1) = 0.68; pos3(3) = 0.28; set(gca, 'Position', pos3);
-
-%% Save Results (Perceptual)
-results_summary = struct();
-results_summary.family_names = family_names;
-results_summary.families = families;
-results_summary.family_probabilities = family_prob;
-results_summary.family_exceedance_probabilities = family_xp;
-results_summary.model_names = model_names;
-results_summary.model_probabilities = model_prob;
-results_summary.model_exceedance_probabilities = model_xp;
-
+[results_summary, posterior, out] = fitSlider_ALLmodels.compute_family_model_comparison(lme, families, family_names, model_names);
 save(fullfile(save_dir, 'family_wise_BMS_results_perceptual_multiSP.mat'), 'results_summary', 'posterior', 'out');
 fprintf('\nResults saved to: family_wise_BMS_results_perceptual_multiSP.mat\n');
 
-%% Additional Analysis: Model Contributions within Families (Perceptual)
-fprintf('\n=== WITHIN-FAMILY MODEL CONTRIBUTIONS (PERCEPTUAL) ===\n');
-for f = 1:length(families)
-    fprintf('\nFamily %d (%s):\n', f, family_names{f});
-    models_in_family = families{f};
-    family_model_probs = model_prob(models_in_family);
+fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Perceptual condition');
 
-    if sum(family_model_probs) > 0
-        relative_contrib = family_model_probs / sum(family_model_probs);
-        for m = 1:length(models_in_family)
-            model_idx = models_in_family(m);
-            fprintf('  %s (Model %d): %.3f (%.1f%% of family)\n', ...
-                model_names{model_idx}, model_idx, family_model_probs(m), ...
-                relative_contrib(m) * 100);
+%% ========================================================================
+%  SECTION 2 OF 4: SUBJECTIVE PE, INTEGRATED
+%  ------------------------------------------------------------------------
+%  Same basicRL / RLsigma models as Section 1, but using
+%  nll_basicRL_integrated_subjectivePE / nll_RLsigma_VOI_subjectivePE
+%  instead of nll_basicRL_integrated / nll_RLsigma_VOI: each trial's
+%  delta-rule anchors to the subject's own actual previous slider report
+%  (mu_hat(n-1)) rather than the model's internally-tracked running belief
+%  -- see fitSlider_ALLmodels.m's nll_basicRL_integrated_subjectivePE
+%  header for the full rationale. bayesianAgent has no subjective-PE
+%  variant (its belief update isn't a simple alpha-driven delta rule), so
+%  it's excluded from this section -- a 2-model comparison throughout.
+%  ========================================================================
+
+%% ----------------- Both condition: fitting ------------------------------
+%% --- Basic RL model, subjective PE ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_subjectivePE = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL subjective PE (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL subjective PE (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_subjectivePE(n) = best_nll;
+end
+params_basicRL_subjectivePE.alpha = alphaParameter;
+params_basicRL_subjectivePE.kappa = kappaParameter;
+params_basicRL_subjectivePE.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_subjectivePEv2_Both_multiSP.mat'), params_basicRL_subjectivePE);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_subjectivePEv2_Both_multiSP.mat'), nll_basicRL_subjectivePE);
+end
+
+%% --- RL + Est. Sensitivity model, subjective PE ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_subjectivePE = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_subjectivePE(n) = best_nll;
+end
+params_RLsigma_subjectivePE.alpha = alphaParameter;
+params_RLsigma_subjectivePE.kappa = kappaParameter;
+params_RLsigma_subjectivePE.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_subjectivePEv2_Both_multiSP.mat'), params_RLsigma_subjectivePE);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_subjectivePEv2_Both_multiSP.mat'), nll_RLsigma_subjectivePE);
+end
+
+%% ----------------- Perceptual condition: fitting -------------------------
+%% --- Basic RL model, subjective PE (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_subjectivePE = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL subjective PE (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL subjective PE (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_subjectivePE(n) = best_nll;
+end
+params_basicRL_subjectivePE.alpha = alphaParameter;
+params_basicRL_subjectivePE.kappa = kappaParameter;
+params_basicRL_subjectivePE.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_subjectivePEv2_Perceptual_multiSP.mat'), params_basicRL_subjectivePE);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_subjectivePEv2_Perceptual_multiSP.mat'), nll_basicRL_subjectivePE);
+end
+
+%% --- RL + Est. Sensitivity model, subjective PE (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_subjectivePE = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_subjectivePE(n) = best_nll;
+end
+params_RLsigma_subjectivePE.alpha = alphaParameter;
+params_RLsigma_subjectivePE.kappa = kappaParameter;
+params_RLsigma_subjectivePE.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_subjectivePEv2_Perceptual_multiSP.mat'), params_RLsigma_subjectivePE);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_subjectivePEv2_Perceptual_multiSP.mat'), nll_RLsigma_subjectivePE);
+end
+
+%% ----------------- Model comparison ---------------------------------------
+%  2-way AIC/BIC/bestModel/BMS comparison between the two subjective-PE
+%  models (basicRL_subjectivePE vs RLsigma_subjectivePE). No family-wise
+%  VBA_groupBMC step here -- with only two models, a family-wise grouping
+%  would just duplicate the model-level results below, so it's omitted
+%  (same convention as fitReducedModelSpace_fixedSigma.m).
+%% --- Both condition ---
+nll_basicRL_subjectivePE = importdata(fullfile(save_dir, "nll_basicRL_subjectivePEv2_Both_multiSP.mat"));
+nll_RLsigma_subjectivePE = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePEv2_Both_multiSP.mat"));
+params_basicRL_subjectivePE = importdata(fullfile(save_dir, "params_basicRL_subjectivePEv2_Both_multiSP.mat"));
+params_RLsigma_subjectivePE = importdata(fullfile(save_dir, "params_RLsigma_subjectivePEv2_Both_multiSP.mat"));
+
+disp('Computing AIC and BIC for subjective PE models...');
+% Recomputed explicitly (not reused from Section 1 above) -- dataBoth and
+% dataPerceptual can give different per-subject trial counts after
+% requireMuHat filtering, so this must not risk picking up whichever
+% condition's count happened to be last computed above.
+num_trials_both = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_both(n) = length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat);
+end
+num_params_subjectivePE = [3, 3]; % both subjective-PE models have 3 free params (alpha, kappa, sigma)
+model_names_subjectivePE = {'basicRL_subjectivePE','RLsigma_subjectivePE'};
+[AICBIC_subjectivePE_table, bestModel_subjectivePE_table, BMS_subjectivePE_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE, nll_RLsigma_subjectivePE], model_names_subjectivePE, num_params_subjectivePE, num_trials_both, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_subjectivePEv2_Both_reducedMS_multiSP.mat'), AICBIC_subjectivePE_table);
+safe_saveall(fullfile(save_dir, 'bestModel_subjectivePEv2_Both_multiSP.mat'), bestModel_subjectivePE_table);
+disp('Subjective PE model AIC/BIC estimated and saved.');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_subjectivePE_table, bestModel_subjectivePE_table, BMS_subjectivePE_table, model_names_subjectivePE, 'Both condition, Subjective PE');
+
+bic_ax_both_subj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE, params_RLsigma_subjectivePE}, model_names_subjectivePE, AICBIC_subjectivePE_table, 'Both condition, Subjective PE', 'sigma (fitted)');
+
+%% --- Perceptual condition ---
+nll_basicRL_subjectivePE = importdata(fullfile(save_dir, "nll_basicRL_subjectivePEv2_Perceptual_multiSP.mat"));
+nll_RLsigma_subjectivePE = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePEv2_Perceptual_multiSP.mat"));
+params_basicRL_subjectivePE = importdata(fullfile(save_dir, "params_basicRL_subjectivePEv2_Perceptual_multiSP.mat"));
+params_RLsigma_subjectivePE = importdata(fullfile(save_dir, "params_RLsigma_subjectivePEv2_Perceptual_multiSP.mat"));
+
+disp('Computing AIC and BIC for subjective PE models (Perceptual)...');
+num_trials_perceptual = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_perceptual(n) = length(preprocess_fitSlider(dataPerceptual, uniqueID(n)).mu_hat);
+end
+num_params_subjectivePE = [3, 3];
+model_names_subjectivePE = {'basicRL_subjectivePE','RLsigma_subjectivePE'};
+[AICBIC_subjectivePE_table, bestModel_subjectivePE_table, BMS_subjectivePE_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE, nll_RLsigma_subjectivePE], model_names_subjectivePE, num_params_subjectivePE, num_trials_perceptual, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_subjectivePEv2_Perceptual_reducedMS_multiSP.mat'), AICBIC_subjectivePE_table);
+safe_saveall(fullfile(save_dir, 'bestModel_subjectivePEv2_Perceptual_multiSP.mat'), bestModel_subjectivePE_table);
+disp('Subjective PE model AIC/BIC estimated and saved (Perceptual).');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_subjectivePE_table, bestModel_subjectivePE_table, BMS_subjectivePE_table, model_names_subjectivePE, 'Perceptual condition, Subjective PE');
+
+bic_ax_perc_subj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE, params_RLsigma_subjectivePE}, model_names_subjectivePE, AICBIC_subjectivePE_table, 'Perceptual condition, Subjective PE', 'sigma (fitted)');
+
+%% ========================================================================
+%  SECTION 3 OF 4: OBJECTIVE PE, NO INTEGRATION
+%  ------------------------------------------------------------------------
+%  Same basicRL / RLsigma models as Section 1, but using each model's
+%  point-observation (non-integrated) likelihood instead of its integrated
+%  one: nll_basicRL_pointObs instead of nll_basicRL_integrated, and
+%  nll_RLsigma instead of nll_RLsigma_VOI. Belief each trial comes from a
+%  single point estimate of the observation (normcdf(condiff(n), 0,
+%  sigma)) rather than integrated over a discretized grid of hypothetical
+%  observations -- see fitSlider_ALLmodels.m's nll_basicRL_pointObs header
+%  for the full rationale. bayesianAgent is excluded (its belief update
+%  goes through the Agent class's own mechanism, not the set_o grid this
+%  section's integration concerns) -- a 2-model comparison throughout.
+%  ========================================================================
+
+%% ----------------- Both condition: fitting ------------------------------
+%% --- Basic RL model, no integration ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL, no integration (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL, no integration (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_pointObs(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_noIntegration(n) = best_nll;
+end
+params_basicRL_noIntegration.alpha = alphaParameter;
+params_basicRL_noIntegration.kappa = kappaParameter;
+params_basicRL_noIntegration.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_noIntegration_Both_multiSP.mat'), params_basicRL_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_noIntegration_Both_multiSP.mat'), nll_basicRL_noIntegration);
+end
+
+%% --- RL + Est. Sensitivity model, no integration ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity, no integration (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity, no integration (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_noIntegration(n) = best_nll;
+end
+params_RLsigma_noIntegration.alpha = alphaParameter;
+params_RLsigma_noIntegration.sigma = sigmaParameter;
+params_RLsigma_noIntegration.kappa = kappaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_noIntegration_Both_multiSP.mat'), params_RLsigma_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_noIntegration_Both_multiSP.mat'), nll_RLsigma_noIntegration);
+end
+
+%% ----------------- Perceptual condition: fitting -------------------------
+%% --- Basic RL model, no integration (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL, no integration (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL, no integration (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_pointObs(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_noIntegration(n) = best_nll;
+end
+params_basicRL_noIntegration.alpha = alphaParameter;
+params_basicRL_noIntegration.kappa = kappaParameter;
+params_basicRL_noIntegration.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_noIntegration_Perceptual_multiSP.mat'), params_basicRL_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_noIntegration_Perceptual_multiSP.mat'), nll_basicRL_noIntegration);
+end
+
+%% --- RL + Est. Sensitivity model, no integration (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity, no integration (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity, no integration (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_noIntegration(n) = best_nll;
+end
+params_RLsigma_noIntegration.alpha = alphaParameter;
+params_RLsigma_noIntegration.sigma = sigmaParameter;
+params_RLsigma_noIntegration.kappa = kappaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_noIntegration_Perceptual_multiSP.mat'), params_RLsigma_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_noIntegration_Perceptual_multiSP.mat'), nll_RLsigma_noIntegration);
+end
+
+%% ----------------- Model comparison ---------------------------------------
+%% --- Both condition ---
+nll_basicRL_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_noIntegration_Both_multiSP.mat"));
+nll_RLsigma_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_noIntegration_Both_multiSP.mat"));
+params_basicRL_noIntegration = importdata(fullfile(save_dir, "params_basicRL_noIntegration_Both_multiSP.mat"));
+params_RLsigma_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_noIntegration_Both_multiSP.mat"));
+
+disp('Computing AIC and BIC for no-integration models...');
+num_trials_both = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_both(n) = length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat);
+end
+num_params_noIntegration = [3, 3]; % both no-integration models have 3 free params (alpha, kappa, sigma)
+model_names_noIntegration = {'basicRL_noIntegration','RLsigma_noIntegration'};
+[AICBIC_noIntegration_table, bestModel_noIntegration_table, BMS_noIntegration_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_noIntegration, nll_RLsigma_noIntegration], model_names_noIntegration, num_params_noIntegration, num_trials_both, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_noIntegration_Both_reducedMS_multiSP.mat'), AICBIC_noIntegration_table);
+safe_saveall(fullfile(save_dir, 'bestModel_noIntegration_Both_multiSP.mat'), bestModel_noIntegration_table);
+disp('No-integration model AIC/BIC estimated and saved.');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_noIntegration_table, bestModel_noIntegration_table, BMS_noIntegration_table, model_names_noIntegration, 'Both condition, No Integration');
+
+bic_ax_both_obj_noInt = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_noIntegration, params_RLsigma_noIntegration}, model_names_noIntegration, AICBIC_noIntegration_table, 'Both condition, No Integration', 'sigma (fitted)');
+
+%% --- Perceptual condition ---
+nll_basicRL_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_noIntegration_Perceptual_multiSP.mat"));
+nll_RLsigma_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_noIntegration_Perceptual_multiSP.mat"));
+params_basicRL_noIntegration = importdata(fullfile(save_dir, "params_basicRL_noIntegration_Perceptual_multiSP.mat"));
+params_RLsigma_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_noIntegration_Perceptual_multiSP.mat"));
+
+disp('Computing AIC and BIC for no-integration models (Perceptual)...');
+num_trials_perceptual = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_perceptual(n) = length(preprocess_fitSlider(dataPerceptual, uniqueID(n)).mu_hat);
+end
+num_params_noIntegration = [3, 3];
+model_names_noIntegration = {'basicRL_noIntegration','RLsigma_noIntegration'};
+[AICBIC_noIntegration_table, bestModel_noIntegration_table, BMS_noIntegration_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_noIntegration, nll_RLsigma_noIntegration], model_names_noIntegration, num_params_noIntegration, num_trials_perceptual, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_noIntegration_Perceptual_reducedMS_multiSP.mat'), AICBIC_noIntegration_table);
+safe_saveall(fullfile(save_dir, 'bestModel_noIntegration_Perceptual_multiSP.mat'), bestModel_noIntegration_table);
+disp('No-integration model AIC/BIC estimated and saved (Perceptual).');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_noIntegration_table, bestModel_noIntegration_table, BMS_noIntegration_table, model_names_noIntegration, 'Perceptual condition, No Integration');
+
+bic_ax_perc_obj_noInt = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_noIntegration, params_RLsigma_noIntegration}, model_names_noIntegration, AICBIC_noIntegration_table, 'Perceptual condition, No Integration', 'sigma (fitted)');
+
+%% ========================================================================
+%  SECTION 4 OF 4: SUBJECTIVE PE, NO INTEGRATION
+%  ------------------------------------------------------------------------
+%  Combines Section 2's subjective-PE anchoring (mu_hat(n-1)) with Section
+%  3's point-observation belief: nll_basicRL_pointObs_subjectivePE instead
+%  of nll_basicRL_integrated_subjectivePE, nll_RLsigma_subjectivePE
+%  instead of nll_RLsigma_VOI_subjectivePE. bayesianAgent is excluded (see
+%  Sections 2 and 3 above) -- a 2-model comparison throughout.
+%  ========================================================================
+
+%% ----------------- Both condition: fitting ------------------------------
+%% --- Basic RL model, subjective PE, no integration ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_subjectivePE_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL subjective PE, no integration (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL subjective PE, no integration (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_pointObs_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_subjectivePE_noIntegration(n) = best_nll;
+end
+params_basicRL_subjectivePE_noIntegration.alpha = alphaParameter;
+params_basicRL_subjectivePE_noIntegration.kappa = kappaParameter;
+params_basicRL_subjectivePE_noIntegration.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_subjectivePE_noIntegration_Both_multiSP.mat'), params_basicRL_subjectivePE_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_subjectivePE_noIntegration_Both_multiSP.mat'), nll_basicRL_subjectivePE_noIntegration);
+end
+
+%% --- RL + Est. Sensitivity model, subjective PE, no integration ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_subjectivePE_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE, no integration (Both)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE, no integration (Both)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataBoth, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_subjectivePE_noIntegration(n) = best_nll;
+end
+params_RLsigma_subjectivePE_noIntegration.alpha = alphaParameter;
+params_RLsigma_subjectivePE_noIntegration.sigma = sigmaParameter;
+params_RLsigma_subjectivePE_noIntegration.kappa = kappaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat'), params_RLsigma_subjectivePE_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat'), nll_RLsigma_subjectivePE_noIntegration);
+end
+
+%% ----------------- Perceptual condition: fitting -------------------------
+%% --- Basic RL model, subjective PE, no integration (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_basicRL_subjectivePE_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'Basic RL subjective PE, no integration (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'Basic RL subjective PE, no integration (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_pointObs_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_basicRL_subjectivePE_noIntegration(n) = best_nll;
+end
+params_basicRL_subjectivePE_noIntegration.alpha = alphaParameter;
+params_basicRL_subjectivePE_noIntegration.kappa = kappaParameter;
+params_basicRL_subjectivePE_noIntegration.sigma = sigmaParameter;
+safe_saveall(fullfile(save_dir, 'params_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat'), params_basicRL_subjectivePE_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat'), nll_basicRL_subjectivePE_noIntegration);
+end
+
+%% --- RL + Est. Sensitivity model, subjective PE, no integration (Perceptual) ---
+if run_fitting
+alphaParameter = NaN(numSubjs, 1);
+kappaParameter = NaN(numSubjs, 1);
+sigmaParameter = NaN(numSubjs, 1);
+nll_RLsigma_subjectivePE_noIntegration = NaN(numSubjs, 1);
+lb = [0, 1, 0];
+ub = [1, 100, 0.1];
+initAlpha = unifrnd(lb(1), ub(1), [numSubjs, n_startingPoints]);
+initKappa = unifrnd(lb(2), ub(2), [numSubjs, n_startingPoints]);
+initSigma = unifrnd(lb(3), ub(3), [numSubjs, n_startingPoints]);
+fitSlider_ALLmodels.progress_bar('reset', numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE, no integration (Perceptual)');
+progressQueue = parallel.pool.DataQueue;
+afterEach(progressQueue, @(data) fitSlider_ALLmodels.progress_bar('update', data, numSubjs, n_startingPoints, 'RL + Est. Sensitivity subjective PE, no integration (Perceptual)'));
+parfor n = 1:numSubjs
+    subj = preprocess_fitSlider(dataPerceptual, uniqueID(n));
+    rewards = fitSlider_ALLmodels.recode_rewards(subj.recoded_rewards, subj.contrast);
+    nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_subjectivePE(params, subj.mu_hat, subj.blocks, rewards, subj.condiff);
+    options = optimset('Display', 'off');
+
+    best_nll = Inf;
+    best_params = NaN(1,3);
+    for sp = 1:n_startingPoints
+        start_params = [initAlpha(n,sp), initKappa(n,sp), initSigma(n,sp)];
+        [params, nll] = fmincon(nll_fun, start_params, [], [], [], [], lb, ub, [], options);
+        if nll < best_nll
+            best_nll = nll;
+            best_params = params;
+        end
+        send(progressQueue, [n, sp]);
+    end
+
+    alphaParameter(n) = best_params(1);
+    kappaParameter(n) = best_params(2);
+    sigmaParameter(n) = best_params(3);
+    nll_RLsigma_subjectivePE_noIntegration(n) = best_nll;
+end
+params_RLsigma_subjectivePE_noIntegration.alpha = alphaParameter;
+params_RLsigma_subjectivePE_noIntegration.sigma = sigmaParameter;
+params_RLsigma_subjectivePE_noIntegration.kappa = kappaParameter;
+safe_saveall(fullfile(save_dir, 'params_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat'), params_RLsigma_subjectivePE_noIntegration);
+safe_saveall(fullfile(save_dir, 'nll_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat'), nll_RLsigma_subjectivePE_noIntegration);
+end
+
+fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar window (safe no-op if run_fitting was false or nothing above ran)
+
+%% ----------------- Model comparison ---------------------------------------
+%% --- Both condition ---
+nll_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_subjectivePE_noIntegration_Both_multiSP.mat"));
+nll_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat"));
+params_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_basicRL_subjectivePE_noIntegration_Both_multiSP.mat"));
+params_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat"));
+
+disp('Computing AIC and BIC for subjective PE, no-integration models...');
+num_trials_both = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_both(n) = length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat);
+end
+num_params_subjectivePE_noIntegration = [3, 3];
+model_names_subjectivePE_noIntegration = {'basicRL_subjectivePE_noIntegration','RLsigma_subjectivePE_noIntegration'};
+[AICBIC_subjectivePE_noIntegration_table, bestModel_subjectivePE_noIntegration_table, BMS_subjectivePE_noIntegration_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE_noIntegration, nll_RLsigma_subjectivePE_noIntegration], model_names_subjectivePE_noIntegration, num_params_subjectivePE_noIntegration, num_trials_both, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_subjectivePE_noIntegration_Both_reducedMS_multiSP.mat'), AICBIC_subjectivePE_noIntegration_table);
+safe_saveall(fullfile(save_dir, 'bestModel_subjectivePE_noIntegration_Both_multiSP.mat'), bestModel_subjectivePE_noIntegration_table);
+disp('Subjective PE, no-integration model AIC/BIC estimated and saved.');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_subjectivePE_noIntegration_table, bestModel_subjectivePE_noIntegration_table, BMS_subjectivePE_noIntegration_table, model_names_subjectivePE_noIntegration, 'Both condition, Subjective PE, No Integration');
+
+bic_ax_both_subj_noInt = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegration, params_RLsigma_subjectivePE_noIntegration}, model_names_subjectivePE_noIntegration, AICBIC_subjectivePE_noIntegration_table, 'Both condition, Subjective PE, No Integration', 'sigma (fitted)');
+
+%% --- Perceptual condition ---
+nll_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+nll_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+params_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+params_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+
+disp('Computing AIC and BIC for subjective PE, no-integration models (Perceptual)...');
+num_trials_perceptual = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_perceptual(n) = length(preprocess_fitSlider(dataPerceptual, uniqueID(n)).mu_hat);
+end
+num_params_subjectivePE_noIntegration = [3, 3];
+model_names_subjectivePE_noIntegration = {'basicRL_subjectivePE_noIntegration','RLsigma_subjectivePE_noIntegration'};
+[AICBIC_subjectivePE_noIntegration_table, bestModel_subjectivePE_noIntegration_table, BMS_subjectivePE_noIntegration_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE_noIntegration, nll_RLsigma_subjectivePE_noIntegration], model_names_subjectivePE_noIntegration, num_params_subjectivePE_noIntegration, num_trials_perceptual, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_subjectivePE_noIntegration_Perceptual_reducedMS_multiSP.mat'), AICBIC_subjectivePE_noIntegration_table);
+safe_saveall(fullfile(save_dir, 'bestModel_subjectivePE_noIntegration_Perceptual_multiSP.mat'), bestModel_subjectivePE_noIntegration_table);
+disp('Subjective PE, no-integration model AIC/BIC estimated and saved (Perceptual).');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_subjectivePE_noIntegration_table, bestModel_subjectivePE_noIntegration_table, BMS_subjectivePE_noIntegration_table, model_names_subjectivePE_noIntegration, 'Perceptual condition, Subjective PE, No Integration');
+
+bic_ax_perc_subj_noInt = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegration, params_RLsigma_subjectivePE_noIntegration}, model_names_subjectivePE_noIntegration, AICBIC_subjectivePE_noIntegration_table, 'Perceptual condition, Subjective PE, No Integration', 'sigma (fitted)');
+
+%% ========================================================================
+%  CROSS-SECTION COMPARISON PLOTS
+%  ------------------------------------------------------------------------
+%  Everything below compares results ACROSS the four sections above, and
+%  always runs (all four sections' outputs always exist, since there are
+%  no selector toggles).
+%  ========================================================================
+
+%% =================== MATCH SUM-BIC Y-AXES ACROSS ALL PLOTS ==============
+% plot_fitted_params auto-scales each "Sum of BIC" bar plot to its own
+% data, which makes Both vs Perceptual (or objective vs subjective PE, or
+% integrated vs no-integration) visually misleading to compare side by
+% side. Equalize all eight to the widest range needed.
+bic_axes = [bic_ax_both_obj, bic_ax_perc_obj, ...
+            bic_ax_both_subj, bic_ax_perc_subj, ...
+            bic_ax_both_obj_noInt, bic_ax_perc_obj_noInt, ...
+            bic_ax_both_subj_noInt, bic_ax_perc_subj_noInt];
+bic_ylims = cell2mat(arrayfun(@(ax) ylim(ax), bic_axes, 'UniformOutput', false)');
+shared_bic_ylim = [min(bic_ylims(:,1)), max(bic_ylims(:,2))];
+for i = 1:length(bic_axes)
+    ylim(bic_axes(i), shared_bic_ylim);
+end
+
+%% ========================================================================
+%  OBJECTIVE VS SUBJECTIVE PE PARAMETER COMPARISON
+%  ------------------------------------------------------------------------
+%  Scatters each subject's fitted alpha/kappa from the subjective-PE fit
+%  (Section 2) against the same model's objective-PE fit (Section 1).
+%  Only basicRL and RLsigma have a subjective-PE variant (bayesianAgent
+%  has none), so this is a 2 (model) x 2 (parameter) grid, one combined
+%  figure per condition.
+%  Reloaded from disk (not reused in-memory) for the same reason as every
+%  other params_* reload in this script.
+%  ========================================================================
+conditions_pe_compare = {'Both', 'Perceptual'};
+model_names_pe_compare = {'basicRL', 'RLsigma'};
+param_names_pe_compare = {'alpha', 'kappa'};
+
+for c = 1:length(conditions_pe_compare)
+    cond_label = conditions_pe_compare{c};
+
+    params_obj = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_RBVoi_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLSigma_RBVoi_%s_multiSP.mat', cond_label)))};
+    params_subj = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_subjectivePEv2_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLsigma_subjectivePEv2_%s_multiSP.mat', cond_label)))};
+
+    figure('Position', [100, 100, 1200, 700]);
+    sgtitle(sprintf('Objective vs Subjective PE: Fitted Parameters (%s condition)', cond_label));
+
+    for m = 1:length(model_names_pe_compare)
+        for p = 1:length(param_names_pe_compare)
+            subplot(length(model_names_pe_compare), length(param_names_pe_compare), (m-1)*length(param_names_pe_compare) + p);
+            x = params_obj{m}.(param_names_pe_compare{p});
+            y = params_subj{m}.(param_names_pe_compare{p});
+            fitSlider_ALLmodels.plot_scatter_spearman(x, y, ...
+                sprintf('%s (objective PE)', param_names_pe_compare{p}), ...
+                sprintf('%s (subjective PE)', param_names_pe_compare{p}), ...
+                sprintf('%s: %s', model_names_pe_compare{m}, param_names_pe_compare{p}));
         end
     end
 end
 
-% ---------- Stacked bars per-family (no hard-coded probs) ----------
-num_families = length(families);
+%% ========================================================================
+%  INTEGRATED VS NO-INTEGRATION PARAMETER COMPARISON
+%  ------------------------------------------------------------------------
+%  Scatters each subject's fitted alpha/kappa from the no-integration
+%  (point-observation) fit (Sections 3/4) against the same model's
+%  integrated fit (Sections 1/2), for basicRL and RLsigma -- a 2 (model) x
+%  2 (parameter) grid, one combined figure per condition per PE variant
+%  (objective, subjective).
+%  Reloaded from disk (not reused in-memory) for the same reason as every
+%  other params_* reload in this script.
+%  ========================================================================
+conditions_int_compare = {'Both', 'Perceptual'};
+model_names_int_compare = {'basicRL', 'RLsigma'};
+param_names_int_compare = {'alpha', 'kappa'};
 
-if num_families == 1
-    family_colors = [0.2 0.6 0.9];
-elseif num_families == 2
-    family_colors = [
-        0.0000 0.4470 0.7410;   % blue-ish
-        0.9 0.3250 0.0980    % orange-ish
-    ];
-else
-    family_colors = parula(num_families);
-end
+for c = 1:length(conditions_int_compare)
+    cond_label = conditions_int_compare{c};
 
-figure;
-hold on;
-handles = gobjects(0);
-labels  = {};
+    % --- Objective PE: integrated vs no-integration ---
+    params_integrated = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_RBVoi_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLSigma_RBVoi_%s_multiSP.mat', cond_label)))};
+    params_noInt = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_noIntegration_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLsigma_noIntegration_%s_multiSP.mat', cond_label)))};
 
-for f = 1:num_families
-    models_in_family = families{f};
-    family_model_probs = model_prob(models_in_family);
-    if sum(family_model_probs) > 0
-        rel = family_model_probs / sum(family_model_probs);
-    else
-        rel = zeros(size(family_model_probs));
-    end
+    figure('Position', [100, 100, 1200, 700]);
+    sgtitle(sprintf('Integrated vs No-Integration: Fitted Parameters, Objective PE (%s condition)', cond_label));
 
-    n = numel(rel);
-    shades = linspace(0.35, 1.00, n)';
-    base = family_colors(min(f,size(family_colors,1)), :);
-    model_colors = bsxfun(@times, shades, base);
-
-    b = bar(f, rel, 0.6, 'stacked');
-    for i = 1:numel(b)
-        b(i).FaceColor = model_colors(i,:);
-        b(i).EdgeColor = 'none';
-
-        model_idx = models_in_family(i);
-        handles(end+1) = b(i); %#ok<SAGROW>
-        labels{end+1} = sprintf('%s (Family: %s)', model_names{model_idx}, family_names{f});
-    end
-
-    cum = 0;
-    for i = 1:n
-        h = rel(i);
-        if h > 0
-            yc = cum + h/2;
-            rgb = model_colors(i,:);
-            lum = 0.299*rgb(1) + 0.587*rgb(2) + 0.114*rgb(3);
-            txtc = 'w';
-            if lum > 0.7, txtc = 'k'; end
-            text(f, yc, sprintf('%.1f%%', h*100), ...
-                 'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
-                 'FontSize',9, 'Color', txtc);
-        end
-        cum = cum + h;
-    end
-end
-
-xlim([0.5, num_families+0.5]);
-set(gca, 'XTick', 1:num_families, 'XTickLabel', family_names, 'FontSize', 12);
-ylabel('Relative Model Contribution (within family)');
-title('Within-Family Model Contributions (stacked) (Perceptual condition)');
-ylim([0 1]);
-grid on; box on;
-
-legend(handles, labels, 'Location', 'eastoutside');
-
-hold off;
-
-%% Statistical Summary (Perceptual)
-fprintf('\n=== STATISTICAL SUMMARY (PERCEPTUAL) ===\n');
-fprintf('Winning Family: %s (Prob = %.3f, XP = %.3f)\n', ...
-    family_names{find(family_prob == max(family_prob))}, ...
-    max(family_prob), max(family_xp));
-fprintf('Winning Model: %s (Prob = %.3f, XP = %.3f)\n', ...
-    model_names{find(model_prob == max(model_prob))}, ...
-    max(model_prob), max(model_xp));
-
-if max(family_xp) > 0.95
-    evidence_strength = 'Very Strong';
-elseif max(family_xp) > 0.90
-    evidence_strength = 'Strong';
-elseif max(family_xp) > 0.75
-    evidence_strength = 'Moderate';
-else
-    evidence_strength = 'Weak';
-end
-fprintf('Evidence Strength: %s (XP = %.3f)\n', evidence_strength, max(family_xp));
-
-%% Manual Family BMS Implementation (fallback function)
-function [posterior, out] = manual_family_BMS(lme, families, family_names)
-    fprintf('Implementing family-wise BMS manually...\n');
-    
-    [n_subjects, n_models] = size(lme);
-    n_families = length(families);
-    
-    % Step 1: Compute family-level log evidence
-    family_lme = zeros(n_subjects, n_families);
-    
-    for f = 1:n_families
-        models_in_family = families{f};
-        % For each subject, compute log sum exp of models in family
-        for s = 1:n_subjects
-            family_evidence = lme(s, models_in_family);
-            % Numerical stable log-sum-exp
-            max_ev = max(family_evidence);
-            family_lme(s, f) = max_ev + log(sum(exp(family_evidence - max_ev)));
+    for m = 1:length(model_names_int_compare)
+        for p = 1:length(param_names_int_compare)
+            subplot(length(model_names_int_compare), length(param_names_int_compare), (m-1)*length(param_names_int_compare) + p);
+            x = params_integrated{m}.(param_names_int_compare{p});
+            y = params_noInt{m}.(param_names_int_compare{p});
+            fitSlider_ALLmodels.plot_scatter_spearman(x, y, ...
+                sprintf('%s (integrated)', param_names_int_compare{p}), ...
+                sprintf('%s (no integration)', param_names_int_compare{p}), ...
+                sprintf('%s: %s', model_names_int_compare{m}, param_names_int_compare{p}));
         end
     end
-    
-    % Step 2: Run BMS on family-level evidence using SPM functions
-    try
-        [alpha_fam, exp_r_fam, xp_fam] = spm_BMS(family_lme, 1e6, 0, 0, 1, ones(1, n_families));
-    catch
-        % Fallback if SPM not available
-        fprintf('SPM not available, using simplified BMS...\n');
-        % Simple softmax over mean log evidence
-        mean_family_lme = mean(family_lme, 1);
-        exp_r_fam = exp(mean_family_lme - max(mean_family_lme));
-        exp_r_fam = exp_r_fam / sum(exp_r_fam);
-        xp_fam = exp_r_fam;  % Simplified exceedance probabilities
-    end
-    
-    % Step 3: Compute model-level probabilities within families
-    model_prob = zeros(1, n_models);
-    for f = 1:n_families
-        models_in_family = families{f};
-        if length(models_in_family) == 1
-            % Single model in family
-            model_prob(models_in_family) = exp_r_fam(f);
-        else
-            % Multiple models in family - run BMS within family
-            family_models_lme = lme(:, models_in_family);
-            try
-                [~, exp_r_within, ~] = spm_BMS(family_models_lme, 1e6, 0, 0, 1, []);
-            catch
-                % Fallback method
-                mean_model_lme = mean(family_models_lme, 1);
-                exp_r_within = exp(mean_model_lme - max(mean_model_lme));
-                exp_r_within = exp_r_within / sum(exp_r_within);
-            end
-            % Weight by family probability
-            model_prob(models_in_family) = exp_r_fam(f) * exp_r_within;
+
+    % --- Subjective PE: integrated vs no-integration ---
+    params_integrated_subj = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_subjectivePEv2_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLsigma_subjectivePEv2_%s_multiSP.mat', cond_label)))};
+    params_noInt_subj = { ...
+        importdata(fullfile(save_dir, sprintf('params_basicRL_subjectivePE_noIntegration_%s_multiSP.mat', cond_label))), ...
+        importdata(fullfile(save_dir, sprintf('params_RLsigma_subjectivePE_noIntegration_%s_multiSP.mat', cond_label)))};
+
+    figure('Position', [100, 100, 1200, 700]);
+    sgtitle(sprintf('Integrated vs No-Integration: Fitted Parameters, Subjective PE (%s condition)', cond_label));
+
+    for m = 1:length(model_names_int_compare)
+        for p = 1:length(param_names_int_compare)
+            subplot(length(model_names_int_compare), length(param_names_int_compare), (m-1)*length(param_names_int_compare) + p);
+            x = params_integrated_subj{m}.(param_names_int_compare{p});
+            y = params_noInt_subj{m}.(param_names_int_compare{p});
+            fitSlider_ALLmodels.plot_scatter_spearman(x, y, ...
+                sprintf('%s (integrated)', param_names_int_compare{p}), ...
+                sprintf('%s (no integration)', param_names_int_compare{p}), ...
+                sprintf('%s: %s (subjective PE)', model_names_int_compare{m}, param_names_int_compare{p}));
         end
     end
-    
-    % Step 4: Format output
-    posterior.r = exp_r_fam;           % Family probabilities
-    posterior.r_model = model_prob;     % Model probabilities
-    
-    out.families.ep = xp_fam;          % Family exceedance probabilities
-    out.ep = zeros(1, n_models);       % Model exceedance probabilities
-    
-    % Approximate model exceedance probabilities
-    for m = 1:n_models
-        out.ep(m) = model_prob(m);  % Simplified approximation
-    end
-    
-    fprintf('Manual family BMS completed.\n');
 end

@@ -150,6 +150,286 @@ classdef fitSlider_ALLmodels
         end
 
         %% ===================================================================
+        %  BASIC RL MODEL (OBJECTIVE PE) - BELIEF TRAJECTORY RECONSTRUCTION
+        %  -------------------------------------------------------------------
+        %  Diagnostic-only utility: re-runs nll_basicRL_integrated's exact
+        %  recursive belief update, but returns the trial-by-trial
+        %  q_transformed trajectory instead of the resulting NLL. Used to
+        %  check, from already-fitted parameters, whether mu_hat needs a
+        %  contrast-based flip to stay comparable to q_transformed -- the
+        %  same question that turned out to be a real bug for the
+        %  subjective-PE model's q_anchor (see conversation re: q_anchor
+        %  fix). Not used anywhere in the fitting/comparison pipeline.
+        %  Inputs: identical to nll_basicRL_integrated (minus mu_hat's
+        %  role in the likelihood -- only its length is used here).
+        %  Outputs:
+        %    q_transformed_trial - per-trial reconstructed model belief
+        % ====================================================================
+        function q_transformed_trial = reconstruct_basicRL_integrated_trajectory(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            sigma = params(3);
+
+            q_transformed_trial = NaN(length(mu_hat),1);
+            q_0_0 = 0.5;
+            set_o = linspace(-0.1, 0.1, 20);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_0_0 = 0.5;
+                end
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+                voi_matrix = NaN(length(set_o), 2);
+
+                for i = 1:length(set_o)
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
+
+                    q_sim = q_0_0;
+                    if pi_0 >= pi_1
+                        q_sim = q_sim + alpha * (rewards(n) - q_sim);
+                    else
+                        q_sim = q_sim + alpha * ((1 - rewards(n)) - q_sim);
+                    end
+
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+
+                q_0_0 = sum(voi_matrix(:,1) .* p_o_given_u');
+                q_transformed_trial(n) = q_0_0;
+            end
+        end
+
+        %% ===================================================================
+        %  BASIC RL MODEL - SUBJECTIVE PE VARIANT
+        %  -------------------------------------------------------------------
+        %  Same as nll_basicRL_integrated (integration over observations),
+        %  except the delta-rule's anchor each trial is the subject's own
+        %  actual previous slider report (mu_hat(n-1)) rather than the
+        %  model's own internally-tracked running belief (q_0_0, carried
+        %  over from the previous trial's integrated update). This matches
+        %  the "subjective PE" definition already used elsewhere in this
+        %  codebase for the simple LR regression (preprocess_LR.m's
+        %  compute_state_dep_pe: pe = reward - mu_t_1, the subject's own
+        %  previous report) rather than an agent/model-derived ("objective")
+        %  PE -- see conversation from 2026-09-22 for the full
+        %  subjective-vs-objective-PE discussion and trade-offs. Kept as a
+        %  separate variant from nll_basicRL_integrated (not a replacement),
+        %  so the two can be compared (AIC/BIC, parameter recovery) rather
+        %  than committing to one.
+        %  Inputs/outputs: identical to nll_basicRL_integrated.
+        % ====================================================================
+        function nll = nll_basicRL_integrated_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            % Discretize observation space (like obj.set_o)
+            set_o = linspace(-0.1, 0.1, 20);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
+                % Anchor for this trial's delta-rule update: 0.5 at the
+                % start of a new block (same reset convention as
+                % nll_basicRL_integrated), otherwise the subject's own
+                % actual previous slider report -- NOT a
+                % model-internally-tracked running belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                % Observation likelihood under current internal estimate
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                % Initialize matrix to hold hypothetical Q-values
+                voi_matrix = NaN(length(set_o), 2);
+
+                for i = 1:length(set_o)
+                    % Belief state at this hypothetical observation
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
+
+                    % Simulate Q-value update under this hypothetical observation
+                    q_sim = q_anchor;
+
+                    % Basic RL update (without learning rate modulation like sigmaRL)
+                    if pi_0 >= pi_1
+                        q_sim = q_sim + alpha * (rewards(n) - q_sim);
+                    else
+                        q_sim = q_sim + alpha * ((1 - rewards(n)) - q_sim);
+                    end
+
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+
+                % Integrate over all possible observations
+                q_transformed = sum(voi_matrix(:,1) .* p_o_given_u');
+
+                % Beta parameters for likelihood
+                a = q_transformed * kappa;
+                b = (1 - q_transformed) * kappa;
+
+                % Avoid invalid beta params
+                if a <= 0 || b <= 0
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, alpha, sigma);
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                % Log-likelihood
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  BASIC RL MODEL - POINT-OBSERVATION VARIANT (NO INTEGRATION)
+        %  -------------------------------------------------------------------
+        %  Same as nll_basicRL_integrated, except belief each trial comes
+        %  from a single point estimate of the observation (the actual
+        %  condiff(n), via normcdf) rather than integrated over a
+        %  discretized grid of hypothetical observations -- mirrors
+        %  nll_RLsigma's point-estimate belief computation exactly, just
+        %  with basicRL's plain alpha update (not belief-weighted) in place
+        %  of nll_RLsigma's pi-weighted update. Kept as a separate variant
+        %  from nll_basicRL_integrated (not a replacement), so the two can
+        %  be compared (AIC/BIC, parameter recovery) rather than committing
+        %  to one.
+        %  Inputs/outputs: identical to nll_basicRL_integrated.
+        % ====================================================================
+        function nll = nll_basicRL_pointObs(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            q_0_0 = 0.5;
+
+            for n = 1:length(mu_hat)
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_0_0 = 0.5;
+                end
+
+                % Point-estimate belief from the actual observed condiff
+                % (no integration over hypothetical observations) -- same
+                % mechanism as nll_RLsigma.
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                % Plain alpha update (not belief-weighted, unlike
+                % nll_RLsigma) -- matches nll_basicRL_integrated's update
+                % rule.
+                if pi_0 >= pi_1
+                    q_0_0 = q_0_0 + alpha * (rewards(n) - q_0_0);
+                else
+                    q_0_0 = q_0_0 + alpha * ((1 - rewards(n)) - q_0_0);
+                end
+
+                a = q_0_0 * kappa;
+                b = (1 - q_0_0) * kappa;
+                if a <= 0 || b <= 0
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  BASIC RL MODEL - POINT-OBSERVATION VARIANT, SUBJECTIVE PE
+        %  -------------------------------------------------------------------
+        %  Same as nll_basicRL_pointObs, except the delta-rule's anchor each
+        %  trial is the subject's own actual previous slider report
+        %  (mu_hat(n-1)) rather than the model's own internally-tracked
+        %  running belief -- same subjective-PE substitution as
+        %  nll_basicRL_integrated_subjectivePE, applied to the point-
+        %  estimate (non-integrated) belief mechanism instead of the
+        %  integrated one.
+        %  Inputs/outputs: identical to nll_basicRL_pointObs.
+        % ====================================================================
+        function nll = nll_basicRL_pointObs_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            for n = 1:length(mu_hat)
+                % Anchor for this trial's delta-rule update: 0.5 at the
+                % start of a new block, otherwise the subject's own actual
+                % previous slider report -- NOT a model-internally-tracked
+                % running belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                q_sim = q_anchor;
+                if pi_0 >= pi_1
+                    q_sim = q_sim + alpha * (rewards(n) - q_sim);
+                else
+                    q_sim = q_sim + alpha * ((1 - rewards(n)) - q_sim);
+                end
+
+                a = q_sim * kappa;
+                b = (1 - q_sim) * kappa;
+                if a <= 0 || b <= 0
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
         %  BASIC RL MODEL - GENERATIVE SIMULATION (WITH INTEGRATION)
         %  -------------------------------------------------------------------
         %  Simulates synthetic mu_hat slider responses from the basic RL
@@ -346,6 +626,106 @@ classdef fitSlider_ALLmodels
         end
 
         %% ===================================================================
+        %  BASIC RL MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE,
+        %  SUBJECTIVE PE VARIANT
+        %  -------------------------------------------------------------------
+        %  Like simulate_basicRL_integrated_choice, except the belief carried
+        %  forward from trial to trial is this synthetic subject's own
+        %  previous SIMULATED report (mu_hat(n-1)), not a separately-tracked
+        %  clean latent q_0_0 -- the fully-generative analog of
+        %  nll_basicRL_integrated_subjectivePE's anchor substitution (see its
+        %  header for the full rationale). Unlike the objective-PE version,
+        %  the Beta-sampling noise in mu_hat(n) is not thrown away after use:
+        %  it becomes q_anchor for trial n+1, so noise compounds across a
+        %  block here in a way it never does in simulate_basicRL_integrated_
+        %  choice (where q_0_0 is deterministic given parameters/rewards,
+        %  independent of any particular betarnd draw).
+        %  Inputs/outputs: identical to simulate_basicRL_integrated_choice,
+        %  except the 4th output is q_anchor_trace (the anchor actually used
+        %  each trial, i.e. mu_hat(n-1) or 0.5 at a block boundary) rather
+        %  than a clean q_0_0_trace.
+        % ====================================================================
+        function [mu_hat, choice, reward, q_anchor_trace] = simulate_basicRL_integrated_choice_subjectivePE(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_anchor_trace = NaN(n_trials, 1);
+
+            set_o = linspace(-0.1, 0.1, 20);
+            n_o = length(set_o);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:n_trials
+                % Anchor for this trial: 0.5 at the start of a new block,
+                % otherwise this synthetic subject's own previous simulated
+                % report -- NOT a separately-tracked clean belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+                q_anchor_trace(n) = q_anchor;
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                % --- Pass 1: integrated action values -> softmax choice ---
+                % (uses q_anchor from BEFORE this trial's update -- same
+                % pre-update-belief-drives-choice ordering as
+                % simulate_basicRL_integrated_choice's q_0_0)
+                pi_0_grid = NaN(n_o, 1);
+                pi_1_grid = NaN(n_o, 1);
+                v_a0_grid = NaN(n_o, 1);
+                for i = 1:n_o
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0_grid(i) = agent.pi_0;
+                    pi_1_grid(i) = agent.pi_1;
+                    v_a0_grid(i) = (pi_0_grid(i) - pi_1_grid(i)) * q_anchor + pi_1_grid(i);
+                end
+                v_a0 = sum(v_a0_grid .* p_o_given_u');
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0); % 0 w.p. p_choice0, else 1
+
+                % --- Reward: state-action contingency ---
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % --- Pass 2: belief update from q_anchor using this reward
+                % --- (plain alpha update, matching
+                % nll_basicRL_integrated_subjectivePE -- reuses
+                % pi_0_grid/pi_1_grid from pass 1)
+                voi_matrix = NaN(n_o, 2);
+                for i = 1:n_o
+                    q_sim = q_anchor;
+                    if pi_0_grid(i) >= pi_1_grid(i)
+                        q_sim = q_sim + alpha * (recoded_reward - q_sim);
+                    else
+                        q_sim = q_sim + alpha * ((1 - recoded_reward) - q_sim);
+                    end
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+                q_transformed = sum(voi_matrix(:,1) .* p_o_given_u');
+
+                a = max(q_transformed * kappa, 1e-9);
+                b = max((1 - q_transformed) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b); % this trial's report -- becomes next trial's q_anchor
+            end
+        end
+
+        %% ===================================================================
         %  RL SIGMA MODEL
         %  -------------------------------------------------------------------
         %  Q-learning with perceptual uncertainty (sigma) affecting belief state.
@@ -421,6 +801,102 @@ classdef fitSlider_ALLmodels
                     disp("Invalid q_0_0 params");
                 end
                 q_transformed = q_0_0;
+                a = q_transformed * kappa;
+                b = (1 - q_transformed) * kappa;
+
+                % Avoid invalid beta params
+                if a <= 0 || b <= 0
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g)\n', ...
+                        n, q_transformed, kappa, a, b, alpha, sigma);
+                    fitSlider_ALLmodels.plot_beta_diagnostics(n, set_o, p_o_given_u, voi_matrix(:,1), ...
+                        condiff(n), mu_hat(n), q_transformed, a, b, kappa, ...
+                        sprintf('alpha=%.3g, sigma=%.3g', alpha, sigma));
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  RL SIGMA MODEL - SUBJECTIVE PE VARIANT
+        %  -------------------------------------------------------------------
+        %  Same as nll_RLsigma_VOI (belief-weighted learning rate,
+        %  integration over observations), except the delta-rule's anchor
+        %  each trial is the subject's own actual previous slider report
+        %  (mu_hat(n-1)) rather than the model's own internally-tracked
+        %  running belief (q_0_0, carried over from the previous trial's
+        %  integrated update). See nll_basicRL_integrated_subjectivePE's
+        %  header for the full subjective-vs-objective-PE rationale --
+        %  this mirrors nll_RLsigma_VOI exactly except for that anchor
+        %  substitution, kept as a separate variant rather than replacing
+        %  it, so the two can be compared (AIC/BIC, parameter recovery)
+        %  rather than committing to one.
+        %  Inputs/outputs: identical to nll_RLsigma_VOI.
+        % ====================================================================
+        function nll = nll_RLsigma_VOI_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-6;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            % Discretize observation space (like obj.set_o)
+            set_o = linspace(-0.1, 0.1, 20);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
+                % Anchor for this trial's delta-rule update: 0.5 at the
+                % start of a new block (same reset convention as
+                % nll_RLsigma_VOI), otherwise the subject's own actual
+                % previous slider report -- NOT a model-internally-tracked
+                % running belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                % Observation likelihood under current internal estimate
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                % Initialize matrix to hold hypothetical Q-values
+                voi_matrix = NaN(length(set_o), 2);
+
+                for i = 1:length(set_o)
+                    % Belief state at this hypothetical observation
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
+
+                    % Simulate Q-value update under this hypothetical observation
+                    q_sim = q_anchor;
+                    if pi_0 >= pi_1
+                        q_sim = q_sim + pi_0 * alpha * (rewards(n) - q_sim);
+                    else
+                        q_sim = q_sim + pi_1 * alpha * ((1 - rewards(n)) - q_sim);
+                    end
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+
+                % Integrate over all possible observations
+                q_transformed = sum(voi_matrix(:,1) .* p_o_given_u');
+
+                if any(voi_matrix(:,1) < 0)
+                    fprintf('Negative Q-values detected!');
+                    fprintf('Min Q-value: %.6f\n', min(voi_matrix(:,1)));
+                end
+                if q_transformed < 0
+                    disp("Invalid q_0_0 params");
+                end
                 a = q_transformed * kappa;
                 b = (1 - q_transformed) * kappa;
 
@@ -542,6 +1018,93 @@ classdef fitSlider_ALLmodels
                 a = max(q_0_0 * kappa, 1e-9);
                 b = max((1 - q_0_0) * kappa, 1e-9);
                 mu_hat(n) = betarnd(a, b);
+            end
+        end
+
+        %% ===================================================================
+        %  RL SIGMA MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE,
+        %  SUBJECTIVE PE VARIANT
+        %  -------------------------------------------------------------------
+        %  Like simulate_RLsigma_integrated_choice, except the belief carried
+        %  forward from trial to trial is this synthetic subject's own
+        %  previous SIMULATED report (mu_hat(n-1)), not a separately-tracked
+        %  clean latent q_0_0 -- the fully-generative analog of
+        %  nll_RLsigma_VOI_subjectivePE's anchor substitution (see
+        %  simulate_basicRL_integrated_choice_subjectivePE's header for the
+        %  full rationale, including the compounding-noise consequence).
+        %  Belief-weighted learning rate (pi_0/pi_1 scaling alpha), matching
+        %  nll_RLsigma_VOI_subjectivePE's update rule, unlike basicRL's plain
+        %  alpha update.
+        %  Inputs/outputs: identical to simulate_RLsigma_integrated_choice,
+        %  except the 4th output is q_anchor_trace rather than q_0_0_trace.
+        % ====================================================================
+        function [mu_hat, choice, reward, q_anchor_trace] = simulate_RLsigma_integrated_choice_subjectivePE(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_anchor_trace = NaN(n_trials, 1);
+
+            set_o = linspace(-0.1, 0.1, 20);
+            n_o = length(set_o);
+
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:n_trials
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+                q_anchor_trace(n) = q_anchor;
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                pi_0_grid = NaN(n_o, 1);
+                pi_1_grid = NaN(n_o, 1);
+                v_a0_grid = NaN(n_o, 1);
+                for i = 1:n_o
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0_grid(i) = agent.pi_0;
+                    pi_1_grid(i) = agent.pi_1;
+                    v_a0_grid(i) = (pi_0_grid(i) - pi_1_grid(i)) * q_anchor + pi_1_grid(i);
+                end
+                v_a0 = sum(v_a0_grid .* p_o_given_u');
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0);
+
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % Belief-weighted learning rate (pi_0/pi_1 scaling alpha) --
+                % matches nll_RLsigma_VOI_subjectivePE's update rule.
+                voi_matrix = NaN(n_o, 2);
+                for i = 1:n_o
+                    q_sim = q_anchor;
+                    if pi_0_grid(i) >= pi_1_grid(i)
+                        q_sim = q_sim + pi_0_grid(i) * alpha * (recoded_reward - q_sim);
+                    else
+                        q_sim = q_sim + pi_1_grid(i) * alpha * ((1 - recoded_reward) - q_sim);
+                    end
+                    voi_matrix(i, :) = [q_sim, 1 - q_sim];
+                end
+                q_transformed = sum(voi_matrix(:,1) .* p_o_given_u');
+
+                a = max(q_transformed * kappa, 1e-9);
+                b = max((1 - q_transformed) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b); % this trial's report -- becomes next trial's q_anchor
             end
         end
 
@@ -890,16 +1453,234 @@ classdef fitSlider_ALLmodels
                 % Beta distribution parameters
                 a = q_0_0 * kappa;
                 b = (1 - q_0_0) * kappa;
-                if any(a <= 0 | b <= 0)
-                    disp('Invalid a or b detected:');
-                    disp([a(:), b(:)]);
+                if a <= 0 || b <= 0
+                    a = max(eps, a);
+                    b = max(eps, b);
                 end
 
                 % Log-likelihood for this trial
                 p = betapdf(mu_hat(n), a, b);
-                nll_trial(n) = log(p);
+                nll_trial(n) = log(p + eps);
             end
             nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  RL SIGMA MODEL - POINT-OBSERVATION VARIANT, SUBJECTIVE PE
+        %  -------------------------------------------------------------------
+        %  Same as nll_RLsigma (point-estimate belief, no integration over
+        %  hypothetical observations), except the delta-rule's anchor each
+        %  trial is the subject's own actual previous slider report
+        %  (mu_hat(n-1)) rather than the model's own internally-tracked
+        %  running belief -- same subjective-PE substitution as
+        %  nll_RLsigma_VOI_subjectivePE, applied to the point-estimate
+        %  (non-integrated) belief mechanism instead of the integrated one.
+        %  Inputs/outputs: identical to nll_RLsigma.
+        % ====================================================================
+        function nll = nll_RLsigma_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            for n = 1:length(mu_hat)
+                % Anchor for this trial's delta-rule update: 0.5 at the
+                % start of a new block, otherwise the subject's own actual
+                % previous slider report -- NOT a model-internally-tracked
+                % running belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                q_sim = q_anchor;
+                if pi_0 >= pi_1
+                    q_sim = q_sim + pi_0 * alpha * (rewards(n) - q_sim);
+                else
+                    q_sim = q_sim + pi_1 * alpha * ((1 - rewards(n)) - q_sim);
+                end
+
+                a = q_sim * kappa;
+                b = (1 - q_sim) * kappa;
+                if a <= 0 || b <= 0
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  BASIC RL MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE,
+        %  SUBJECTIVE PE, NO INTEGRATION (POINT OBSERVATION) VARIANT
+        %  -------------------------------------------------------------------
+        %  Like simulate_basicRL_integrated_choice_subjectivePE, except
+        %  belief each trial comes from a single point estimate of the
+        %  actual observed condiff (normcdf(condiff(n), 0, sigma)) rather
+        %  than integrated over a discretized grid of hypothetical
+        %  observations -- the fully-generative analog of nll_basicRL_
+        %  pointObs_subjectivePE's point-estimate belief (see its header
+        %  for the full rationale). No set_o/observation_weights/Agent
+        %  grid is needed here, so pi_0/pi_1 (and the resulting action
+        %  value v_a0) are each computed once per trial instead of
+        %  marginalized over 20 hypothetical observations.
+        %  Inputs/outputs: identical to simulate_basicRL_integrated_
+        %  choice_subjectivePE.
+        % ====================================================================
+        function [mu_hat, choice, reward, q_anchor_trace] = simulate_basicRL_pointObs_choice_subjectivePE(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_anchor_trace = NaN(n_trials, 1);
+
+            for n = 1:n_trials
+                % Anchor for this trial: 0.5 at the start of a new block,
+                % otherwise this synthetic subject's own previous
+                % simulated report -- NOT a separately-tracked clean
+                % belief.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+                q_anchor_trace(n) = q_anchor;
+
+                % Point-estimate belief from the actual observed condiff
+                % (no integration over hypothetical observations) -- same
+                % mechanism as nll_basicRL_pointObs_subjectivePE.
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                % Action value from this trial's single belief (not
+                % marginalized over a grid) -> softmax choice.
+                v_a0 = (pi_0 - pi_1) * q_anchor + pi_1;
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0); % 0 w.p. p_choice0, else 1
+
+                % --- Reward: state-action contingency ---
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % Plain alpha update (not belief-weighted, unlike
+                % simulate_RLsigma_pointObs_choice_subjectivePE) -- matches
+                % nll_basicRL_pointObs_subjectivePE's update rule.
+                q_sim = q_anchor;
+                if pi_0 >= pi_1
+                    q_sim = q_sim + alpha * (recoded_reward - q_sim);
+                else
+                    q_sim = q_sim + alpha * ((1 - recoded_reward) - q_sim);
+                end
+
+                a = max(q_sim * kappa, 1e-9);
+                b = max((1 - q_sim) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b); % this trial's report -- becomes next trial's q_anchor
+            end
+        end
+
+        %% ===================================================================
+        %  RL SIGMA MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE,
+        %  SUBJECTIVE PE, NO INTEGRATION (POINT OBSERVATION) VARIANT
+        %  -------------------------------------------------------------------
+        %  Like simulate_RLsigma_integrated_choice_subjectivePE, except
+        %  belief each trial comes from a single point estimate of the
+        %  actual observed condiff, matching nll_RLsigma_subjectivePE --
+        %  see simulate_basicRL_pointObs_choice_subjectivePE's header for
+        %  the full rationale, including why no set_o grid is needed here.
+        %  Belief-weighted learning rate (pi_0/pi_1 scaling alpha),
+        %  matching nll_RLsigma_subjectivePE's update rule, unlike
+        %  basicRL's plain alpha update.
+        %  Inputs/outputs: identical to simulate_basicRL_pointObs_choice_
+        %  subjectivePE.
+        % ====================================================================
+        function [mu_hat, choice, reward, q_anchor_trace] = simulate_RLsigma_pointObs_choice_subjectivePE(params, blocks, state, condiff, beta, p_reward_correct)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+
+            n_trials = length(condiff);
+            mu_hat = NaN(n_trials, 1);
+            choice = NaN(n_trials, 1);
+            reward = NaN(n_trials, 1);
+            q_anchor_trace = NaN(n_trials, 1);
+
+            for n = 1:n_trials
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+                q_anchor_trace(n) = q_anchor;
+
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                v_a0 = (pi_0 - pi_1) * q_anchor + pi_1;
+                v_a1 = 1 - v_a0;
+
+                p_choice0 = 1 / (1 + exp(-beta * (v_a0 - v_a1)));
+                choice(n) = double(rand >= p_choice0);
+
+                if choice(n) == state(n)
+                    reward(n) = double(rand < p_reward_correct);
+                else
+                    reward(n) = double(rand < (1 - p_reward_correct));
+                end
+
+                recoded_reward = fitSlider_ALLmodels.recode_rewards_choice(reward(n), choice(n));
+
+                % Belief-weighted learning rate (pi_0/pi_1 scaling alpha)
+                % -- matches nll_RLsigma_subjectivePE's update rule.
+                q_sim = q_anchor;
+                if pi_0 >= pi_1
+                    q_sim = q_sim + pi_0 * alpha * (recoded_reward - q_sim);
+                else
+                    q_sim = q_sim + pi_1 * alpha * ((1 - recoded_reward) - q_sim);
+                end
+
+                a = max(q_sim * kappa, 1e-9);
+                b = max((1 - q_sim) * kappa, 1e-9);
+                mu_hat(n) = betarnd(a, b); % this trial's report -- becomes next trial's q_anchor
+            end
         end
 
         %% ===================================================================
@@ -1233,7 +2014,8 @@ classdef fitSlider_ALLmodels
         %  Negative log-likelihood of a subject's binary perceptual choices
         %  given sigma, using a Bayesian ideal-observer agent (Agent class).
         %  Used to fit a subject's perceptual sensitivity independent of any
-        %  reward-learning model (see fitPerceptualChoice.m).
+        %  reward-learning model (see the PERCEPTUAL SENSITIVITY (SIGMA)
+        %  FITTING section in fitReducedModelSpace_fixedSigma.m).
         %  Inputs:
         %    params  - [sigma], perceptual sensitivity (observation noise) parameter
         %    data    - subject's trial table (must include blocks, choice, condiff_relative)
@@ -1420,6 +2202,746 @@ classdef fitSlider_ALLmodels
         end
 
         %% ===================================================================
+        %  MODEL COMPARISON (AIC/BIC/delta-BIC/bestModel/Bayesian Model
+        %  Selection), generalized over an arbitrary number of models.
+        %  -------------------------------------------------------------------
+        %  Replaces the previously copy-pasted per-condition/per-PE-variant
+        %  AIC/BIC/bestModel/spm_BMS blocks in fitReducedModelSpace*.m with a
+        %  single reusable computation. Family-wise (VBA_groupBMC) comparison
+        %  is NOT included here -- it requires hand-specified family
+        %  membership that doesn't generalize across variants, so it stays
+        %  inline where it's used (only meaningful for the 3-way objective-PE
+        %  comparison).
+        %  Inputs:
+        %    nll_matrix  - numSubjs x numModels matrix of each subject's
+        %                  best-fit NLL under each model
+        %    model_names - 1 x numModels cell array of model name strings,
+        %                  column-aligned with nll_matrix
+        %    num_params  - 1 x numModels vector of free-parameter counts,
+        %                  column-aligned with nll_matrix
+        %    num_trials  - numSubjs x 1 vector (or scalar, recycled across
+        %                  subjects) of trial counts per subject
+        %    uniqueID    - numSubjs x 1 subject ID vector
+        %  Outputs:
+        %    AICBIC_table   - per-subject AIC/BIC/delta-BIC for every model
+        %    bestModel_table - per-subject best-fitting model (by delta-BIC),
+        %                  plus evidence_gap (delta-BIC of the next-best
+        %                  competitor) and decisive (evidence_gap >= 2, the
+        %                  Kass & Raftery 1995 "positive evidence" cutoff --
+        %                  below this, the race between the top two models
+        %                  is too close to call for that subject)
+        %    BMS_table      - per-model Bayesian Model Selection probabilities
+        %                     (ModelProbability = exp_r, ExceedanceProbability = xp)
+        % ====================================================================
+        function [AICBIC_table, bestModel_table, BMS_table] = compute_model_comparison(nll_matrix, model_names, num_params, num_trials, uniqueID)
+            numSubjs = size(nll_matrix, 1);
+            if isscalar(num_trials)
+                num_trials = repelem(num_trials, numSubjs);
+            end
+
+            AIC = NaN(size(nll_matrix));
+            BIC = NaN(size(nll_matrix));
+            for n = 1:numSubjs
+                [AIC(n,:), BIC(n,:)] = fitSlider_ALLmodels.compute_aic_bic(nll_matrix(n,:), num_params, num_trials(n));
+            end
+
+            aic_names = strcat('AIC_', model_names);
+            bic_names = strcat('BIC_', model_names);
+            deltaBIC_names = strcat('delta_BIC_', model_names);
+
+            AICBIC_table = array2table([AIC, BIC], 'VariableNames', [aic_names, bic_names]);
+            AICBIC_table.SubjectID = uniqueID;
+            AICBIC_table = movevars(AICBIC_table, 'SubjectID', 'Before', 1);
+
+            delta_BIC = BIC - min(BIC, [], 2);
+            for m = 1:numel(model_names)
+                AICBIC_table.(deltaBIC_names{m}) = delta_BIC(:, m);
+            end
+
+            [~, best_model_idx] = min(abs(delta_BIC), [], 2);
+
+            % Evidence strength: how decisively the nominal winner beats its
+            % closest competitor. delta_BIC's winning column is always 0 by
+            % construction, so the second-smallest value in each row is the
+            % gap to the runner-up -- small gaps mean the "winner" isn't
+            % actually distinguishable from the next-best model.
+            sorted_delta_BIC = sort(delta_BIC, 2);
+            evidence_gap = sorted_delta_BIC(:, 2);
+            decisive = evidence_gap >= 2; % Kass & Raftery (1995) "positive evidence" cutoff
+
+            bestModel_table = table();
+            bestModel_table.SubjectID = AICBIC_table.SubjectID;
+            bestModel_table.best_model = model_names(best_model_idx)'; % model_names is a 1xN row vector, so indexing it returns a row regardless of best_model_idx's shape -- transpose to match the table's Nx1 column height
+            bestModel_table.evidence_gap = evidence_gap;
+            bestModel_table.decisive = decisive;
+            for m = 1:numel(model_names)
+                bestModel_table.(deltaBIC_names{m}) = delta_BIC(:, m);
+            end
+
+            lme = -0.5 * BIC;
+            [~, exp_r, xp] = spm_BMS(lme, 1e6, 1, 0, 1, []);
+            BMS_table = table(model_names', exp_r', xp', 'VariableNames', {'Model', 'ModelProbability', 'ExceedanceProbability'});
+        end
+
+        %% ===================================================================
+        %  MODEL COMPARISON PLOTS
+        %  -------------------------------------------------------------------
+        %  Visualizes the output of compute_model_comparison: proportion of
+        %  subjects best described by each model, Bayesian Model Selection
+        %  probabilities/exceedance probabilities, and a combined plot with
+        %  the winning model highlighted. Generalized over an arbitrary
+        %  number of models; does not include family-wise comparison plots
+        %  (see compute_model_comparison for why that's excluded).
+        %  Inputs:
+        %    AICBIC_table, bestModel_table, BMS_table - outputs of
+        %                  compute_model_comparison
+        %    model_names - 1 x numModels cell array, matching the names used
+        %                  to compute the tables above
+        %    title_suffix - string appended to plot titles (e.g. 'Both
+        %                  condition, Sigma Fixed')
+        % ====================================================================
+        function plot_model_comparison(AICBIC_table, bestModel_table, BMS_table, model_names, title_suffix)
+            numModels = numel(model_names);
+            colors = lines(numModels);
+
+            % Proportion of subjects best described by each model. Only
+            % subjects whose winning model beats the runner-up by at least
+            % the Kass & Raftery (1995) "positive evidence" cutoff
+            % (bestModel_table.decisive, delta-BIC gap >= 2) are credited to
+            % that model; subjects below that cutoff go in a separate
+            % "Ambiguous" bar, since the race was too close to call rather
+            % than a real win for whichever model happened to edge ahead.
+            best_model_idx = NaN(height(bestModel_table), 1);
+            for m = 1:numModels
+                best_model_idx(strcmp(bestModel_table.best_model, model_names{m}) & bestModel_table.decisive) = m;
+            end
+            model_counts = histcounts(best_model_idx, 1:numModels+1);
+            ambiguous_count = sum(~bestModel_table.decisive);
+            bar_labels = [model_names, {'Ambiguous'}];
+            bar_counts = [model_counts, ambiguous_count];
+            bar_proportions = bar_counts / height(bestModel_table);
+            numBars = numModels + 1;
+
+            figure;
+            h = bar(1:numBars, bar_proportions, 'FaceColor', 'flat');
+            for i = 1:numModels
+                h.CData(i,:) = colors(i,:);
+            end
+            h.CData(numBars,:) = [0.6 0.6 0.6]; % gray for the ambiguous bar
+            h.FaceAlpha = 0.4;
+            set(gca, 'XTickLabel', bar_labels);
+            xlabel('Model');
+            ylabel('Proportion of Subjects');
+            title(sprintf('Proportion of Subjects Best Described by Each Model (%s)', title_suffix));
+            ylim([0, 1]);
+            for i = 1:numBars
+                text(i, bar_proportions(i) + 0.02, sprintf('%.2f', bar_proportions(i)), ...
+                     'HorizontalAlignment', 'center', 'FontWeight', 'bold');
+            end
+            grid on;
+            set(gca, 'GridAlpha', 0.3);
+
+            fprintf('\nModel Selection Results (%s):\n', title_suffix);
+            fprintf('------------------------\n');
+            for i = 1:numBars
+                fprintf('%s: %.1f%% of subjects (%d/%d)\n', ...
+                        bar_labels{i}, bar_proportions(i)*100, bar_counts(i), height(bestModel_table));
+            end
+
+            % Bayesian Model Selection: probability / exceedance bar plots
+            exp_r = BMS_table.ModelProbability';
+            xp = BMS_table.ExceedanceProbability';
+
+            fprintf('\n=== BAYESIAN MODEL SELECTION RESULTS (%s) ===\n\n', title_suffix);
+            fprintf('Model Probabilities (exp_r):\n');
+            for i = 1:numModels
+                fprintf('  %s: %.4f\n', model_names{i}, exp_r(i));
+            end
+            fprintf('\nExceedance Probabilities (xp):\n');
+            for i = 1:numModels
+                fprintf('  %s: %.4f\n', model_names{i}, xp(i));
+            end
+            [~, winning_model_idx] = max(exp_r);
+            fprintf('\nWinning Model: %s (exp_r = %.4f, xp = %.4f)\n', ...
+                model_names{winning_model_idx}, exp_r(winning_model_idx), xp(winning_model_idx));
+
+            figure('Position', [100, 100, 1000, 500]);
+            subplot(1, 2, 1);
+            b1 = bar(exp_r, 'FaceColor', 'flat');
+            b1.CData = colors;
+            b1.FaceAlpha = 0.5;
+            set(gca, 'XTickLabel', model_names, 'XTickLabelRotation', 45);
+            ylabel('Model Probability (exp_r)', 'FontSize', 12, 'FontWeight', 'bold');
+            title('Model Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
+            ylim([0, max(exp_r) * 1.1]);
+            grid on;
+            grid minor;
+            for i = 1:numModels
+                text(i, exp_r(i) + 0.01, sprintf('%.3f', exp_r(i)), ...
+                    'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+            end
+
+            subplot(1, 2, 2);
+            b2 = bar(xp, 'FaceColor', 'flat');
+            b2.CData = colors;
+            b2.FaceAlpha = 0.5;
+            set(gca, 'XTickLabel', model_names, 'XTickLabelRotation', 45);
+            ylabel('Exceedance Probability (xp)', 'FontSize', 12, 'FontWeight', 'bold');
+            title('Exceedance Probabilities', 'FontSize', 14, 'FontWeight', 'bold');
+            ylim([0, 1.05]);
+            grid on;
+            grid minor;
+            for i = 1:numModels
+                if xp(i) < 0.001
+                    text(i, xp(i) + 0.02, '< 0.001', ...
+                        'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+                else
+                    text(i, xp(i) + 0.02, sprintf('%.3f', xp(i)), ...
+                        'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+                end
+            end
+            sgtitle(sprintf('Bayesian Model Selection Results (%s)', title_suffix), 'FontSize', 16, 'FontWeight', 'bold');
+
+            % Combined plot with winning model highlighted
+            [~, winner_idx] = max(xp);
+            figure('Position', [150, 150, 800, 600]);
+            x_pos = 1:numModels;
+            b = bar(x_pos, [exp_r; xp]', 'grouped');
+            b(1).FaceColor = [0.3 0.5 0.8]; % Model probabilities
+            b(2).FaceColor = [0.8 0.4 0.3]; % Exceedance probabilities
+            b(1).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
+            b(2).CData(winner_idx, :) = [0.1 0.7 0.1]; % Green for winner
+            set(gca, 'XTickLabel', model_names, 'XTickLabelRotation', 45);
+            ylabel('Probability', 'FontSize', 12, 'FontWeight', 'bold');
+            title(sprintf('Model Comparison: Probabilities and Exceedance (%s)', title_suffix), 'FontSize', 14, 'FontWeight', 'bold');
+            legend({'Model Probability (exp_r)', 'Exceedance Probability (xp)'}, ...
+                'Location', 'northeast', 'FontSize', 11);
+            grid on;
+            ylim([0, 1.05]);
+            text(winner_idx, max([exp_r(winner_idx), xp(winner_idx)]) + 0.1, ...
+                sprintf('WINNER\n%s', model_names{winner_idx}), ...
+                'HorizontalAlignment', 'center', 'FontSize', 12, 'FontWeight', 'bold', ...
+                'Color', [0.1 0.7 0.1]);
+        end
+
+        %% ===================================================================
+        %  PLOT FITTED PARAMETERS
+        %  -------------------------------------------------------------------
+        %  Integrated from plotParams_reducedMS_fixedSigma.m's local function
+        %  of the same purpose, generalized over an arbitrary number of
+        %  models (rather than hardcoded to 3) so the same method serves
+        %  both the 3-way objective-PE comparison (basicRL/RLsigma/
+        %  BayesianAgent) and the 2-way subjective-PE comparison (basicRL_
+        %  subjectivePE/RLsigma_subjectivePE), for either condition.
+        %  Plots each model's fitted alpha/kappa (where present -- e.g.
+        %  BayesianAgent has no alpha) and sigma (fixed or fitted,
+        %  depending on the caller's pipeline -- see sigma_title) as
+        %  bar+dot+SEM panels, plus summed AIC, summed BIC, and mean
+        %  delta-BIC across models.
+        %  Inputs:
+        %    params_structs - 1 x numModels cell array of structs, each
+        %                  with .kappa and .sigma fields, and .alpha for
+        %                  models that have one
+        %    model_names  - 1 x numModels cell array, matching
+        %                  params_structs and AICBIC_table's column-name
+        %                  suffixes (AIC_<name>, BIC_<name>,
+        %                  delta_BIC_<name>)
+        %    AICBIC_table - output of compute_model_comparison for the
+        %                  same models/condition
+        %    title_suffix - string appended to plot titles (e.g. 'Both
+        %                  condition, Sigma Fixed')
+        %    sigma_title  - (optional) title for the sigma subplot --
+        %                  callers differ on whether sigma is fixed
+        %                  (fitReducedModelSpace_fixedSigma.m: 'sigma
+        %                  (fixed, from perceptual-choice fit)') or fitted
+        %                  jointly with alpha/kappa
+        %                  (fitReducedModelSpace.m: 'sigma (fitted)').
+        %                  Defaults to the fixed-sigma phrasing if omitted,
+        %                  matching this function's original behavior.
+        %  Outputs:
+        %    bic_ax       - axes handle of the "Sum of BIC" bar plot, so
+        %                  callers can match its y-limits across multiple
+        %                  calls (e.g. objective vs subjective PE, Both vs
+        %                  Perceptual) for visual comparability
+        % ====================================================================
+        function bic_ax = plot_fitted_params(params_structs, model_names, AICBIC_table, title_suffix, sigma_title)
+            if nargin < 5
+                sigma_title = 'sigma (fixed, from perceptual-choice fit)';
+            end
+            numModels = numel(model_names);
+            n = length(params_structs{1}.kappa); % number of subjects
+            all_facecolors = lines(numModels);
+
+            has_alpha = cellfun(@(p) isfield(p, 'alpha'), params_structs);
+            alpha_all = NaN(n, numModels);
+            kappa_all = NaN(n, numModels);
+            sigma_all = NaN(n, numModels);
+            for m = 1:numModels
+                if has_alpha(m)
+                    alpha_all(:,m) = params_structs{m}.alpha;
+                end
+                kappa_all(:,m) = params_structs{m}.kappa;
+                sigma_all(:,m) = params_structs{m}.sigma;
+            end
+
+            param_data = {alpha_all, kappa_all, sigma_all};
+            param_names = {'alpha', 'kappa', 'sigma'};
+            param_titles = {'alpha (fitted)', 'kappa (fitted)', sigma_title};
+            for p = 1:length(param_names)
+                y = param_data{p};
+
+                % Drop columns that are all-NaN (e.g. alpha for BayesianAgent,
+                % or every column if no model in this comparison has this
+                % parameter at all).
+                valid_cols = ~all(isnan(y),1);
+                if ~any(valid_cols)
+                    continue
+                end
+                y = y(:,valid_cols);
+                this_model_names = model_names(valid_cols);
+                facecolors = all_facecolors(valid_cols, :);
+
+                mean_all = nanmean(y);
+                SEM_all = nanstd(y)./sqrt(sum(~isnan(y)));
+
+                title_name = sprintf('%s across models (%s)', param_titles{p}, title_suffix);
+
+                figure;
+                bar_plots_pval(y, mean_all, SEM_all, n, 1, size(y,2), this_model_names, 1, ...
+                    {param_names{p}}, title_name, '', param_names{p}, 0, 1, 20, 1, 12, 1, ...
+                    'Arial', 1, facecolors);
+            end
+
+            %% AIC/BIC/delta-BIC summary
+            AIC = NaN(n, numModels);
+            BIC = NaN(n, numModels);
+            delta_BIC = NaN(n, numModels);
+            for m = 1:numModels
+                AIC(:,m) = AICBIC_table.(['AIC_' model_names{m}]);
+                BIC(:,m) = AICBIC_table.(['BIC_' model_names{m}]);
+                delta_BIC(:,m) = AICBIC_table.(['delta_BIC_' model_names{m}]);
+            end
+
+            sum_AIC = nansum(AIC, 1);
+            sum_BIC = nansum(BIC, 1);
+
+            figure;
+            h_aic = bar(1:numModels, sum_AIC, 'FaceColor', 'flat');
+            set(gca, 'XTickLabel', model_names);
+            title(sprintf('Sum of AIC across all subjects (%s)', title_suffix));
+            ylabel('Sum AIC');
+            xlabel('Model');
+            box off;
+            set(gca, 'FontSize', 12, 'FontName', 'Arial', 'LineWidth', 1);
+            for i = 1:numModels
+                h_aic.CData(i,:) = all_facecolors(i,:);
+            end
+            h_aic.FaceAlpha = 0.5;
+
+            figure;
+            h_bic = bar(1:numModels, sum_BIC, 'FaceColor', 'flat');
+            bic_ax = gca; % returned so callers can match this axes' y-limits across multiple calls/figures
+            set(bic_ax, 'XTickLabel', model_names);
+            title(bic_ax, sprintf('Sum of BIC across all subjects (%s)', title_suffix));
+            ylabel(bic_ax, 'Sum BIC');
+            xlabel(bic_ax, 'Model');
+            box(bic_ax, 'off');
+            set(bic_ax, 'FontSize', 12, 'FontName', 'Arial', 'LineWidth', 1);
+            for i = 1:numModels
+                h_bic.CData(i,:) = all_facecolors(i,:);
+            end
+            h_bic.FaceAlpha = 0.5;
+
+            mean_delta_BIC = nanmean(delta_BIC, 1);
+            SEM_delta_BIC = nanstd(delta_BIC, 1) ./ sqrt(sum(~isnan(delta_BIC), 1));
+
+            figure;
+            bar_plots_pval(delta_BIC, mean_delta_BIC, SEM_delta_BIC, n, 1, numModels, model_names, 1, ...
+                {'Delta BIC'}, sprintf('Mean Delta BIC across models (%s)', title_suffix), ...
+                '', 'Delta BIC', 0, 1, 20, 1, 12, 1, 'Arial', 1, all_facecolors);
+        end
+
+        %% ===================================================================
+        %  SCATTER + UNITY LINE + SPEARMAN'S RHO
+        %  -------------------------------------------------------------------
+        %  Generic single-panel scatter helper: plots y vs x into whichever
+        %  axes are already current (a subplot set up by the caller),
+        %  overlays a y = x unity reference line (both axes forced to the
+        %  same shared range so the line is a genuine diagonal rather than
+        %  an artifact of mismatched auto-scaled limits), and annotates the
+        %  title with Spearman's rho and its p-value. Promoted out of
+        %  fitReducedModelSpace_fixedSigma.m's "OBJECTIVE VS SUBJECTIVE PE
+        %  PARAMETER COMPARISON" section so fitReducedModelSpace.m's
+        %  equivalent section can reuse it without duplicating the function.
+        %  Inputs:
+        %    x, y                   - vectors to scatter (e.g. objective-PE
+        %                           vs subjective-PE fitted parameter)
+        %    xlabel_str, ylabel_str - axis labels
+        %    title_str              - title prefix; rho/p are appended on a
+        %                           second line
+        % ====================================================================
+        function plot_scatter_spearman(x, y, xlabel_str, ylabel_str, title_str)
+            scatter(x, y, 25, 'filled', 'MarkerFaceAlpha', 0.6);
+            hold on;
+            lims = [min([xlim, ylim]), max([xlim, ylim])];
+            plot(lims, lims, 'k--', 'LineWidth', 1);
+            xlim(lims);
+            ylim(lims);
+            [rho, pval] = corr(x, y, 'rows', 'complete', 'Type', 'Spearman');
+            if pval < 0.001
+                p_str = 'p < .001';
+            else
+                p_str = sprintf('p = %.3f', pval);
+            end
+            xlabel(xlabel_str);
+            ylabel(ylabel_str);
+            title(sprintf('%s\n\\rho = %.2f, %s', title_str, rho, p_str));
+            box off;
+        end
+
+        %% ===================================================================
+        %  FAMILY-WISE MODEL COMPARISON (VBA_groupBMC, with manual fallback)
+        %  -------------------------------------------------------------------
+        %  Groups models into families (e.g. "Basic RL" vs "LR Modulation")
+        %  and runs Bayesian Model Selection at both the family and
+        %  within-family model level. Separate from compute_model_comparison
+        %  because family membership is an analysis-specific choice the
+        %  caller must supply -- it doesn't generalize automatically the way
+        %  a plain N-model AIC/BIC comparison does.
+        %  Inputs:
+        %    lme          - numSubjs x numModels log model evidence matrix
+        %                   (e.g. -0.5 * BIC)
+        %    families     - 1 x numFamilies cell array; families{f} is a
+        %                   vector of model indices (columns of lme)
+        %                   belonging to family f
+        %    family_names - 1 x numFamilies cell array of family name strings
+        %    model_names  - 1 x numModels cell array of model name strings,
+        %                   column-aligned with lme
+        %  Outputs:
+        %    results_summary - struct with family/model names, probabilities,
+        %                   and exceedance probabilities (ready to save)
+        %    posterior, out  - raw VBA_groupBMC (or manual_family_BMS)
+        %                   outputs, kept for saving alongside results_summary
+        % ====================================================================
+        function [results_summary, posterior, out] = compute_family_model_comparison(lme, families, family_names, model_names)
+            options_vba = struct();
+            options_vba.families = families;
+            options_vba.verbose = 1;
+            options_vba.DisplayWin = 0;
+
+            try
+                [posterior, out] = VBA_groupBMC(lme', options_vba);
+                fprintf('VBA_groupBMC completed successfully!\n');
+                vba_success = true;
+            catch ME
+                fprintf('VBA_groupBMC failed with error: %s\n', ME.message);
+                fprintf('Using manual implementation instead...\n');
+                [posterior, out] = fitSlider_ALLmodels.manual_family_BMS(lme, families, family_names);
+                vba_success = false;
+            end
+
+            if vba_success
+                family_prob = out.families.Ef;
+                family_xp = out.families.ep;
+                model_prob = out.Ef;
+                model_xp = out.ep;
+            else
+                family_prob = posterior.r;
+                family_xp = out.families.ep;
+                model_prob = posterior.r_model;
+                model_xp = out.ep;
+            end
+
+            results_summary = struct();
+            results_summary.family_names = family_names;
+            results_summary.families = families;
+            results_summary.family_probabilities = family_prob;
+            results_summary.family_exceedance_probabilities = family_xp;
+            results_summary.model_names = model_names;
+            results_summary.model_probabilities = model_prob;
+            results_summary.model_exceedance_probabilities = model_xp;
+            results_summary.vba_success = vba_success;
+        end
+
+        %% ===================================================================
+        %  FAMILY-WISE MODEL COMPARISON FALLBACK (manual implementation)
+        %  -------------------------------------------------------------------
+        %  Used by compute_family_model_comparison when VBA_groupBMC isn't
+        %  available / errors. Approximates family- and model-level
+        %  posteriors via log-sum-exp pooling within families and spm_BMS
+        %  (or a softmax fallback if spm_BMS itself is unavailable).
+        % ====================================================================
+        function [posterior, out] = manual_family_BMS(lme, families, family_names)
+            fprintf('Implementing family-wise BMS manually...\n');
+
+            [n_subjects, n_models] = size(lme);
+            n_families = length(families);
+
+            % Step 1: Compute family-level log evidence
+            family_lme = zeros(n_subjects, n_families);
+
+            for f = 1:n_families
+                models_in_family = families{f};
+                % For each subject, compute log sum exp of models in family
+                for s = 1:n_subjects
+                    family_evidence = lme(s, models_in_family);
+                    % Numerical stable log-sum-exp
+                    max_ev = max(family_evidence);
+                    family_lme(s, f) = max_ev + log(sum(exp(family_evidence - max_ev)));
+                end
+            end
+
+            % Step 2: Run BMS on family-level evidence using SPM functions
+            try
+                [alpha_fam, exp_r_fam, xp_fam] = spm_BMS(family_lme, 1e6, 0, 0, 1, ones(1, n_families));
+            catch
+                % Fallback if SPM not available
+                fprintf('SPM not available, using simplified BMS...\n');
+                % Simple softmax over mean log evidence
+                mean_family_lme = mean(family_lme, 1);
+                exp_r_fam = exp(mean_family_lme - max(mean_family_lme));
+                exp_r_fam = exp_r_fam / sum(exp_r_fam);
+                xp_fam = exp_r_fam;  % Simplified exceedance probabilities
+            end
+
+            % Step 3: Compute model-level probabilities within families
+            model_prob = zeros(1, n_models);
+            for f = 1:n_families
+                models_in_family = families{f};
+                if length(models_in_family) == 1
+                    % Single model in family
+                    model_prob(models_in_family) = exp_r_fam(f);
+                else
+                    % Multiple models in family - run BMS within family
+                    family_models_lme = lme(:, models_in_family);
+                    try
+                        [~, exp_r_within, ~] = spm_BMS(family_models_lme, 1e6, 0, 0, 1, []);
+                    catch
+                        % Fallback method
+                        mean_model_lme = mean(family_models_lme, 1);
+                        exp_r_within = exp(mean_model_lme - max(mean_model_lme));
+                        exp_r_within = exp_r_within / sum(exp_r_within);
+                    end
+                    % Weight by family probability
+                    model_prob(models_in_family) = exp_r_fam(f) * exp_r_within;
+                end
+            end
+
+            % Step 4: Format output
+            posterior.r = exp_r_fam;           % Family probabilities
+            posterior.r_model = model_prob;     % Model probabilities
+
+            out.families.ep = xp_fam;          % Family exceedance probabilities
+            out.ep = zeros(1, n_models);       % Model exceedance probabilities
+
+            % Approximate model exceedance probabilities
+            for m = 1:n_models
+                out.ep(m) = model_prob(m);  % Simplified approximation
+            end
+
+            fprintf('Manual family BMS completed.\n');
+        end
+
+        %% ===================================================================
+        %  FAMILY-WISE MODEL COMPARISON PLOTS
+        %  -------------------------------------------------------------------
+        %  Visualizes compute_family_model_comparison's results_summary:
+        %  family probabilities/exceedance probabilities and individual model
+        %  probabilities (copper colormap, 3-panel figure), a stacked bar
+        %  showing each model's relative contribution within its family, and
+        %  a printed statistical summary (winning family/model, evidence
+        %  strength). Generalized over an arbitrary number of families.
+        % ====================================================================
+        function plot_family_model_comparison(results_summary, title_suffix)
+            family_names = results_summary.family_names;
+            families = results_summary.families;
+            family_prob = results_summary.family_probabilities;
+            family_xp = results_summary.family_exceedance_probabilities;
+            model_names = results_summary.model_names;
+            model_prob = results_summary.model_probabilities;
+            model_xp = results_summary.model_exceedance_probabilities;
+
+            n_models = numel(model_names);
+            num_families = numel(families);
+
+            label = sprintf('(%s)', title_suffix);
+
+            % Display family results
+            for i = 1:num_families
+                fprintf('Family %d (%s):\n', i, family_names{i});
+                fprintf('  Probability: %.3f\n', family_prob(i));
+                fprintf('  Exceedance Probability: %.3f\n', family_xp(i));
+                fprintf('  Models included: %s\n', mat2str(families{i}));
+                fprintf('\n');
+            end
+
+            % Display model results
+            fprintf('=== MODEL-LEVEL RESULTS %s ===\n', label);
+            for i = 1:n_models
+                fprintf('Model %d (%s): Prob=%.3f, XP=%.3f\n', i, model_names{i}, model_prob(i), model_xp(i));
+            end
+
+            %% Enhanced Visualization with Copper Colormap
+            copper_colors = copper(num_families + n_models);
+            dark_gray = [0.3, 0.3, 0.3];
+
+            figure('Position', [100, 100, 1400, 500], 'Color', 'white');
+
+            % Plot 1: Family Probabilities
+            subplot(1, 3, 1);
+            h1 = bar(family_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
+            for f = 1:num_families
+                h1.CData(f,:) = copper_colors(f, 1:3);
+            end
+            ylim([0, 1]);
+            ylabel('Family Probability', 'FontSize', 12, 'FontWeight', 'bold');
+            title(sprintf('Family Probabilities %s', label), 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
+            set(gca, 'XTickLabel', family_names, 'FontSize', 11, 'Box', 'off', 'LineWidth', 1.2);
+            grid off;
+            for i = 1:length(family_prob)
+                text(i, family_prob(i) + 0.03, sprintf('%.3f', family_prob(i)), ...
+                     'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
+                     'FontSize', 11, 'Color', dark_gray);
+            end
+            ax1 = gca;
+            ax1.Color = [0.98, 0.98, 0.98];
+
+            % Plot 2: Family Exceedance Probabilities
+            subplot(1, 3, 2);
+            h2 = bar(family_xp, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.6, 'FaceAlpha', 0.3);
+            for f = 1:num_families
+                h2.CData(f,:) = copper_colors(f, 1:3) * 0.8;
+            end
+            ylim([0, 1]);
+            ylabel('Exceedance Probability', 'FontSize', 12, 'FontWeight', 'bold');
+            title(sprintf('Family Exceedance Probabilities %s', label), 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
+            set(gca, 'XTickLabel', family_names, 'FontSize', 11, 'Box', 'off', 'LineWidth', 1.2);
+            grid off;
+            for i = 1:length(family_xp)
+                text(i, family_xp(i) + 0.03, sprintf('%.3f', family_xp(i)), ...
+                     'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
+                     'FontSize', 11, 'Color', dark_gray);
+            end
+            ax2 = gca;
+            ax2.Color = [0.98, 0.98, 0.98];
+
+            % Plot 3: Individual Model Probabilities
+            subplot(1, 3, 3);
+            model_copper_colors = copper(n_models);
+            bar_colors = model_copper_colors(:, 1:3);
+            h3 = bar(1:n_models, model_prob, 'FaceColor', 'flat', 'EdgeColor', 'none', 'BarWidth', 0.7, 'FaceAlpha', 0.3);
+            h3.CData = bar_colors;
+            ylim([0, max(model_prob) * 1.15]);
+            xlabel('Model', 'FontSize', 12, 'FontWeight', 'bold');
+            ylabel('Model Probability', 'FontSize', 12, 'FontWeight', 'bold');
+            title(sprintf('Individual Model Probabilities %s', label), 'FontSize', 14, 'FontWeight', 'normal', 'Color', dark_gray);
+            set(gca, 'XTick', 1:n_models, 'XTickLabel', model_names, ...
+                'XTickLabelRotation', 45, 'FontSize', 10, 'Box', 'off', 'LineWidth', 1.2);
+            grid off;
+            for i = 1:n_models
+                if model_prob(i) > 0.01
+                    text(i, model_prob(i) + max(model_prob) * 0.02, sprintf('%.3f', model_prob(i)), ...
+                         'HorizontalAlignment', 'center', 'FontWeight', 'bold', ...
+                         'FontSize', 9, 'Color', dark_gray);
+                end
+            end
+            ax3 = gca;
+            ax3.Color = [0.98, 0.98, 0.98];
+
+            %% Within-family stacked bar (relative model contribution)
+            if num_families == 1
+                family_colors = [0.2 0.6 0.9];
+            elseif num_families == 2
+                family_colors = [
+                    0.0000 0.4470 0.7410;
+                    0.9 0.3250 0.0980
+                ];
+            else
+                family_colors = parula(num_families);
+            end
+
+            fprintf('\n=== WITHIN-FAMILY MODEL CONTRIBUTIONS %s ===\n', label);
+            figure;
+            hold on;
+            handles = gobjects(0);
+            labels = {};
+            for f = 1:num_families
+                models_in_family = families{f};
+                family_model_probs = model_prob(models_in_family);
+
+                fprintf('\nFamily %d (%s):\n', f, family_names{f});
+                if sum(family_model_probs) > 0
+                    rel = family_model_probs / sum(family_model_probs);
+                    for m = 1:length(models_in_family)
+                        model_idx = models_in_family(m);
+                        fprintf('  %s (Model %d): %.3f (%.1f%% of family)\n', ...
+                            model_names{model_idx}, model_idx, family_model_probs(m), rel(m) * 100);
+                    end
+                else
+                    rel = zeros(size(family_model_probs));
+                end
+
+                n = numel(rel);
+                shades = linspace(0.35, 1.00, n)';
+                base = family_colors(min(f,size(family_colors,1)), :);
+                model_colors = bsxfun(@times, shades, base);
+
+                b = bar(f, rel, 0.6, 'stacked');
+                for i = 1:numel(b)
+                    b(i).FaceColor = model_colors(i,:);
+                    b(i).EdgeColor = 'none';
+                    model_idx = models_in_family(i);
+                    handles(end+1) = b(i); %#ok<SAGROW>
+                    labels{end+1} = sprintf('%s (Family: %s)', model_names{model_idx}, family_names{f}); %#ok<SAGROW>
+                end
+
+                cum = 0;
+                for i = 1:n
+                    h = rel(i);
+                    if h > 0
+                        yc = cum + h/2;
+                        rgb = model_colors(i,:);
+                        lum = 0.299*rgb(1) + 0.587*rgb(2) + 0.114*rgb(3);
+                        txtc = 'w';
+                        if lum > 0.7, txtc = 'k'; end
+                        text(f, yc, sprintf('%.1f%%', h*100), ...
+                             'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
+                             'FontSize',9, 'Color', txtc);
+                    end
+                    cum = cum + h;
+                end
+            end
+            xlim([0.5, num_families+0.5]);
+            set(gca, 'XTick', 1:num_families, 'XTickLabel', family_names, 'FontSize', 12);
+            ylabel('Relative Model Contribution (within family)');
+            title(sprintf('Within-Family Model Contributions (stacked) %s', label));
+            ylim([0 1]);
+            grid on; box on;
+            legend(handles, labels, 'Location', 'eastoutside');
+            hold off;
+
+            %% Statistical Summary
+            fprintf('\n=== STATISTICAL SUMMARY %s ===\n', label);
+            fprintf('Winning Family: %s (Prob = %.3f, XP = %.3f)\n', ...
+                family_names{find(family_prob == max(family_prob), 1)}, ...
+                max(family_prob), max(family_xp));
+            fprintf('Winning Model: %s (Prob = %.3f, XP = %.3f)\n', ...
+                model_names{find(model_prob == max(model_prob), 1)}, ...
+                max(model_prob), max(model_xp));
+
+            if max(family_xp) > 0.95
+                evidence_strength = 'Very Strong';
+            elseif max(family_xp) > 0.90
+                evidence_strength = 'Strong';
+            elseif max(family_xp) > 0.75
+                evidence_strength = 'Moderate';
+            else
+                evidence_strength = 'Weak';
+            end
+            fprintf('Evidence Strength: %s (XP = %.3f)\n', evidence_strength, max(family_xp));
+        end
+
+        %% ===================================================================
         %  OBSERVATION WEIGHTS
         %  -------------------------------------------------------------------
         %  Normalized likelihood of each hypothetical observation on the
@@ -1513,7 +3035,7 @@ classdef fitSlider_ALLmodels
         %    uniqueID            - unique subject IDs (vector)
         %    numSubjs            - number of subjects (scalar)
         %    dataPerceptualChoice - dataPerceptual, further restricted to
-        %                          fitPerceptualChoice.m's needs: warm-up
+        %                          the perceptual-sigma fit's needs: warm-up
         %                          trials (trials <= 5) dropped, and choice
         %                          recoded into a fixed reference frame
         %                          (flipped when contrast == 1) so it's
