@@ -75,12 +75,21 @@
 %    no-integration (point-observation) definitions of basicRL/RLsigma --
 %    see fitSlider_ALLmodels.m's nll_basicRL_pointObs header, and either
 %    fitting script's "SECTION 3/4 OF 4". Combines independently with
-%    subjective_pe (4 combinations total). bayesianAgent has no
-%    no-integration variant either, so it's dropped the same way
+%    subjective_pe (4 combinations total). For the subjective-PE
+%    combination, bayesianAgent has no no-integration variant either (it
+%    has no subjective-PE variant at all), so it's dropped the same way
 %    subjective_pe drops it, and the best-fit-model groups become
-%    {basicRL_noIntegration, RLsigma_noIntegration, Ambiguous} (objective)
-%    or {basicRL_subjectivePE_noIntegration, RLsigma_subjectivePE_
-%    noIntegration, Ambiguous} (subjective) instead.
+%    {basicRL_subjectivePE_noIntegration, RLsigma_subjectivePE_
+%    noIntegration, Ambiguous}. For the OBJECTIVE-PE, no-integration
+%    combination, bayesianAgent DOES have a no-integration variant
+%    (nll_bayesianAgent_pointObs), but only in the free-sigma pipeline
+%    (fitReducedModelSpace.m's Section 3 fits it; fitReducedModelSpace_
+%    fixedSigma.m's Section 3 does not) -- see has_bayesianAgent's
+%    definition below, which accounts for this fix_sigma-dependent split.
+%    So the best-fit-model groups there are {basicRL_noIntegration,
+%    RLsigma_noIntegration, BayesianAgent_noIntegration, Ambiguous} when
+%    fix_sigma is false, or {basicRL_noIntegration, RLsigma_noIntegration,
+%    Ambiguous} (no agent) when fix_sigma is true.
 %  - When fix_sigma is true, the sigma column for all three models comes
 %    directly from sigma_perceptualChoice.mat rather than from each
 %    model's own .sigma field. By construction those should already be
@@ -165,7 +174,13 @@ subjective_pe = true;
 % "SECTION 1-4 OF 4" structure), each under its own filename.
 no_integration = false;
 
-has_bayesianAgent = ~subjective_pe && ~no_integration; % bayesianAgent has neither a subjective-PE nor a no-integration variant
+% bayesianAgent has no subjective-PE variant at all, so subjective_pe
+% always excludes it. It DOES now have a no-integration variant, but only
+% in the free-sigma pipeline (fitReducedModelSpace.m's Section 3 fits
+% nll_bayesianAgent_pointObs for objective PE, no integration) --
+% fitReducedModelSpace_fixedSigma.m's Section 3 has no such fit, so
+% fix_sigma && no_integration still excludes it.
+has_bayesianAgent = ~subjective_pe && (~no_integration || ~fix_sigma);
 
 %% =================== LOAD BEHAVIORAL / LR MEASURES =======================
 data = importdata(fullfile(desiredPath, 'Data', 'LR analyses', 'preprocessed_data.mat'));
@@ -269,6 +284,10 @@ else
     elseif no_integration
         params_basicRL = importdata(fullfile(save_dir, 'params_basicRL_noIntegration_Both_multiSP.mat'));
         params_RLsigma = importdata(fullfile(save_dir, 'params_RLsigma_noIntegration_Both_multiSP.mat'));
+        % Only the free-sigma pipeline has a no-integration bayesianAgent
+        % fit (fitReducedModelSpace.m's Section 3) -- has_bayesianAgent is
+        % only true here when ~fix_sigma, so this always resolves safely.
+        params_bayesianAgent = importdata(fullfile(save_dir, 'params_bayesianAgent_noIntegration_Both_multiSP.mat'));
     else
         params_basicRL = importdata(fullfile(save_dir, 'params_basicRL_RBVoi_Both_multiSP.mat'));
         params_RLsigma = importdata(fullfile(save_dir, 'params_RLSigma_RBVoi_Both_multiSP.mat'));
@@ -438,13 +457,20 @@ end
 % combinations: 'basicRL'/'RLsigma'/'BayesianAgent' for the objective-PE,
 % integrated 3-way comparison; 'basicRL_subjectivePE'/'RLsigma_
 % subjectivePE' for the subjective-PE, integrated 2-way comparison;
-% 'basicRL_noIntegration'/'RLsigma_noIntegration' for the objective-PE,
-% no-integration 2-way comparison; 'basicRL_subjectivePE_noIntegration'/
-% 'RLsigma_subjectivePE_noIntegration' for the subjective-PE,
-% no-integration 2-way comparison (see fitReducedModelSpace_fixedSigma.m's
+% 'basicRL_noIntegration'/'RLsigma_noIntegration'/'BayesianAgent_
+% noIntegration' for the objective-PE, no-integration 3-way comparison
+% (free-sigma pipeline only -- see has_bayesianAgent's definition above);
+% 'basicRL_noIntegration'/'RLsigma_noIntegration' (2-way, no agent) for
+% that same combination under the fixed-sigma pipeline;
+% 'basicRL_subjectivePE_noIntegration'/'RLsigma_subjectivePE_
+% noIntegration' for the subjective-PE, no-integration 2-way comparison
+% (see fitReducedModelSpace.m / fitReducedModelSpace_fixedSigma.m's
 % model_names / model_names_subjectivePE / model_names_noIntegration /
 % model_names_subjectivePE_noIntegration).
-if has_bayesianAgent
+if has_bayesianAgent && no_integration
+    group_order = {'basicRL_noIntegration', 'RLsigma_noIntegration', 'BayesianAgent_noIntegration', 'Ambiguous'};
+    group_labels = {'Basic RL (no integration)', 'RL modulation (no integration)', 'Agent (no integration)', 'Ambiguous'};
+elseif has_bayesianAgent
     group_order = {'basicRL', 'RLsigma', 'BayesianAgent', 'Ambiguous'};
     group_labels = {'Basic RL', 'RL modulation', 'Agent', 'Ambiguous'};
 elseif subjective_pe && no_integration
@@ -453,7 +479,7 @@ elseif subjective_pe && no_integration
 elseif subjective_pe
     group_order = {'basicRL_subjectivePE', 'RLsigma_subjectivePE', 'Ambiguous'};
     group_labels = {'Basic RL (subjective PE)', 'RL modulation (subjective PE)', 'Ambiguous'};
-else % no_integration, objective PE
+else % no_integration, objective PE, fixed-sigma pipeline (no agent variant there)
     group_order = {'basicRL_noIntegration', 'RLsigma_noIntegration', 'Ambiguous'};
     group_labels = {'Basic RL (no integration)', 'RL modulation (no integration)', 'Ambiguous'};
 end

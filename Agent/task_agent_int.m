@@ -1,5 +1,19 @@
-function [data_int] = task_agent_int()
+function [data_int] = task_agent_int(taskCond,agentnum,rangeMu,task_agent_analysis,varargin)
 % function task_agent_int simulates the interaction between task and agent.
+%
+% INPUTS:
+%   taskCond: experimental condition
+%   agentnum: agent type
+%   rangeMu: whether to sweep mu across a range (1) or use the
+%            condition-fixed mu (0)
+%   task_agent_analysis: toggles Agent's task_agent_analysis property --
+%       1: observation = the exact presented contrast difference, and
+%          perceptual/economic decisions are read off deterministically
+%          (used when treating this as analyzing real task/agent data)
+%       0: observation is sampled with perceptual noise
+%          (normrnd(c_t,sigma)), and decisions are drawn probabilistically
+%          from the resulting belief states (a genuine stochastic
+%          simulation)
 %
 % OUTPUT:
 %   data_int: simulated interaction stored in a table
@@ -7,6 +21,17 @@ function [data_int] = task_agent_int()
 % INTIALIZATION OF REQUIRED CLASSES
 task = Task();
 agent = Agent();
+agent.task_agent_analysis = task_agent_analysis;
+
+task.condition = taskCond; % add the relevant experimental condition
+agent.condition = taskCond; % similarly for the agent
+agent.agent = agentnum; % add the agent type
+
+task.taskMu(rangeMu);
+if nargin > 4
+    agent.getSigma(varargin{1});
+    agent.getBeta(varargin{2});
+end
 
 % NUMBER OF TRIALS
 T = task.T;
@@ -75,5 +100,7 @@ data_int.condition = condition.';
 data_int.contrast = contrast.';
 data_int.value_a1 = v_a_1.';
 data_int.congruence = congruence.';
+
+disp(['The actual mu is: ', num2str(task.mu)]);
 
 end

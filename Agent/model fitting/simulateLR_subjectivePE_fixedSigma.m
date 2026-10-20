@@ -100,7 +100,7 @@ no_integration = false;
 % STYLING
 line_width = 0.5;
 font_size = 11; % axis/tick-label text
-title_font_size = 10; % subplot + figure titles
+title_font_size = 14; % subplot + figure titles
 sgtitle_font_size = 9;
 dot_size = 70;
 font_name = 'Arial';

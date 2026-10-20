@@ -1527,6 +1527,186 @@ classdef fitSlider_ALLmodels
         end
 
         %% ===================================================================
+        %  MIXTURE MODEL (BASIC RL / RL SIGMA), SUBJECTIVE PE, NO INTEGRATION
+        %  -------------------------------------------------------------------
+        %  Blends basicRL's and RLsigma's belief updates via a free mixture
+        %  weight lambda, following GbAgent.py's compute_mixture pattern
+        %  (gaborbandit_analysis-master/GbAgent.py, agents 3/6): each
+        %  sub-model computes its OWN complete, independent belief update
+        %  every trial (nll_basicRL_pointObs_subjectivePE's plain alpha
+        %  update vs nll_RLsigma_subjectivePE's pi-weighted update, both
+        %  anchored to the same q_anchor), and only the two RESULTING
+        %  beliefs are blended afterwards:
+        %    q_mixed = lambda * q_RLsigma + (1 - lambda) * q_basicRL
+        %  rather than splicing the two update equations together
+        %  algebraically. lambda = 1 is pure RLsigma (full confidence-
+        %  weighted learning), lambda = 0 is pure basicRL (flat learning
+        %  rate); intermediate values estimate the DEGREE of confidence-
+        %  weighting in the data directly, instead of picking a winner via
+        %  model comparison.
+        %  Inputs:
+        %    params  - [alpha, kappa, sigma, lambda]
+        %    mu_hat  - observed slider reports (vector)
+        %    blocks  - block index per trial (vector)
+        %    rewards - state-0-referenced reward outcomes (vector)
+        %    condiff - contrast difference per trial (vector)
+        %  Output:
+        %    nll - negative log-likelihood (scalar)
+        % ====================================================================
+        function nll = nll_mixture_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+            lambda = params(4);
+
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            for n = 1:length(mu_hat)
+                % Anchor for this trial's delta-rule update: 0.5 at the
+                % start of a new block, otherwise the subject's own actual
+                % previous slider report -- same convention as
+                % nll_basicRL_pointObs_subjectivePE / nll_RLsigma_subjectivePE,
+                % shared by both sub-models so their outputs are directly
+                % comparable before blending.
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                belief_state = normcdf(condiff(n), 0, sigma);
+                if condiff(n) < 0
+                    pi_0 = 1 - belief_state;
+                    pi_1 = belief_state;
+                else
+                    pi_1 = belief_state;
+                    pi_0 = 1 - belief_state;
+                end
+
+                % Each sub-model's own, independent update from the same
+                % anchor -- basicRL's plain alpha step vs RLsigma's
+                % pi-weighted step.
+                q_basicRL = q_anchor;
+                q_RLsigma = q_anchor;
+                if pi_0 >= pi_1
+                    q_basicRL = q_basicRL + alpha * (rewards(n) - q_basicRL);
+                    q_RLsigma = q_RLsigma + pi_0 * alpha * (rewards(n) - q_RLsigma);
+                else
+                    q_basicRL = q_basicRL + alpha * ((1 - rewards(n)) - q_basicRL);
+                    q_RLsigma = q_RLsigma + pi_1 * alpha * ((1 - rewards(n)) - q_RLsigma);
+                end
+
+                % Blend the two fully-independent updates (GbAgent.py's
+                % compute_mixture pattern).
+                q_mixed = lambda * q_RLsigma + (1 - lambda) * q_basicRL;
+
+                a = q_mixed * kappa;
+                b = (1 - q_mixed) * kappa;
+                if a <= 0 || b <= 0
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  MIXTURE MODEL (BASIC RL / RL SIGMA), SUBJECTIVE PE, INTEGRATED
+        %  -------------------------------------------------------------------
+        %  Integrated analog of nll_mixture_subjectivePE: each sub-model
+        %  marginalizes over the same 20-point hypothetical-observation grid
+        %  independently (nll_basicRL_integrated_subjectivePE's plain alpha
+        %  update vs nll_RLsigma_VOI_subjectivePE's pi-weighted update, both
+        %  anchored to the same q_anchor and the same per-trial observation
+        %  likelihood weights p_o_given_u), producing two fully-marginalized
+        %  beliefs, which are then blended via lambda -- GbAgent.py's
+        %  compute_mixture pattern (agents 3/6) applied AFTER each
+        %  sub-model's own complete integration, not inside the grid loop
+        %  (matching how GbAgent.py's agent==6 mixes q_0_0_ag_4/q_0_0_ag_5
+        %  only after update_a4/update_a5 each finish their own full
+        %  computation).
+        %  Inputs/outputs: identical to nll_mixture_subjectivePE.
+        % ====================================================================
+        function nll = nll_mixture_integrated_subjectivePE(params, mu_hat, blocks, rewards, condiff)
+            alpha = params(1);
+            kappa = params(2);
+            sigma = params(3);
+            lambda = params(4);
+
+            nll_trial = NaN(length(mu_hat),1);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+
+            set_o = linspace(-0.1, 0.1, 20);
+            agent = Agent();
+            agent.sigma = sigma;
+
+            for n = 1:length(mu_hat)
+                if n == 1 || blocks(n) ~= blocks(n-1)
+                    q_anchor = 0.5;
+                else
+                    q_anchor = mu_hat(n-1);
+                end
+
+                p_o_given_u = fitSlider_ALLmodels.observation_weights(set_o, condiff(n), sigma);
+
+                voi_basicRL = NaN(length(set_o), 1);
+                voi_RLsigma = NaN(length(set_o), 1);
+                for i = 1:length(set_o)
+                    % Belief state at this hypothetical observation --
+                    % shared by both sub-models (pi_0/pi_1 don't depend on
+                    % which RL update rule is being evaluated).
+                    agent.p_s_giv_o(set_o(i));
+                    pi_0 = agent.pi_0;
+                    pi_1 = agent.pi_1;
+
+                    q_sim_basicRL = q_anchor;
+                    q_sim_RLsigma = q_anchor;
+                    if pi_0 >= pi_1
+                        q_sim_basicRL = q_sim_basicRL + alpha * (rewards(n) - q_sim_basicRL);
+                        q_sim_RLsigma = q_sim_RLsigma + pi_0 * alpha * (rewards(n) - q_sim_RLsigma);
+                    else
+                        q_sim_basicRL = q_sim_basicRL + alpha * ((1 - rewards(n)) - q_sim_basicRL);
+                        q_sim_RLsigma = q_sim_RLsigma + pi_1 * alpha * ((1 - rewards(n)) - q_sim_RLsigma);
+                    end
+                    voi_basicRL(i) = q_sim_basicRL;
+                    voi_RLsigma(i) = q_sim_RLsigma;
+                end
+
+                % Each sub-model marginalizes fully and independently over
+                % the observation grid...
+                q_basicRL_transformed = sum(voi_basicRL .* p_o_given_u');
+                q_RLsigma_transformed = sum(voi_RLsigma .* p_o_given_u');
+
+                % ...then the two fully-integrated beliefs are blended
+                % (GbAgent.py's compute_mixture pattern).
+                q_mixed = lambda * q_RLsigma_transformed + (1 - lambda) * q_basicRL_transformed;
+
+                a = q_mixed * kappa;
+                b = (1 - q_mixed) * kappa;
+                if a <= 0 || b <= 0
+                    fprintf('Invalid beta params at trial %d: q=%.3g, kappa=%.3g, a=%.3g, b=%.3g (alpha=%.3g, sigma=%.3g, lambda=%.3g)\n', ...
+                        n, q_mixed, kappa, a, b, alpha, sigma, lambda);
+                    a = max(eps, a);
+                    b = max(eps, b);
+                end
+
+                p = betapdf(mu_hat(n), a, b);
+                nll_trial(n) = log(p + eps);
+            end
+
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
         %  BASIC RL MODEL - GENERATIVE SIMULATION WITH ECONOMIC CHOICE,
         %  SUBJECTIVE PE, NO INTEGRATION (POINT OBSERVATION) VARIANT
         %  -------------------------------------------------------------------
@@ -1849,6 +2029,78 @@ classdef fitSlider_ALLmodels
                     if any(a <= 0 | b <= 0)
                         disp('Invalid a or b detected:');
                         disp([a(:), b(:)]);
+                        a = max(eps, a);
+                        b = max(eps, b);
+                    end
+
+                    % Log-likelihood for this trial
+                    p = betapdf(mu_hatBlocks(t), a, b);
+                    nll_trial(t,bl) = log(p + eps);
+                    mu = [mu;agent.G];
+                end
+            end
+            nll = -nansum(nll_trial,"all");
+        end
+
+        %% ===================================================================
+        %  BAYESIAN AGENT MODEL - NO INTEGRATION (POINT OBSERVATION) VARIANT
+        %  -------------------------------------------------------------------
+        %  Identical to nll_bayesianAgent, except agent.task_agent_analysis
+        %  is set to 0 instead of 1. agent.learn()'s task_agent_analysis==1
+        %  branch is what routes the belief update through Agent.
+        %  integrate_voi -- a 20-point set_o grid (agentvars.m's default
+        %  linspace(-0.1,0.1,20)) weighted by normpdf(set_o,o_t,sigma) and
+        %  marginalized, mathematically the same grid-integration mechanism
+        %  nll_basicRL_integrated/nll_RLsigma_VOI use inline. Flipping the
+        %  flag to 0 instead routes learn() through its own built-in
+        %  non-integrated path: compute_q(r_t) is called directly against
+        %  whatever pi_0/pi_1 agent.p_s_giv_o(agent.o_t) already set from
+        %  the single actually-observed condiff(t) a few lines above (no
+        %  set_o, no grid, no marginalization) -- the direct analog of
+        %  nll_basicRL_pointObs/nll_RLsigma's point-estimate belief. The
+        %  earlier p_s_giv_o/compute_valence/softmax choice steps are
+        %  unaffected either way -- they're already single-point-observation
+        %  computations in both nll_bayesianAgent and here (this model only
+        %  ever calls Agent's single-observation p_s_giv_o/compute_valence,
+        %  never its grid-integrated decide_e()).
+        %  Inputs/outputs: identical to nll_bayesianAgent.
+        % ====================================================================
+        function nll = nll_bayesianAgent_pointObs(params, mu_hat, data, nBlocks, nTrials, blocks, rewards)
+            kappa = params(1);
+            sigma = params(2);
+            nll_trial = NaN(nTrials,nBlocks);
+            eps = 1e-9;
+            mu_hat(mu_hat <= 0) = eps;
+            mu_hat(mu_hat >= 1) = 1 - eps;
+            mu = [];
+            uniqueBlocks = unique(blocks);
+            rewards = rewards;
+
+            for bl = 1:nBlocks
+                agent = Agent();
+                agent.task_agent_analysis = 0;
+                agent.confirmation_bias = 0;
+                agent.sigma = sigma;
+                dataBlocks = data(data.blocks == uniqueBlocks(bl),:);
+                choices = dataBlocks.choice;
+                condiff = dataBlocks.condiff_relative;
+                rewardsBlocks = rewards(data.blocks == uniqueBlocks(bl),:);
+                mu_hatBlocks = mu_hat(data.blocks == uniqueBlocks(bl),:);
+                for t = 1:height(dataBlocks)
+
+                    % Bayesian agent inference and learning steps
+                    agent.o_t = condiff(t);
+                    agent.p_s_giv_o(agent.o_t);
+                    agent.compute_valence();
+                    agent.softmax();
+                    agent.a_t = choices(t);
+                    agent.learn(rewardsBlocks(t));
+
+                    % Beta distribution parameters
+                    q_transformed = agent.G;
+                    a = q_transformed * kappa;
+                    b = (1 - q_transformed) * kappa;
+                    if any(a <= 0 | b <= 0)
                         a = max(eps, a);
                         b = max(eps, b);
                     end
