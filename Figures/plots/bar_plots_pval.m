@@ -107,7 +107,8 @@ if plot_err == 1
 end
 
 % ADD MEANS OF ANY OTHER DATASET (e.g., normative agent)
-if nargin > 23
+% if nargin > 23 % OLD: triggered on argument count alone, so callers passing an all-NaN varargin{4} placeholder (e.g. figure2_SM.m, figure3_SM.m) still ran this block -- with bars>1 that reruns the 'Location','best' legend search (slow with many scatter points already plotted) once per bar for nothing. See conversation.
+if nargin > 23 && any(~isnan(varargin{4}), 'all') % only run this when there's real (non-NaN) data to actually plot
     for b = 1:bars
         for i = 1:x_groups
             s = scatter(repmat(h(b).XEndPoints(i), sum(x==i),1), varargin{4}(1,i),dot_size*4, ...
