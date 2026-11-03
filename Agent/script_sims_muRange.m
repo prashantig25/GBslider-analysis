@@ -22,7 +22,7 @@ task_agent_analysis = 1; % toggle passed to task_agent_int: 1 = observation
 
 % Get the current working directory
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     disp('Current directory is already the desired path. No need to run createSavePaths.');

@@ -85,7 +85,7 @@ rng(123); % for reproducibility of the simulated choice/reward/mu_hat draws
 % PATH STUFF -- anchor all reads/writes to Agent/model fitting/, regardless
 % of MATLAB's current folder.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;

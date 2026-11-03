@@ -1,4 +1,5 @@
-% Figure 6: Summary
+% figure6.m creates Figure 6 of the manuscript which plots the salience
+% bias across the three experimental conditions. 
 
 % INITIALISE GENERAL PLOT VARS
 clc
@@ -16,13 +17,26 @@ num_conds = 3; % number of condition
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb(); % colors
 
 % directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+currentDir = cd;
+reqPath = 'GBslider-analysis'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 
-ecoperf_mix = importdata("Data/descriptive data/main study/ecoperf_mix.mat"); % economic performance for mixed condition
-ecoperf_perc = importdata("Data/descriptive data/main study/ecoperf_perc.mat");
-ecoperf_rew = importdata("Data/descriptive data/main study/ecoperf_rew.mat");
+% Base directory for data files
+base_dir = strcat(desiredPath, filesep, 'Data');
+
+% Descriptive data for the main study
+ecoperf_mix = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_mix.mat')); % economic performance for mixed condition
+ecoperf_perc = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_perc.mat'));
+ecoperf_rew = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_rew.mat'));
 
 % INITIALISE TILE LAYOUT
 

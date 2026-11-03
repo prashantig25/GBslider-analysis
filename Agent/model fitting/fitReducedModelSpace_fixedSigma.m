@@ -39,7 +39,7 @@ rng(123); % fix the random seed so starting points / shuffling are reproducible
 % fitPerceptualChoice.m saves sigma_perceptualChoice.mat, regardless of
 % MATLAB's current folder.
 currentDir = cd; % MATLAB's current working folder
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep); % split the path into its folder names
 if strcmp(pathParts{end}, reqPath) % already standing inside the repo root?
     desiredPath = currentDir;

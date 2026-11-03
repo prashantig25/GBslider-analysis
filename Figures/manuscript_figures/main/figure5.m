@@ -1,4 +1,5 @@
-% Todo: high-level summary
+% figure5.m creates Figure 5 of the manuscript which plots the relationship
+% between estimation error and fixed/flexible learning rates.
 
 % INITIALISE GENERAL PLOT VARS
 clc
@@ -10,14 +11,29 @@ font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
-lm = importdata("Data/estimation error analysis/lm_abs_esterror_signed_lr.mat"); % estimated model fit to estimation errors
-partial_rsq = importdata("Data/estimation error analysis/partialrsq_abs_esterror_signed_lr.mat"); % partial R2 values
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
 
 % directory specification
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+currentDir = cd;
+reqPath = 'GBslider-analysis'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
+
+
+% Base directory for data files
+base_dir = strcat(desiredPath, filesep, 'Data');
+
+% Estimation error analysis
+lm = importdata(strcat(base_dir, filesep, 'estimation error analysis', filesep, 'lm_abs_esterror_signed_lr.mat')); % estimated model fit to estimation errors
+partial_rsq = importdata(strcat(base_dir, filesep, 'estimation error analysis', filesep, 'partialrsq_abs_esterror_signed_lr.mat')); % partial R2 values
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
 pvals_cell = {'','','','','',''}; % initalise empty cell array to store p-values

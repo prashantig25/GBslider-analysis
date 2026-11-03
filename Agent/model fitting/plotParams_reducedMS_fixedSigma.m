@@ -21,7 +21,7 @@ clc; clearvars;
 % fitReducedModelSpace_fixedSigma.m saves its output, regardless of
 % MATLAB's current folder.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;

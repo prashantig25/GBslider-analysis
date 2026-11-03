@@ -50,7 +50,7 @@ subjective_pe = true;
 % PATH STUFF -- anchor the save location to Agent/model fitting/ so
 % recovery_ReducedModelSpace.m (same folder) can load it reliably.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;

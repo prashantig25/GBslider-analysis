@@ -1,4 +1,5 @@
-% Figure 3: Summary
+% figur3.m creates Figure 3 of the manuscript which illustrates the agent 
+% computations and plots simulations for a normative and categorical agent.
 
 % Todo: fix code, resulting figure  seems brogne
 
@@ -24,8 +25,17 @@ edge_color = 'none'; % edge color for text box
     ~,dots_edges,~,~,gray_arrow] = colors_rgb(); % colors
 
 % DIRECTORY
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+currentDir = cd;
+reqPath = 'GBslider-analysis'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 
 % AGENT RELATED VARS
@@ -281,13 +291,13 @@ box off
 % PLOT LEARNING CURVES
 
 % FOR NORMATIVE AGENT
-data_normative = readtable("data_model_ag1.xlsx");
-data_normative = data_normative(data_normative.condition == 2,:);
+data_normative = readtable("data_agent.txt");
+data_normative = data_normative(data_normative.choice_cond == 2,:);
 data_normative = data_normative(26:50,:);
 
 % FOR CATEGORICAL AGENT
-data_categorical = readtable("agent2_learning.xlsx");
-data_categorical = data_categorical(1:25,:);
+data_categorical = readtable("agent2_learning.txt");
+data_categorical = data_categorical(26:50,:);
 
 position_change = [-0.05, -0.06, 0.1, -0.02];
 new_pos = change_position(ax5,position_change);

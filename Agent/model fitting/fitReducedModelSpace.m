@@ -64,7 +64,7 @@ rng(123); % for reproducability
 % PATH STUFF -- anchor all saves/reads to Agent/model fitting/ so output
 % always lands next to this script, regardless of MATLAB's current folder.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -120,7 +120,7 @@ run_fitting = true;
 % save_dir for different folders, so a stale value can otherwise linger
 % in the workspace.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -399,7 +399,7 @@ end
 % via Run Section (a separate cell from the section's top above), see
 % Section 1's top-of-section block for the full rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -484,7 +484,7 @@ fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Both conditio
 % -- robust to jumping here directly via Run Section, see Section 1's
 % Both-condition Model comparison cell for the full rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -553,7 +553,7 @@ fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Perceptual co
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -749,7 +749,7 @@ end
 % Recompute desiredPath/save_dir fresh -- robust to jumping here directly
 % via Run Section, see Section 1's top-of-section block for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -792,7 +792,7 @@ bic_ax_both_subj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjec
 % Recompute save_dir/dataBoth/dataPerceptual/uniqueID/numSubjs fresh too
 % -- see Section 1's Both-condition Model comparison cell for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -848,7 +848,7 @@ bic_ax_perc_subj = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjec
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1121,7 +1121,7 @@ end
 % Recompute desiredPath/save_dir fresh -- robust to jumping here directly
 % via Run Section, see Section 1's top-of-section block for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1180,7 +1180,7 @@ fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Both conditio
 % Recompute save_dir/dataBoth/dataPerceptual/uniqueID/numSubjs fresh too
 % -- see Section 1's Both-condition Model comparison cell for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1242,7 +1242,7 @@ fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Perceptual co
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1435,7 +1435,7 @@ fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar w
 % Recompute desiredPath/save_dir fresh -- robust to jumping here directly
 % via Run Section, see Section 1's top-of-section block for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1474,7 +1474,7 @@ bic_ax_both_subj_noInt = fitSlider_ALLmodels.plot_fitted_params({params_basicRL_
 % Recompute save_dir/dataBoth/dataPerceptual/uniqueID/numSubjs fresh too
 % -- see Section 1's Both-condition Model comparison cell for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -1667,7 +1667,7 @@ end
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2108,7 +2108,7 @@ fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar w
 % Recompute desiredPath/save_dir fresh -- robust to jumping here directly
 % via Run Section, see Section 1's top-of-section block for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2166,7 +2166,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegratio
 % Recompute save_dir and the agent-simulation constants/model names fresh
 % too -- see Section 5's Both-condition Model comparison cell for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2202,7 +2202,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_agentSim, pa
 % Recompute save_dir and the agent-simulation constants/model names fresh
 % too -- see Section 5's Both-condition Model comparison cell for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2255,7 +2255,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegratio
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2464,7 +2464,7 @@ fitSlider_ALLmodels.progress_bar('close'); % done fitting -- close the waitbar w
 % Recompute desiredPath/save_dir fresh -- robust to jumping here directly
 % via Run Section, see Section 1's top-of-section block for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2524,7 +2524,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegratio
 % model-name/param-count constants fresh too -- see Section 6's
 % Both-condition Model comparison cell for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2562,7 +2562,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE, params_RLsi
 % model-name/param-count constants fresh too -- see Section 6's
 % Both-condition Model comparison cell for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2618,7 +2618,7 @@ fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegratio
 % Recompute desiredPath/save_dir fresh -- see Section 1's identical block
 % for why.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;
@@ -2674,7 +2674,7 @@ fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Both conditio
 % Recompute save_dir/dataBoth/dataPerceptual/uniqueID/numSubjs fresh too
 % -- see Section 1's Both-condition Model comparison cell for the rationale.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;

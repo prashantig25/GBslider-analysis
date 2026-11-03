@@ -59,7 +59,7 @@ clc; clearvars;
 % PATH STUFF -- anchor to the repo root, regardless of MATLAB's current
 % working directory.
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)';
+reqPath = 'GBslider-analysis';
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     desiredPath = currentDir;

@@ -4,7 +4,7 @@ clearvars
 AICBIC_tbl = importdata('AICBIC_integratedBoth_sigma_basicRLconfirm.mat');
 
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     disp('Current directory is already the desired path. No need to run createSavePaths.');
@@ -135,7 +135,7 @@ ylabel('Delta BIC for basic RL')
 
 % PATH STUFF
 currentDir = cd;
-reqPath = 'Reward-learning-analysis (code_review)'; % to which directory one must save in
+reqPath = 'GBslider-analysis'; % to which directory one must save in
 pathParts = strsplit(currentDir, filesep);
 if strcmp(pathParts{end}, reqPath)
     disp('Current directory is already the desired path. No need to run createSavePaths.');

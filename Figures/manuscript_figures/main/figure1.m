@@ -1,4 +1,5 @@
-% Figure 1: Summary
+% figure1.m creates Figure 1 which illustrates hypothesis 1 and 2 of the
+% manuscript.
 
 % INITIALISE VARS
 
@@ -14,8 +15,18 @@ headlength_arrow = 4; % head length for arrow
 fontsize_label = 12; % font size for subplot labels
 [pu_box,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,~,~,~,~,~,~,~,gray_arrow] = colors_rgb(); % colors
 
-current_Dir = pwd;
-save_dir = fullfile("saved_figures",filesep,"main");
+% Get the current working directory
+currentDir = cd;
+reqPath = 'GBslider-analysis'; % to which directory one must save in
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    disp('Current directory is already the desired path. No need to run createSavePaths.');
+    desiredPath = currentDir;
+else
+    % Call the function to create the desired path
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
 
 % INITIALISE TILE LAYOUT
@@ -42,7 +53,7 @@ set(ax1_new, 'YTick', [], 'XTick', [],'Color','none'); % remove tick labels
 hold on
 
 % ADD TITLEs
-h1 = sgtitle('H1: Perceptual uncertainty drives speed of learning');
+h1 = sgtitle('Perceptual uncertainty drives speed of learning');
 h1.FontName = font_name;
 h1.FontSize = font_size;
 h1.FontWeight = 'bold';
@@ -181,7 +192,7 @@ axis(ax5_new,[0 10 0 10])
 hold on
 
 % ADD TITLE
-h2 = title(ax5_new,'H2: Visual salience drives choices under reward uncertainty');
+h2 = title(ax5_new,'Visual salience drives choices under reward uncertainty');
 h2.FontName = font_name;
 h2.FontSize = font_size;
 h2.FontWeight = 'bold';
@@ -359,4 +370,4 @@ annotation("textbox",[label_x label_y .05 .05],'String', ...
 
 fig = gcf; % use `fig = gcf` ("Get Current Figure") if want to print the currently displayed figure
 fig.PaperPositionMode = 'auto'; % To make Matlab respect the size of the plot on screen
-print(fig, fullfile(save_dir,filesep,"figure1_6.png"), '-dpng', '-r1200') 
+print(fig, fullfile(save_dir,filesep,"figure1.png"), '-dpng', '-r1200') 
