@@ -37,18 +37,6 @@ lm = importdata(lm_path); % estimated model fit to estimation errors
 partial_rsq = importdata(partial_rsq_path); % partial R2 values
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
-pvals_cell = {'',''}; % initalise empty cell array to store p-values
-for p = 1:length(pvals)
-    if pvals(p) < 0.001
-        pvals_cell{p} = '\itp\rm < 0.001';
-    elseif pvals(p) < 0.01
-        pvals_cell{p} = '\itp\rm < 0.01';
-    elseif pvals(p) < 0.05 % for less than 0.05, use exact p-value
-        pvals_cell{p} = strcat("\itp\rm = ",num2str(round(pvals(p),2)));
-    else
-        pvals_cell{p} = strcat("\itp\rm = ",num2str(round(pvals(p),2)));
-    end
-end
 %% INITIALISE TILE LAYOUT
 
 figure
@@ -70,6 +58,16 @@ ylabels_variables = ["Absolute estimation error"," "," "," "," "]; % y-axis labe
 
 for v = 1:length(variables)
 
+    % FORMAT P-VALUE
+    pval = pvals(variables(v));
+    if pval < 0.001
+        pval_str = '\itp\rm < 0.001';
+    elseif pval < 0.01
+        pval_str = '\itp\rm < 0.01';
+    else
+        pval_str = strcat("\itp\rm = ",num2str(round(pval,2)));
+    end
+
     % PLOT
     hold on
     p = plotAdded(axes_variables(v),lm,[variables(v)],'Marker','o','MarkerSize', ...
@@ -90,7 +88,7 @@ for v = 1:length(variables)
     xlabel(axes_variables(v),xlabels_variables(v))
     ylabel(axes_variables(v),ylabels_variables(v))
     title(axes_variables(v),strcat("Partial \itR^2\rm =",{' '},num2str(partial_rsq(variables(v)-1),'%.3f')) + newline + strcat({' '},...
-        pvals_cell{variables(v)}), ...
+        pval_str), ...
     'FontWeight','normal','Interpreter','tex')
     adjust_figprops(axes_variables(v),font_name,font_size,line_width,xlim_vals,ylim_vals)
     box(axes_variables(v),"off")
