@@ -42,6 +42,7 @@ betas_abs = importdata(betas_abs_path); % participant betas from absolute analys
 num_subjs = 98; % number of subjects
 selected_regressors = [1,2,5,3,4]; % regressors to be plotted
 num_vars = length(selected_regressors); % number of variables
+regressor_names = {'Fixed LR','Belief-state','Salience','Congruence','Confirmation'}; % canonical regressor names, reused below for the bar labels and both correlation matrices
 xlim_vals = [0.5,5.5]; % x-limit values
 ylim_vals = [0.5,5.5]; % y-axis limit values
 colorbar_pos = [0.5,0.1,0.02,0.35]; % position for colorbar
@@ -74,7 +75,7 @@ pstars = bar_labels;
 % OTHER FIGURE PROPERTIES
 
 xticks = [1:length(selected_regressors)]; % x-axis ticks
-row1 = {'Fixed LR' 'Belief-state' 'Confirmation' 'Salience' 'Congruence'};
+row1 = regressor_names(selected_regressors); % reorders the canonical names to match selected_regressors
 row2 = {'' '-adapted LR' 'bias' '' ''};
 labelArray = [row1; row2;]; 
 xticklabs = {'','','','',''}; % x-axis tick labels
@@ -123,8 +124,8 @@ imagesc(ax3,correlation_signed) % correlation matrix
 colormap(ax3,flipud(bone)); % set colormap
 cb = colorbar(ax3); % set colorbar 
 cb.Position = colorbar_pos; % set position
-xticklabels(ax3,{'Fixed LR','Belief state','Salience','Congruence','Confirmation'}) % x-axis tick labels
-yticklabels(ax3,{'Fixed LR','Belief state','Salience','Congruence','Confirmation'}) % y-axis tick labels
+xticklabels(ax3,regressor_names) % x-axis tick labels
+yticklabels(ax3,regressor_names) % y-axis tick labels
 title(ax3,'Signed LR analysis','FontWeight','normal') % title
 adjust_figprops(ax3,font_name,font_size,line_width,xlim_vals,ylim_vals) % adjust figure properties
 box(ax3,'off')
@@ -133,7 +134,7 @@ add_corr_text(ax3,correlation_signed,font_size) % overlay correlation coefficien
 imagesc(ax4,correlation_abs)
 colormap(ax4,flipud(bone));
 adjust_figprops(ax4,font_name,font_size,line_width,xlim_vals,ylim_vals)
-xticklabels(ax4,{'Fixed LR','Belief-state','Salience','Congruence','Confirmation'})
+xticklabels(ax4,regressor_names)
 title(ax4,'Absolute LR analysis','FontWeight','normal')
 set(ax4,'YTickLabel', [])
 box(ax4,'off')
