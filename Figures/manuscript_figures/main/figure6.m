@@ -75,6 +75,13 @@ p_vals = p_vals(:,:);
 bar_labels = {'','',''};
 bar_labels = pvals_stars(p_vals,1:3,bar_labels,0);
 
+% BETWEEN-CONDITION COMPARISONS (Both vs Perceptual, Perceptual vs Reward)
+p_vals_between = NaN(1,2);
+[~,p_vals_between(1,1)] = ttest(bias_mix,bias_perc); % paired ttest, same subjects across conditions
+[~,p_vals_between(1,2)] = ttest(bias_perc,bias_rew);
+bracket_labels = {'',''};
+bracket_labels = pvals_stars(p_vals_between,1:2,bracket_labels,0);
+
 % PLOT PROPERTIES
 xticks = [1:length(mean_sd)]; % array of x-axis ticks
 colors_name = [darkblue_muted]; % colors for bars
@@ -91,11 +98,18 @@ h = bar_plots_pval(y,mean_avg,mean_sd,num_subjs,length(mean_avg),1, ...
     {},xticks,xticklabs,title_name,xlabelname,ylabelname,disp_pval,1,5,1, ... % {} = legend_names, unused since disp_legend=0 below
     font_size,line_width,font_name,0, ...
     colors_name,bar_labels(1:num_conds),y_label);
-hold on 
-h.BarWidth = 0.4; 
+hold on
+h.BarWidth = 0.4;
 ylim([-0.5,1.1])
 xlim([0.5,3.5])
 set(gca,'Color','none')
+
+% BETWEEN-CONDITION COMPARISON BRACKETS -- drawn below the single-sample
+% p-values (y_label = 1.05 above) so the two rows don't overlap
+bracket_y = 0.8; % y-axis height for comparison brackets
+bracket_tick = 0.03; % height of vertical ticks at each bracket end
+sig_bracket(1,2,bracket_y,bracket_tick,bracket_labels{1},font_size); % Both vs Perceptual
+sig_bracket(2,3,bracket_y,bracket_tick,bracket_labels{2},font_size); % Perceptual vs Reward
 
 % SAVE FIGURE
 
