@@ -73,10 +73,11 @@ data_subjs.lr = data_subjs.up./data_subjs.pe; % learning rates
 data_subjs.abs_lr = abs(data_subjs.lr); % absolute learning rates
 
 % GET RID OF TRIALS WHERE PE = 0 AND OUTLIER LRs
-run_id = data_subjs.id(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-y_data = data_subjs.lr(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-bins = bins(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-binned_data = binned_data(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
+valid_trials = data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2; % selection vector defined once and reused below instead of recomputing it on every line
+run_id = data_subjs.id(valid_trials);
+y_data = data_subjs.lr(valid_trials);
+bins = bins(valid_trials);
+binned_data = binned_data(valid_trials);
 
 % MEAN LRs for CONDIFF BINS
 avg_ydata_bins = NaN(nbins,num_subjs); 
