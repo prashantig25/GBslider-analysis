@@ -26,8 +26,13 @@ linewidth_box = 0.25; % line width for boxes
 font_size = 6; % font size
 fontsize_label = 12; % font size for subplot labels
 line_style = '-'; % line style
-[~,~,~,~,color_screen,fb_green,darkblue_muted,mix,perc,rew,~,~,~,barface_green,...
-    ~,~,~,~,~] = colors_rgb(); % colors
+color_screen = Colors.color_screen;
+fb_green = Colors.fb_green;
+darkblue_muted = Colors.darkblue_muted;
+mix = Colors.mix;
+perc = Colors.perc;
+rew = Colors.rew;
+barface_green = Colors.barface_green;
 
 % directory specification
 % Get the current working directory

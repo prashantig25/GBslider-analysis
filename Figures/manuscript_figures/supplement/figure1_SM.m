@@ -8,8 +8,14 @@ line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
-[~,high_PU,mid_PU,low_PU,~,~,darkblue_muted,~,~,~,~,light_gray,binned_dots,barface_green,...
-    ~,~,dim_gray,~,~] = colors_rgb(); % colors
+high_PU = Colors.high_PU;
+mid_PU = Colors.mid_PU;
+low_PU = Colors.low_PU;
+darkblue_muted = Colors.darkblue_muted;
+light_gray = Colors.light_gray;
+binned_dots = Colors.binned_dots;
+barface_green = Colors.barface_green;
+dim_gray = Colors.dim_gray;
 
 % PATH
 

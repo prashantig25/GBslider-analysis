@@ -70,7 +70,8 @@ else
     bestModel_files = {'bestModel_Both_multiSP.mat', 'bestModel_Perceptual_multiSP.mat'};
 end
 
-[~,~,~,~,~,~,~,mix_color,perc_color,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb();
+mix_color = Colors.mix;
+perc_color = Colors.perc;
 condition_colors = {mix_color, perc_color};
 
 %% =================== BUILD PER-CONDITION GROUP CURVES ====================

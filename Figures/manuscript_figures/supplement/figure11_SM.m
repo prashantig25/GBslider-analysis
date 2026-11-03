@@ -5,8 +5,10 @@ line_width = 0.5; % line width for axes
 font_size = 6; % font size
 font_name = 'Arial'; % font name
 linewidth_plot = 1; % line width for plot lines
-[~,~,~,~,~,~,darkblue_muted,mix,perc,rew,~,~,~,~,...
-   ~,~,~,~,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+mix = Colors.mix;
+perc = Colors.perc;
+rew = Colors.rew;
 trials = 25; % number of trials
 num_simulations = 396; % number of simulations
 num_plotted = 100; % number of simulations to be plotted

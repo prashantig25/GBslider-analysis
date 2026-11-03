@@ -4,8 +4,10 @@
 clc
 clearvars
 
-[~,~,~,~,~,~,darkblue_muted,~,~,~,gray_dots,~,~,~,...
-    reg_color,dots_edges,~,~,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+gray_dots = Colors.gray_dots;
+reg_color = Colors.reg_color;
+dots_edges = Colors.dots_edges;
 
 % PATH STUFF
 

@@ -11,7 +11,10 @@ xlim_vals = [0 1]; % x limits
 ylim_vals = [0 1.2]; % y limits
 num_subjs = 98; % number of subjects
 num_conds = 4; % number of condition
-[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,barface_green,reg_color,~,~,~,~,study2_green] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+barface_green = Colors.barface_green;
+reg_color = Colors.reg_color;
+study2_green = Colors.study2_blue;
 
 % PATH
 

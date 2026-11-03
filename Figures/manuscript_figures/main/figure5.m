@@ -11,7 +11,8 @@ font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [-0.1 1]; % x limits
 ylim_vals = [-0.1 0.8]; % y limits
-[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,reg_color,~,~,~,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+reg_color = Colors.reg_color;
 
 % directory specification
 currentDir = cd;

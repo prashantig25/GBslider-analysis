@@ -13,7 +13,7 @@ font_size = 6; % font size
 xlim_vals = [0 1]; % x limits
 ylim_vals = [0 1.2]; % y limits
 num_conds = 3; % number of condition
-[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
 
 % directory specification
 currentDir = cd;

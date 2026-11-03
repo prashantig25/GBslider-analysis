@@ -10,8 +10,9 @@ font_name = 'Arial'; % font name
 linewidth_axes = 0.5; % line width for plot lines
 fontsize_label = 12; % fontsize for subplot labels
 dot_size = 10;
-[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,barface_green,...
-    ~,~,~,fits_colors,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+barface_green = Colors.barface_green;
+fits_colors = Colors.fits_colors;
 
 % PATH 
 

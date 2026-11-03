@@ -72,7 +72,9 @@ data_dir = fullfile(desiredPath, 'Data', 'agent simulations');
 font_size = 12;
 line_width = 2;
 font_name = 'Arial';
-[~,~,~,~,~,~,~,mix_color,perc_color,~,~,~,~,~,~,~,~,~,~,study2_blue] = colors_rgb();
+mix_color = Colors.mix;
+perc_color = Colors.perc;
+study2_blue = Colors.study2_blue;
 
 conditions = [1, 2];
 true_mu = [0.7, 1]; % Agent/Task.m's taskMu: condition 1 -> 0.7, condition 2 -> 1 (rangeMu = 0)

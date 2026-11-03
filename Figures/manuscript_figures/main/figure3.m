@@ -21,8 +21,14 @@ bs_string = "BS-modulated computations";
 bg_color = 'none'; % background color for textbox
 face_alpha = 0; % face alpha for textbox
 edge_color = 'none'; % edge color for text box
-[~,high_PU,mid_PU,low_PU,color_screen,~,~,~,~,~,gray_dots,light_gray,~,~,...
-    ~,dots_edges,~,~,gray_arrow] = colors_rgb(); % colors
+high_PU = Colors.high_PU;
+mid_PU = Colors.mid_PU;
+low_PU = Colors.low_PU;
+color_screen = Colors.color_screen;
+gray_dots = Colors.gray_dots;
+light_gray = Colors.light_gray;
+dots_edges = Colors.dots_edges;
+gray_arrow = Colors.gray_arrow;
 
 % DIRECTORY
 currentDir = cd;

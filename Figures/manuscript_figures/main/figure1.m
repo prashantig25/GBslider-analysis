@@ -13,7 +13,11 @@ horz_align = 'center'; % horizontal alignment for text
 vert_align = 'middle'; % vertical alignment for text
 headlength_arrow = 4; % head length for arrow
 fontsize_label = 12; % font size for subplot labels
-[pu_box,high_PU,mid_PU,low_PU,~,~,~,~,~,~,~,~,~,~,~,~,~,~,gray_arrow] = colors_rgb(); % colors
+pu_box = Colors.pu_box;
+high_PU = Colors.high_PU;
+mid_PU = Colors.mid_PU;
+low_PU = Colors.low_PU;
+gray_arrow = Colors.gray_arrow;
 
 % Get the current working directory
 currentDir = cd;

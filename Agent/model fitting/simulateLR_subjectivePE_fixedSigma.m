@@ -104,7 +104,7 @@ title_font_size = 14; % subplot + figure titles
 sgtitle_font_size = 9;
 dot_size = 70;
 font_name = 'Arial';
-[~,~,~,~,~,~,~,~,~,~,~,~,binned_dots,~,~,~,~,~,~,~] = colors_rgb(); % binned_dots is colors_rgb's 13th output
+binned_dots = Colors.binned_dots;
 
 %% =================== SIMULATION SETTINGS =================================
 % Not fitted parameters -- fixed constants needed only to generate

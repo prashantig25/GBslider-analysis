@@ -21,8 +21,14 @@ else
 end
 save_dir = fullfile(desiredPath, filesep, "saved_figures",filesep,"main");
 mkdir(save_dir)
-[~,high_PU,mid_PU,low_PU,~,~,darkblue_muted,~,~,~,~,light_gray,binned_dots,barface_green,...
-    reg_color,~,~,~,~] = colors_rgb(); % colors
+high_PU = Colors.high_PU;
+mid_PU = Colors.mid_PU;
+low_PU = Colors.low_PU;
+darkblue_muted = Colors.darkblue_muted;
+light_gray = Colors.light_gray;
+binned_dots = Colors.binned_dots;
+barface_green = Colors.barface_green;
+reg_color = Colors.reg_color;
 
 % INITIALISE VARS
 betas_subjs = importdata(fullfile("Data",filesep,"LR analyses",filesep,"betas_signed_wo_rewunc_obj.mat")); % participant betas

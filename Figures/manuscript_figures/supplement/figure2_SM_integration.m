@@ -16,8 +16,8 @@ close all
 line_width = 0.5; % line width for axes
 font_size = 12; % font size
 font_name = 'Arial'; % font name
-[~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,...
-    ~,~,~,fits_colors,~] = colors_rgb(); % colors
+darkblue_muted = Colors.darkblue_muted;
+fits_colors = Colors.fits_colors;
 
 % PATH
 

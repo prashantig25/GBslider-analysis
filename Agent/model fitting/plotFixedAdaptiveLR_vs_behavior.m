@@ -36,7 +36,7 @@ end
 
 % Marker color -- matches the "binned analysis data" color used for
 % scatter dots elsewhere in this repo (colors_rgb's 13th output).
-[~,~,~,~,~,~,~,~,~,~,~,~,binned_dots,~,~,~,~,~,~,~] = colors_rgb();
+binned_dots = Colors.binned_dots;
 
 %% =================== LOAD BEHAVIORAL / LR MEASURES =======================
 data = importdata(fullfile(desiredPath, 'Data', 'LR analyses', 'preprocessed_data.mat'));

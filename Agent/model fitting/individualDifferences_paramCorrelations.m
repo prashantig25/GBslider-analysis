@@ -445,7 +445,7 @@ end
 %
 %  This mirrors the mean+SEM+jittered-dots convention used elsewhere in
 %  this repo (Figures/plots/bar_plots_pval.m: bar height, then scatter
-%  dots with 'XJitter','randn', then errorbar, using colors_rgb()'s
+%  dots with 'XJitter','randn', then errorbar, using Colors'
 %  gray_dots/dots_edges for the dots) -- implemented directly here rather
 %  than via that helper, since bar_plots_pval.m assumes every group has
 %  the same number of data points (n) sharing one x-axis (a within-subject
@@ -485,7 +485,8 @@ else % no_integration, objective PE, fixed-sigma pipeline (no agent variant ther
 end
 conditions = {'Both', 'Perceptual'};
 
-[~,~,~,~,~,~,~,mix_color,perc_color,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb();
+mix_color = Colors.mix;
+perc_color = Colors.perc;
 condition_colors = {mix_color, perc_color};
 
 % model_names_subjectivePE = {'basicRL_subjectivePE','RLsigma_subjectivePE'}
