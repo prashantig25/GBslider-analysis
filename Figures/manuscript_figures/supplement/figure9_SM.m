@@ -59,14 +59,7 @@ ylabels_variables = ["Absolute estimation error"," "," "," "," "]; % y-axis labe
 for v = 1:length(variables)
 
     % FORMAT P-VALUE
-    pval = pvals(variables(v));
-    if pval < 0.001
-        pval_str = '\itp\rm < 0.001';
-    elseif pval < 0.01
-        pval_str = '\itp\rm < 0.01';
-    else
-        pval_str = strcat("\itp\rm = ",num2str(round(pval,2)));
-    end
+    pval_str = format_pval(pvals(variables(v)));
 
     % PLOT
     hold on

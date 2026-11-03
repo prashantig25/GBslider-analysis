@@ -36,18 +36,6 @@ lm = importdata(strcat(base_dir, filesep, 'estimation error analysis', filesep, 
 partial_rsq = importdata(strcat(base_dir, filesep, 'estimation error analysis', filesep, 'partialrsq_abs_esterror_signed_lr.mat')); % partial R2 values
 
 pvals = lm.Coefficients.pValue; % get p-vals for estimated coefficients
-pvals_cell = {'','','','','',''}; % initalise empty cell array to store p-values
-for p = 1:length(pvals)
-    if pvals(p) < 0.001
-        pvals_cell{p} = '\itp\rm < 0.001';
-    elseif pvals(p) < 0.01
-        pvals_cell{p} = '\itp\rm < 0.01';
-    elseif pvals(p) < 0.05 % for less than 0.05, use exact p-value
-        pvals_cell{p} = strcat("\itp\rm = ",num2str(round(pvals(p),2)));
-    else
-        pvals_cell{p} = strcat("\itp\rm = ",num2str(round(pvals(p),2)));
-    end
-end
 
 % INITIALISE TILE LAYOUT
 
@@ -68,6 +56,9 @@ xlabels_variables = ["Fixed LR","Belief-state-adapted LR","Confirmation bias","S
 ylabels_variables = ["Absolute estimation error"," "," "," "," "]; % y-axis labels
 
 for v = 1:length(variables)
+    % FORMAT P-VALUE
+    pval_str = format_pval(pvals(variables(v)));
+
     hold on
     p = plotAdded(axes_variables(v),lm,[variables(v)],'Marker','o','MarkerSize', ...
         3,'MarkerFaceColor',[220, 220, 220]./255, ...
@@ -87,7 +78,7 @@ for v = 1:length(variables)
     xlabel(axes_variables(v),xlabels_variables(v))
     ylabel(axes_variables(v),ylabels_variables(v))
     title(axes_variables(v),strcat("Partial \itR^2\rm =",{' '},num2str(partial_rsq(variables(v)-1),'%.3f')) + newline + strcat({' '},...
-        pvals_cell{variables(v)}), ...
+        pval_str), ...
     'FontWeight','normal','Interpreter','tex')
     adjust_figprops(axes_variables(v),font_name,font_size,line_width,xlim_vals,ylim_vals)
     box(axes_variables(v),"off")

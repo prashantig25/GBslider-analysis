@@ -26,15 +26,7 @@ function bar_labels = pvals_stars(p_vals,selected_regressors,bar_labels,stars)
         end
     else % display p-values to indicate significance
         for i = 1:numel(bar_labels)
-            if p_vals_regressor(:,i) < 0.001
-                bar_labels{:,i} = "\itp\rm < 0.001";
-            elseif p_vals_regressor(:,i) < 0.01
-                bar_labels{:,i} = "\itp\rm < 0.01";
-            elseif p_vals_regressor(:,i) < 0.05
-                bar_labels{:,i} = strcat("\itp\rm = ",num2str(round(p_vals_regressor(:,i),2)));
-            elseif p_vals_regressor(:,i) > 0.05
-                bar_labels{:,i} = strcat("\itp\rm = ",num2str(round(p_vals_regressor(:,i),2)));
-            end
+            bar_labels{:,i} = format_pval(p_vals_regressor(:,i));
         end
     end
 end
