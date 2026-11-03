@@ -39,7 +39,7 @@ betas_abs_path = fullfile(baseDir, 'betas_abs_wo_rewunc_obj.mat');
 
 betas_signed = importdata(betas_signed_path); % participant betas from signed analysis
 betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
-num_subjs = 98; % number of subjects
+num_subjs = size(betas_signed,1); % number of subjects, extracted from the data instead of hardcoded
 selected_regressors = [1,2,5,3,4]; % regressors to be plotted
 num_vars = length(selected_regressors); % number of variables
 regressor_names = {'Fixed LR','Belief-state','Salience','Congruence','Confirmation'}; % canonical regressor names, reused below for the bar labels and both correlation matrices

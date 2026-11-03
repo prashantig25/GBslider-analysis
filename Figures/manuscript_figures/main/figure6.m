@@ -12,7 +12,6 @@ font_name = 'Arial'; % font name
 font_size = 6; % font size
 xlim_vals = [0 1]; % x limits
 ylim_vals = [0 1.2]; % y limits
-num_subjs = 98; % number of subjects
 num_conds = 3; % number of condition
 [~,~,~,~,~,~,darkblue_muted,~,~,~,~,~,~,~,~,~,~,~,~] = colors_rgb(); % colors
 
@@ -37,6 +36,7 @@ base_dir = strcat(desiredPath, filesep, 'Data');
 ecoperf_mix = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_mix.mat')); % economic performance for mixed condition
 ecoperf_perc = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_perc.mat'));
 ecoperf_rew = importdata(strcat(base_dir, filesep, 'descriptive data', filesep, 'main study', filesep, 'ecoperf_rew.mat'));
+num_subjs = size(ecoperf_mix,1); % number of subjects, extracted from the data instead of hardcoded
 
 % INITIALISE TILE LAYOUT
 
@@ -107,8 +107,8 @@ set(gca,'Color','none')
 % BETWEEN-CONDITION COMPARISON LINES -- drawn below the single-sample
 % p-values (y_label = 1.05 above) so the two rows don't overlap
 comparison_y = 0.8; % y-axis height for comparison lines
-sig_line(1,2,comparison_y,comparison_labels{1},font_size); % Both vs Perceptual
-sig_line(2,3,comparison_y,comparison_labels{2},font_size); % Perceptual vs Reward
+sig_line(1,1.95,comparison_y,comparison_labels{1},font_size); % Both vs Perceptual
+sig_line(2.05,3,comparison_y,comparison_labels{2},font_size); % Perceptual vs Reward
 
 % SAVE FIGURE
 

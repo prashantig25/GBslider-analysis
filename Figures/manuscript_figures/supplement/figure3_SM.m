@@ -39,7 +39,7 @@ betas_signed = importdata(betas_signed_path); % participant betas from signed an
 betas_abs = importdata(betas_abs_path); % participant betas from absolute analysis
 betas_signed_salience = importdata(betas_signed_salience_path); % participant betas from signed analysis of salience bias in learning
 betas_abs_salience = importdata(betas_abs_salience_path); % participant betas from absolute analysis of salience bias in learning
-num_subjs = 98; % number of subjects
+num_subjs = size(betas_signed,1); % number of subjects, extracted from the data instead of hardcoded
 selected_regressors = [1,2,6,3,4,5]; % list of regressors
 
 % INITIALISE TILE LAYOUT

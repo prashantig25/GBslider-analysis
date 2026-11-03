@@ -37,7 +37,7 @@ data_subjs_path = fullfile(baseDir, 'preprocessed_data.xlsx');
 rsquared_full = importdata(rsquared_full_path); % r-squared values
 posterior_up_subjs = importdata(posterior_up_subjs_path); % posterior updates
 data_subjs = readtable(data_subjs_path); % single-trial updates, prediction errors
-num_subjs = 98; % number of subjects
+num_subjs = length(rsquared_full); % number of subjects, extracted from the data instead of hardcoded
 
 % INITIALISE TILE LAYOUT
 

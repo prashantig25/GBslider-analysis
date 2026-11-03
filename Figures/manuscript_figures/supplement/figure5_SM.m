@@ -32,11 +32,11 @@ mkdir(save_dir)
 
 data_subjs = importdata(strcat(desiredPath, filesep, "Data", filesep, "LR analyses", filesep, "preprocessed_data.mat")); % single-trial updates, prediction errors
 data_subjs.id = data_subjs.ID;
-num_subjs = 98; % number of subjects
 
 % SET VARIABLES TO RUN THE FUNCTION
 
 id_subjs = unique(data_subjs.id); % list of subject-IDs
+num_subjs = length(id_subjs); % number of subjects, extracted from the data instead of hardcoded
 model3 = 'up ~ pe + pe:contrast_diff + pe:salience +pe:congruence + pe:pe_sign'; % model
 mdl = model3; % which regression model
 pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_unc','subj_est_unc' ...
