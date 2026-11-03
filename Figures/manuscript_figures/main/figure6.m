@@ -82,14 +82,13 @@ y_label = repelem(1.05,num_conds,1); % y-axis position for p-val stars
 disp_pval = 1; % whether to display p-val stars
 xticklabs = {'Both','Perceptual','Reward'}; % x-axis tick labels
 title_name = {''}; % title string for plot
-legend_names = {'Low-contrast blocks','High-contrast blocks'}; % legend names
 xlabelname = {'Type of uncertainty'}; % x-axis label
 ylabelname = {'Salience bias'}; % y-axis label
 
 ax1 = nexttile(1,[1,1]);
 hold on
 h = bar_plots_pval(y,mean_avg,mean_sd,num_subjs,length(mean_avg),1, ...
-    legend_names,xticks,xticklabs,title_name,xlabelname,ylabelname,disp_pval,1,5,1, ...
+    {},xticks,xticklabs,title_name,xlabelname,ylabelname,disp_pval,1,5,1, ... % {} = legend_names, unused since disp_legend=0 below
     font_size,line_width,font_name,0, ...
     colors_name,bar_labels(1:num_conds),y_label);
 hold on 
