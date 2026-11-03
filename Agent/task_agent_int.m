@@ -14,6 +14,26 @@ function [data_int] = task_agent_int(taskCond,agentnum,rangeMu,task_agent_analys
 %          (normrnd(c_t,sigma)), and decisions are drawn probabilistically
 %          from the resulting belief states (a genuine stochastic
 %          simulation)
+%   varargin{1}: sigma (optional, overrides Agent's default perceptual
+%                sensitivity -- only applied if varargin{2} is also given)
+%   varargin{2}: beta (optional, overrides Agent's default softmax
+%                inverse temperature -- only applied if varargin{1} is
+%                also given)
+%   varargin{3}: numTrials (optional, overrides taskvars.m's default
+%                trial-per-block count (T = 25) -- only usable alongside
+%                varargin{1}/varargin{2}, since there is currently no
+%                caller that needs numTrials without also overriding
+%                sigma/beta)
+%   varargin{4}: evalAna (optional, overrides agentvars.m's default
+%                eval_ana = 1, i.e. the analytical polynomial belief
+%                update via Agent.eval_poly). That path evaluates a
+%                polynomial (Agent.c_t) whose degree grows by 1 every
+%                trial with no cap, via raw monomial-basis polyint/
+%                polyval -- numerically unstable once degree climbs into
+%                the dozens, so long blocks (e.g. 1000 trials) need
+%                evalAna = 0 to route through the numerical (mu_for_ev-
+%                based) approximation instead. Only usable alongside
+%                varargin{1}/varargin{2}/varargin{3}.
 %
 % OUTPUT:
 %   data_int: simulated interaction stored in a table
@@ -28,9 +48,15 @@ agent.condition = taskCond; % similarly for the agent
 agent.agent = agentnum; % add the agent type
 
 task.taskMu(rangeMu);
-if nargin > 4
+if length(varargin) >= 2
     agent.getSigma(varargin{1});
     agent.getBeta(varargin{2});
+end
+if length(varargin) >= 3
+    task.T = varargin{3}; % override the default 25-trial block length
+end
+if length(varargin) >= 4
+    agent.eval_ana = varargin{4}; % override the default analytical polynomial belief update
 end
 
 % NUMBER OF TRIALS

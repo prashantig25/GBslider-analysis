@@ -25,6 +25,28 @@ blocks = repelem(1:nBlocks, block_size)'; % create blocks
 p_reward_correct = 0.7;   % state-action reward contingency (all three models)
 beta = 3;                 % fixed softmax inverse-temperature for basicRL/RLsigma only
 
+% subjective_pe toggles which PE (prediction-error) definition's choice
+% data gets simulated, for basicRL/RLsigma only -- bayesianAgent has no
+% subjective-PE variant, so its whole section is skipped when true (see
+% fitReducedModelSpace_fixedSigma.m's "SUBJECTIVE PE VARIANT (BOTH)"
+% design notes for the full objective-vs-subjective-PE rationale).
+%   false (default) - objective PE: simulate_basicRL_integrated_choice /
+%                      simulate_RLsigma_integrated_choice. The belief
+%                      carried forward trial-to-trial is a clean latent
+%                      q_0_0, deterministic given parameters/rewards --
+%                      the Beta-sampled report is a one-off output that
+%                      never feeds back into the belief update.
+%   true             - subjective PE: simulate_basicRL_integrated_choice_
+%                      subjectivePE / simulate_RLsigma_integrated_choice_
+%                      subjectivePE. The belief carried forward is this
+%                      synthetic subject's own previous SIMULATED report
+%                      (mu_hat(n-1)) -- noise compounds across a block,
+%                      since each trial's anchor is itself a random draw
+%                      from the previous trial.
+% Saved under separate _subjectivePE-suffixed filenames so toggling this
+% doesn't collide with the objective-PE simdata files.
+subjective_pe = true;
+
 % PATH STUFF -- anchor the save location to Agent/model fitting/ so
 % recovery_ReducedModelSpace.m (same folder) can load it reliably.
 currentDir = cd;
@@ -60,21 +82,35 @@ mu_hat_all = NaN(n_trials, n_parameters);
 choice_all = NaN(n_trials, n_parameters);
 reward_all = NaN(n_trials, n_parameters);
 for p = 1:n_parameters
-    [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
-        fitSlider_ALLmodels.simulate_basicRL_integrated_choice( ...
-        [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    if subjective_pe
+        [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
+            fitSlider_ALLmodels.simulate_basicRL_integrated_choice_subjectivePE( ...
+            [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    else
+        [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
+            fitSlider_ALLmodels.simulate_basicRL_integrated_choice( ...
+            [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    end
+end
+
+if subjective_pe
+    basicRL_tag = 'basicRL subjectivePE';
+    basicRL_filename = 'simdata_basicRL_subjectivePE_choice_recovery.mat';
+else
+    basicRL_tag = 'basicRL';
+    basicRL_filename = 'simdata_basicRL_choice_recovery.mat';
 end
 
 % print a quick summary before looking at the plots - remove this
 % eventually
-fprintf('[basicRL] beta=%.1f, p_reward_correct=%.2f, %d parameter sets x %d trials\n', ...
-    beta, p_reward_correct, n_parameters, n_trials);
-fprintf('[basicRL] Overall choice accuracy, pooled across parameter sets: %.3f\n', ...
-    mean(choice_all(:) == repmat(state, n_parameters, 1)));
+fprintf('[%s] beta=%.1f, p_reward_correct=%.2f, %d parameter sets x %d trials\n', ...
+    basicRL_tag, beta, p_reward_correct, n_parameters, n_trials);
+fprintf('[%s] Overall choice accuracy, pooled across parameter sets: %.3f\n', ...
+    basicRL_tag, mean(choice_all(:) == repmat(state, n_parameters, 1)));
 
 % sanity-check plots: does accuracy/mu_hat look sensible within a block? -
 % remove this eventually
-plot_choice_sanity_checks(choice_all, mu_hat_all, state, block_size, nBlocks, n_parameters, 'basicRL');
+plot_choice_sanity_checks(choice_all, mu_hat_all, state, block_size, nBlocks, n_parameters, basicRL_tag);
 
 % package everything needed to refit this model and save it
 save_data = struct();
@@ -89,8 +125,8 @@ save_data.condiff = condiff;
 save_data.mu_hat = mu_hat_all;
 save_data.choice = choice_all;
 save_data.reward = reward_all;
-safe_saveall(fullfile(save_dir, 'simdata_basicRL_choice_recovery.mat'), save_data);
-fprintf('[basicRL] Saved %d simulated parameter sets to simdata_basicRL_choice_recovery.mat\n', n_parameters);
+safe_saveall(fullfile(save_dir, basicRL_filename), save_data);
+fprintf('[%s] Saved %d simulated parameter sets to %s\n', basicRL_tag, n_parameters, basicRL_filename);
 
 %% =================== RL + EST SENSITIVITY (RLsigma) ======================
 rng(123); % reset seed so this section's draws are reproducible on their own
@@ -115,20 +151,34 @@ mu_hat_all = NaN(n_trials, n_parameters);
 choice_all = NaN(n_trials, n_parameters);
 reward_all = NaN(n_trials, n_parameters);
 for p = 1:n_parameters
-    [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
-        fitSlider_ALLmodels.simulate_RLsigma_integrated_choice( ...
-        [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    if subjective_pe
+        [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
+            fitSlider_ALLmodels.simulate_RLsigma_integrated_choice_subjectivePE( ...
+            [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    else
+        [mu_hat_all(:,p), choice_all(:,p), reward_all(:,p), ~] = ...
+            fitSlider_ALLmodels.simulate_RLsigma_integrated_choice( ...
+            [alphaTrue(p), kappaTrue(p), sigmaTrue(p)], blocks, state, condiff, beta, p_reward_correct);
+    end
+end
+
+if subjective_pe
+    RLsigma_tag = 'RLsigma subjectivePE';
+    RLsigma_filename = 'simdata_RLsigma_subjectivePE_choice_recovery.mat';
+else
+    RLsigma_tag = 'RLsigma';
+    RLsigma_filename = 'simdata_RLsigma_choice_recovery.mat';
 end
 
 % print a quick summary before looking at the plots - remove eventually
-fprintf('[RLsigma] beta=%.1f, p_reward_correct=%.2f, %d parameter sets x %d trials\n', ...
-    beta, p_reward_correct, n_parameters, n_trials);
-fprintf('[RLsigma] Overall choice accuracy (choice == state), pooled across parameter sets: %.3f\n', ...
-    mean(choice_all(:) == repmat(state, n_parameters, 1)));
+fprintf('[%s] beta=%.1f, p_reward_correct=%.2f, %d parameter sets x %d trials\n', ...
+    RLsigma_tag, beta, p_reward_correct, n_parameters, n_trials);
+fprintf('[%s] Overall choice accuracy (choice == state), pooled across parameter sets: %.3f\n', ...
+    RLsigma_tag, mean(choice_all(:) == repmat(state, n_parameters, 1)));
 
 % sanity-check plots: does accuracy/mu_hat look sensible within a block? -
 % remove eventually
-plot_choice_sanity_checks(choice_all, mu_hat_all, state, block_size, nBlocks, n_parameters, 'RLsigma');
+plot_choice_sanity_checks(choice_all, mu_hat_all, state, block_size, nBlocks, n_parameters, RLsigma_tag);
 
 % package everything needed to refit this model and save it
 save_data = struct();
@@ -143,10 +193,16 @@ save_data.condiff = condiff;
 save_data.mu_hat = mu_hat_all;
 save_data.choice = choice_all;
 save_data.reward = reward_all;
-safe_saveall(fullfile(save_dir, 'simdata_RLsigma_choice_recovery.mat'), save_data);
-fprintf('[RLsigma] Saved %d simulated parameter sets to simdata_RLsigma_choice_recovery.mat\n', n_parameters);
+safe_saveall(fullfile(save_dir, RLsigma_filename), save_data);
+fprintf('[%s] Saved %d simulated parameter sets to %s\n', RLsigma_tag, n_parameters, RLsigma_filename);
 
 %% =================== BAYESIAN AGENT ======================================
+%  Skipped entirely when subjective_pe is true -- bayesianAgent has no
+%  subjective-PE variant (no simulate_bayesianAgent_integrated_choice_
+%  subjectivePE, no nll_bayesianAgent_subjectivePE), so there's nothing to
+%  simulate here for that toggle state.
+if ~subjective_pe
+
 rng(123); % reset seed so this section's draws are reproducible on their own
 
 % true hidden state per trial, and perceptual evidence (condiff)
@@ -196,6 +252,8 @@ save_data.choice = choice_all;
 save_data.reward = reward_all;
 safe_saveall(fullfile(save_dir, 'simdata_bayesianAgent_choice_recovery.mat'), save_data);
 fprintf('[bayesianAgent] Saved %d simulated parameter sets to simdata_bayesianAgent_choice_recovery.mat\n', n_parameters);
+
+end % ~subjective_pe (BAYESIAN AGENT)
 
 %% ========================================================================
 %  Local function: choice/mu_hat sanity-check plots - REMOVE EVENTUALLY !!!

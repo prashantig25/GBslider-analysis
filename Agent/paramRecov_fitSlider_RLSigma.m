@@ -1,0 +1,177 @@
+% Parameter Recovery Script
+clc
+clearvars
+
+% Number of parameters
+n_parameters = 100;
+
+% Number of starting points
+n_startingPoints = 30;
+
+% Define true parameters
+true_alpha = unifrnd(0,0.3,[n_parameters,1]);
+true_kappa = unifrnd(1,20,[n_parameters,1]); % We'll keep this fixed for simplicity
+true_sigma = unifrnd(0,0.1,[n_parameters,1]);
+
+% Number of simulations
+n_simulations = 1;
+
+% Number of trials in each simulation
+n_trials = 500;
+
+options = optimoptions('fmincon', 'Display', 'off', 'Algorithm', 'interior-point');
+
+% Initial parameter guesses
+initAlpha = unifrnd(0,0.3,[n_parameters,n_startingPoints]); % [alpha, beta]
+initKappa = unifrnd(0,20,[n_parameters,n_startingPoints]); % [alpha, beta]
+initSigma = unifrnd(0,0.1,[n_parameters,n_startingPoints]);
+lb = [0, 1, 0]; % Lower bounds (alpha, beta must be >= 0)
+ub = [0.3, 100, 0.1]; % Upper bounds (alpha <= 1, beta reasonable range)
+
+% Arrays to store best recovered parameters
+best_recovered_alphas = NaN(n_parameters,1);
+best_recovered_kappas = NaN(n_parameters,1);
+best_recovered_sigmas = NaN(n_parameters,1);
+best_nlls = Inf(n_parameters,1); % Start with Inf to track the minimum
+
+% Arrays to store recovered parameters
+recovered_alphas = NaN(n_startingPoints, n_parameters);
+recovered_kappas = NaN(n_startingPoints, n_parameters);
+recovered_sigmas = NaN(n_startingPoints, n_parameters);
+nllAll = NaN(n_startingPoints,n_parameters);
+
+for p = 1:n_parameters
+
+    for sp = 1:n_startingPoints
+
+                % GENERATE SIMULATED DATA
+        rewards = [double(rand(1,n_trials./2) < 0.7),double(rand(1,n_trials./2) < 0.9)];
+        state = double(rand(1,n_trials) < 0.5);
+        condiff = NaN();
+        for s = 1:length(state)
+            if state(s) == 0
+                condiff(s) = unifrnd(-0.08,0,1);
+            else
+                condiff(s) = unifrnd(0,0.08,1);
+            end
+        end
+
+        blocks_all = [];
+        for nb = 1:n_trials./25
+            blocks_all = [repelem(nb,25), blocks_all];
+        end
+        [mu_hat] = simulate_dataSliderFit_RLSigma(true_kappa(p), blocks_all, rewards, true_alpha(p), state, condiff, true_sigma(p));
+
+
+        % Optimize using fmincon
+        %         options = optimset('Display', 'iter');
+        options = optimoptions('fmincon', ...
+            'Display', 'off', ...
+            'Algorithm', 'active-set', ...
+            'FiniteDifferenceType', 'central', ...
+            'MaxIterations', 500, ...
+            'FunctionTolerance', 1e-4);
+        [recovered_params,nll] = fmincon(@(params) nll_fitSlider_RLsigma([params(1), params(2), params(3)], mu_hat, blocks_all, rewards, condiff), ...
+            [initAlpha(p,sp), initKappa(p,sp), initSigma(p,sp)], [], [], [], [], lb, ub, [], options);
+
+        % Store recovered parameters
+        recovered_alphas(sp,p) = recovered_params(1);
+        recovered_kappas(sp,p) = recovered_params(2);
+        recovered_sigmas(sp,p) = recovered_params(3);
+
+        nllAll(sp,p) = nll;
+
+        % Check if this is the best solution so far
+        if nll < best_nlls(p)
+            best_nlls(p) = nll;
+            best_recovered_alphas(p) = recovered_params(1);
+            best_recovered_kappas(p) = recovered_params(2);
+            best_recovered_sigmas(p) = recovered_params(3);
+        end
+
+        fprintf('Currently processing: Parameter %d/%d, Starting Point %d/%d\n', ...
+                p, n_parameters, sp, n_startingPoints);
+    end
+
+end
+
+
+% alphas_to_test = linspace(0, 1, 100);
+% betas_to_test = linspace(1, 5, 100);
+% nll_surface = NaN(length(alphas_to_test), length(betas_to_test));
+%
+% for i = 1:length(alphas_to_test)
+%     for j = 1:length(betas_to_test)
+%         nll_surface(i, j) = neg_log_likelihood([alphas_to_test(i), betas_to_test(j)], choices, rewards, states);
+%     end
+% end
+%
+% figure;
+% surf(alphas_to_test, betas_to_test, nll_surface');
+% xlabel('Alpha'); ylabel('Beta'); zlabel('NLL');
+
+% Plot results
+color = lines(2);
+color = color(2,:);
+figure
+hold on
+scatter(true_alpha, best_recovered_alphas, "filled", "o", "MarkerEdgeColor", ...
+    color, 'MarkerFaceColor', color, 'MarkerFaceAlpha', 0.4, SizeData=50)
+lsline
+xlabel('True alpha')
+ylabel('Best recovered alpha')
+title('RL Sigma')
+
+figure
+hold on
+scatter(true_kappa, best_recovered_kappas, "filled", "o", "MarkerEdgeColor", ...
+    color, 'MarkerFaceColor', color, 'MarkerFaceAlpha', 0.4, SizeData=50)
+lsline
+xlabel('True kappa')
+ylabel('Best recovered kappa')
+title('RL Sigma')
+
+figure
+hold on
+scatter(true_sigma, best_recovered_sigmas, "filled", "o", "MarkerEdgeColor", ...
+    color, 'MarkerFaceColor', color, 'MarkerFaceAlpha', 0.4, SizeData=50)
+lsline
+xlabel('True sigma')
+ylabel('Best recovered sigma')
+title('RL Sigma')
+
+% Print summary statistics
+% fprintf('Mean True Alpha: %.2f, Mean Best Recovered Alpha: %.2f\n', mean(true_alpha), mean(best_recovered_alphas));
+% fprintf('Mean True Beta: %.2f, Mean Best Recovered Beta: %.2f\n', mean(true_beta), mean(best_recovered_kappas));
+
+%%
+
+sigmas_to_test = linspace(0,0.5,100);
+nll_curve = zeros(size(sigmas_to_test));
+for i = 1:length(sigmas_to_test)
+    nll_curve(i) = nll_fitSlider_RLsigma([true_alpha(1), true_kappa(1), sigmas_to_test(i)], mu_hat, blocks_all, rewards, condiff);
+end
+figure; plot(sigmas_to_test, nll_curve);
+xlabel('Sigma'); ylabel('NLL'); title('NLL as a function of Sigma');
+
+
+%%
+figure
+hold on
+scatter(true_alpha,nanmean(recovered_alphas,1),"filled","o","MarkerEdgeColor",'k','MarkerFaceColor','b','MarkerFaceAlpha',0.4)
+lsline
+xlabel('True alpha')
+ylabel('Recovered alpha')
+title('Starting beta ([0,2])')
+
+figure
+hold on
+scatter(true_beta,nanmean(recovered_kappas,1))
+lsline
+xlabel('True beta')
+ylabel('Recovered beta')
+title('Starting beta ([0,2])')
+
+% Print summary statistics
+% fprintf('True Alpha: %.2f, Mean Recovered Alpha: %.2f, SD: %.2f\n', true_alpha, mean(recovered_alphas), std(recovered_alphas));
+% fprintf('True Beta: %.2f, Mean Recovered Beta: %.2f, SD: %.2f\n', true_beta, mean(recovered_betas), std(recovered_betas));

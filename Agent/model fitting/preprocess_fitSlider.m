@@ -3,8 +3,8 @@ function subj = preprocess_fitSlider(data, subjID, pupil, requireMuHat)
     % requireMuHat (optional, default true) -- drop trials with NaN
     % mu_hat. Models that fit mu_hat (the RL/Bayesian slider models) need
     % this; the perceptual-choice model only uses choice/condiff/blocks,
-    % so fitPerceptualChoice.m passes requireMuHat = false to keep trials
-    % with a valid choice but a missing slider (mu) response.
+    % so the perceptual-sigma fit passes requireMuHat = false to keep
+    % trials with a valid choice but a missing slider (mu) response.
     if nargin < 4
         requireMuHat = true;
     end

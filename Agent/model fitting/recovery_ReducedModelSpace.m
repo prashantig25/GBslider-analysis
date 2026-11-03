@@ -23,7 +23,29 @@ block_size = 25;   % trials per block (task design; matches all three loaded dat
 %                      optimized; recovered_sigma is just set equal to
 %                      sigmaTrue and its recovery plot is skipped, since
 %                      sigma was never fit.
-fix_sigma = false;
+fix_sigma = true;
+
+% subjective_pe toggles which PE (prediction-error) definition's simulated
+% data gets refit, for basicRL/RLsigma only -- bayesianAgent has no
+% subjective-PE variant, so its whole section is skipped when true (see
+% fitReducedModelSpace_fixedSigma.m's "SUBJECTIVE PE VARIANT (BOTH)"
+% design notes for the full objective-vs-subjective-PE rationale).
+%   false (default) - objective PE: refits nll_basicRL_integrated /
+%                      nll_RLsigma_VOI against simdata_*_choice_
+%                      recovery.mat (debug_choice_simulation_ALLmodels.m's
+%                      objective-PE simulation).
+%   true             - subjective PE: refits nll_basicRL_integrated_
+%                      subjectivePE / nll_RLsigma_VOI_subjectivePE against
+%                      simdata_*_subjectivePE_choice_recovery.mat
+%                      (debug_choice_simulation_ALLmodels.m's
+%                      subjective_pe=true simulation).
+% Subjective-PE fits only exist for the fixed-sigma pipeline
+% (fitReducedModelSpace_fixedSigma.m) -- fitReducedModelSpace.m (free
+% sigma) has no subjective-PE fitting block, hence the assertion below.
+subjective_pe = true;
+assert(fix_sigma || ~subjective_pe, ...
+    ['subjective_pe=true requires fix_sigma=true -- there is no free-sigma ' ...
+    'subjective-PE fit to recover.']);
 
 % Shared fmincon options for every multi-start fit in this script
 optimOptions = optimoptions('fmincon', ...
@@ -57,7 +79,12 @@ ub_basicRL = [1, 100, 0.1];
 % safe_saveall stores the struct under the variable name 'newData' (its
 % own parameter name), not the caller's variable name -- so load() wraps
 % it one level deeper than a plain save() would.
-loaded_basicRL = load(fullfile(desiredPath, 'Agent', 'model fitting', 'simdata_basicRL_choice_recovery.mat'));
+if subjective_pe
+    basicRL_simdata_file = 'simdata_basicRL_subjectivePE_choice_recovery.mat';
+else
+    basicRL_simdata_file = 'simdata_basicRL_choice_recovery.mat';
+end
+loaded_basicRL = load(fullfile(desiredPath, 'Agent', 'model fitting', basicRL_simdata_file));
 simdata_basicRL = loaded_basicRL.newData;
 alphaTrue_basicRL = simdata_basicRL.alphaTrue;
 kappaTrue_basicRL = simdata_basicRL.kappaTrue;
@@ -110,8 +137,13 @@ parfor p = 1:n_parameters
     for sp = 1:n_startingPoints
         if fix_sigma
             init_params = [initAlpha_basicRL(p, sp), initKappa_basicRL(p, sp)];
-            nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated( ...
-                [params(1), params(2), sigmaTrue_basicRL(p)], mu_hat, blocks_basicRL, recoded_reward, condiff_basicRL);
+            if subjective_pe
+                nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated_subjectivePE( ...
+                    [params(1), params(2), sigmaTrue_basicRL(p)], mu_hat, blocks_basicRL, recoded_reward, condiff_basicRL);
+            else
+                nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated( ...
+                    [params(1), params(2), sigmaTrue_basicRL(p)], mu_hat, blocks_basicRL, recoded_reward, condiff_basicRL);
+            end
         else
             init_params = [initAlpha_basicRL(p, sp), initKappa_basicRL(p, sp), initSigma_basicRL(p, sp)];
             nll_fun = @(params) fitSlider_ALLmodels.nll_basicRL_integrated( ...
@@ -136,11 +168,17 @@ parfor p = 1:n_parameters
     fprintf('[basicRL] parameter set %d/%d recovered\n', p, n_parameters);
 end
 
+if subjective_pe
+    basicRL_title_tag = 'basicRL (subjective PE)';
+else
+    basicRL_title_tag = 'basicRL';
+end
+
 % Recovered-vs-true scatter plot for each free parameter
-plot_recovery(alphaTrue_basicRL, recovered_alpha, 'basicRL: Alpha Recovery');
-plot_recovery(kappaTrue_basicRL, recovered_kappa, 'basicRL: Kappa Recovery');
+plot_recovery(alphaTrue_basicRL, recovered_alpha, sprintf('%s: Alpha Recovery', basicRL_title_tag));
+plot_recovery(kappaTrue_basicRL, recovered_kappa, sprintf('%s: Kappa Recovery', basicRL_title_tag));
 if ~fix_sigma
-    plot_recovery(sigmaTrue_basicRL, recovered_sigma, 'basicRL: Sigma Recovery');
+    plot_recovery(sigmaTrue_basicRL, recovered_sigma, sprintf('%s: Sigma Recovery', basicRL_title_tag));
 end
 
 %% =================== RL + EST SENSITIVITY MODEL (RLsigma) ===============
@@ -153,7 +191,12 @@ ub_RLsigma = [1, 100, 0.1];
 % (see design note 2) rather than regenerated here, so it's loaded once
 % and reused as-is -- no per-condition regeneration, since RLsigma's
 % fitting function has no condition-dependent behavior (see design note 4).
-loaded_RLsigma = load(fullfile(desiredPath, 'Agent', 'model fitting', 'simdata_RLsigma_choice_recovery.mat'));
+if subjective_pe
+    RLsigma_simdata_file = 'simdata_RLsigma_subjectivePE_choice_recovery.mat';
+else
+    RLsigma_simdata_file = 'simdata_RLsigma_choice_recovery.mat';
+end
+loaded_RLsigma = load(fullfile(desiredPath, 'Agent', 'model fitting', RLsigma_simdata_file));
 simdata_RLsigma = loaded_RLsigma.newData;
 alphaTrue_RLsigma = simdata_RLsigma.alphaTrue;
 kappaTrue_RLsigma = simdata_RLsigma.kappaTrue;
@@ -206,8 +249,13 @@ parfor p = 1:n_parameters
     for sp = 1:n_startingPoints
         if fix_sigma
             init_params = [initAlpha_RLsigma(p, sp), initKappa_RLsigma(p, sp)];
-            nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI( ...
-                [params(1), params(2), sigmaTrue_RLsigma(p)], mu_hat, blocks_RLsigma, recoded_reward, condiff_RLsigma);
+            if subjective_pe
+                nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI_subjectivePE( ...
+                    [params(1), params(2), sigmaTrue_RLsigma(p)], mu_hat, blocks_RLsigma, recoded_reward, condiff_RLsigma);
+            else
+                nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI( ...
+                    [params(1), params(2), sigmaTrue_RLsigma(p)], mu_hat, blocks_RLsigma, recoded_reward, condiff_RLsigma);
+            end
         else
             init_params = [initAlpha_RLsigma(p, sp), initKappa_RLsigma(p, sp), initSigma_RLsigma(p, sp)];
             nll_fun = @(params) fitSlider_ALLmodels.nll_RLsigma_VOI( ...
@@ -232,13 +280,25 @@ parfor p = 1:n_parameters
     fprintf('[RLsigma] parameter set %d/%d recovered\n', p, n_parameters);
 end
 
-plot_recovery(alphaTrue_RLsigma, recovered_alpha, 'RLsigma: Alpha Recovery');
-plot_recovery(kappaTrue_RLsigma, recovered_kappa, 'RLsigma: Kappa Recovery');
+if subjective_pe
+    RLsigma_title_tag = 'RLsigma (subjective PE)';
+else
+    RLsigma_title_tag = 'RLsigma';
+end
+
+plot_recovery(alphaTrue_RLsigma, recovered_alpha, sprintf('%s: Alpha Recovery', RLsigma_title_tag));
+plot_recovery(kappaTrue_RLsigma, recovered_kappa, sprintf('%s: Kappa Recovery', RLsigma_title_tag));
 if ~fix_sigma
-    plot_recovery(sigmaTrue_RLsigma, recovered_sigma, 'RLsigma: Sigma Recovery');
+    plot_recovery(sigmaTrue_RLsigma, recovered_sigma, sprintf('%s: Sigma Recovery', RLsigma_title_tag));
 end
 
 %% =================== BAYESIAN AGENT MODEL ================================
+%  Skipped entirely when subjective_pe is true -- bayesianAgent has no
+%  subjective-PE variant (no simulate_bayesianAgent_integrated_choice_
+%  subjectivePE, no nll_bayesianAgent_subjectivePE), so there's nothing to
+%  recover here for that toggle state.
+if ~subjective_pe
+
 % Bounds match fitReducedModelSpace.m's "BAYESIAN AGENT MODEL" section
 % exactly: params = [kappa, sigma]
 lb_bayesianAgent = [1, 0];
@@ -333,6 +393,8 @@ plot_recovery(kappaTrue_bayesianAgent, recovered_kappa, 'BayesianAgent: Kappa Re
 if ~fix_sigma
     plot_recovery(sigmaTrue_bayesianAgent, recovered_sigma, 'BayesianAgent: Sigma Recovery');
 end
+
+end % ~subjective_pe (BAYESIAN AGENT MODEL)
 
 %% ========================================================================
 %  Local function: recovered-vs-true scatter plot

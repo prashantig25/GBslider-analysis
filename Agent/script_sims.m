@@ -127,3 +127,83 @@ simulations_condition2_stochastic.congruence = repmat(congruence_stochastic,num_
 
 simulations_stochastic = [simulations_condition1_stochastic; simulations_condition2_stochastic];
 safe_saveall(fullfile(save_dir,'data_agent_noInt.txt'),simulations_stochastic);
+
+%% SIMULATE LONG BLOCKS ACROSS SIGMA VALUES, WITH AND WITHOUT INTEGRATION (EVAL_ANA = 0)
+% One long, single-block (num_trials_long-trial) simulation per
+% combination of sigma (perceptual sensitivity) x condition (true mu),
+% run once WITH integration (task_agent_analysis = 1) and once WITHOUT
+% (task_agent_analysis = 0), to compare belief (mu) and choice behavior
+% between the two observation-handling mechanisms over a long horizon,
+% independent of the short 25-trial block-reset structure used above.
+% contrast/congruence are not meaningful for this single continuous long
+% block (unlike the four distinct short blocks above), so they are left
+% unset (NaN, task_agent_int.m's own default) here.
+% eval_ana_long = 0 here: the numerical (mu_for_ev-based) belief update --
+% a fixed-size histogram reweighted each trial, not a growing polynomial,
+% so it stays numerically stable over long blocks. See the eval_ana=1
+% section below for the alternative and task_agent_int.m's header for the
+% full rationale.
+num_trials_long = 1000; % trials in the single long block
+num_blocks_long = 1;    % one long block per simulation (not num_blocks's four short ones)
+num_sims_long = 30;     % fewer than num_sims=300 above -- this sweep already multiplies sims by 5 sigmas x 2 conditions x 2 integration settings; raise if more precision is needed
+sigma_values_long = [0.02, 0.04, 0.06, 0.08, 0.1];
+conditions_long = [1, 2]; % condition 1 -> true mu 0.7, condition 2 -> true mu 1 (rangeMu = 0, same mapping as the rest of this script)
+beta_long = 100; % Agent's own default (agentvars.m) -- only sigma is swept here, beta held fixed
+agent_long = 1; % normative agent
+eval_ana_long = 0;
+
+for task_agent_analysis_long = [1]
+    simulations_long = [];
+    for sigma_long = sigma_values_long
+        for condition_long = conditions_long
+            sim_chunk = [];
+            [sim_chunk] = run_simulations(num_sims_long,num_blocks_long,sim_chunk,condition_long,agent_long,0,task_agent_analysis_long,sigma_long,beta_long,num_trials_long,eval_ana_long); % use run simulations function -- num_trials_long overrides taskvars.m's default 25-trial block length, eval_ana_long routes around the unstable high-degree analytical polynomial path
+            sim_chunk.sigma = repmat(sigma_long,height(sim_chunk),1);
+            sim_chunk.choice_cond = repmat(condition_long,height(sim_chunk),1);
+            simulations_long = [simulations_long; sim_chunk];
+        end
+    end
+    if task_agent_analysis_long == 1
+        safe_saveall(fullfile(save_dir,'data_agent_longBlocks_withInt_evalAna0_increasedRange.txt'),simulations_long);
+    else
+        safe_saveall(fullfile(save_dir,'data_agent_longBlocks_noInt_evalAna0_increasedRange.txt'),simulations_long);
+    end
+end
+
+%% SIMULATE LONG BLOCKS ACROSS SIGMA VALUES, WITH AND WITHOUT INTEGRATION (EVAL_ANA = 1)
+% Same as the eval_ana=0 section above, except eval_ana_long = 1 here:
+% Agent's own default (agentvars.m's eval_ana=1) -- the analytical
+% polynomial belief update. NOTE: this path's polynomial degree grows by
+% 1 every trial with no cap, which empirically became numerically
+% unstable somewhere between 50 and 75 trials in this exact simulation
+% (see conversation) -- at large num_trials_long values this section is
+% very likely to crash (Task/reward_sample indexing error) rather than
+% complete. Kept as its own section (rather than a toggle) specifically
+% so that crash doesn't block the eval_ana=0 section above from running
+% and saving its own data.
+num_trials_long = 40;
+num_blocks_long = 1;
+num_sims_long = 30;
+sigma_values_long = [0.02, 0.04, 0.06, 0.08, 0.1];
+conditions_long = [1, 2];
+beta_long = 100;
+agent_long = 1;
+eval_ana_long = 1;
+
+parfor task_agent_analysis_long = [0, 1]
+    simulations_long = [];
+    for sigma_long = sigma_values_long
+        for condition_long = conditions_long
+            sim_chunk = [];
+            [sim_chunk] = run_simulations(num_sims_long,num_blocks_long,sim_chunk,condition_long,agent_long,0,task_agent_analysis_long,sigma_long,beta_long,num_trials_long,eval_ana_long); % use run simulations function
+            sim_chunk.sigma = repmat(sigma_long,height(sim_chunk),1);
+            sim_chunk.choice_cond = repmat(condition_long,height(sim_chunk),1);
+            simulations_long = [simulations_long; sim_chunk];
+        end
+    end
+    if task_agent_analysis_long == 1
+        safe_saveall(fullfile(save_dir,'data_agent_longBlocks_withInt_evalAna1.txt'),simulations_long);
+    else
+        safe_saveall(fullfile(save_dir,'data_agent_longBlocks_noInt_evalAna1.txt'),simulations_long);
+    end
+end

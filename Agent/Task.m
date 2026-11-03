@@ -16,10 +16,28 @@ classdef Task < taskvars
 
     methods
 
-        function obj = Task()
-            % The contructor methods initialises all other properties of
-            % the class that are computed based on exisitng static properties of
-            % the class.
+        function taskMu(obj, rangeMu)
+            % function taskMu re-initialises the mu property according to
+            % the experimental condition.
+            %
+            % INPUT:
+            %   obj: current object
+            
+            if obj.condition == 1 || obj.condition == 3 % condition dependent contingency parameter
+                obj.mu = 0.7;
+            elseif obj.condition == 2 || obj.condition == 4
+                obj.mu = 1;
+            elseif obj.condition == 9
+                obj.mu = 0.6;
+            elseif obj.condition == 6
+                obj.mu = 0.8;
+            elseif obj.condition == 7
+                obj.mu = 0.9;
+            end
+
+            if rangeMu == 1
+                obj.mu = 0.6 + (0.95 - 0.6) * rand;
+            end
 
             obj.p_cs = NaN(length(obj.C), 2);
             obj.p_cs(:, 1) = (obj.C < 0) ./ sum(obj.C < 0);  % p(c_t|s_t = 0)
@@ -31,16 +49,12 @@ classdef Task < taskvars
         end
 
         function state_sample(obj)
-            % function state_sample samples a trial's state from a binomial
-            % distribution.
+            % function state_sample samples a trial's state (obj.s_t) 
+            % from a binomial distribution and an index to generate rewards and contrast
+            % difference.
             %
             % INPUT:
             %   obj: current object
-            %
-            % OUTPUT:
-            %   s_t: trial state
-            %   s_index: index to generate rewards and contrast
-            %   difference
 
             obj.s_t = binornd(1, obj.Theta); % sample state from binomial distribution
             obj.s_index = obj.s_t + 1; % s_index because s_t can't be used for indexing in MATLAB
@@ -48,13 +62,10 @@ classdef Task < taskvars
 
         function contrast_sample(obj)
             % function contrast_sample samples the trial's state dependent contrast
-            % difference level.
+            % difference level (obj.c_t)
             %
             % INPUT:
             %   obj: current object
-            %
-            % OUTPUT:
-            %   c_t: state dependent contrast difference
 
             p_cs_giv_s = obj.p_cs(:, obj.s_index);  % contrast differences conditional on state
             s_cs_giv_s = mnrnd(1, p_cs_giv_s, 1); % sample contrast difference
@@ -63,15 +74,12 @@ classdef Task < taskvars
         end
 
         function reward_sample(obj,a_t)
-            % function reward_sample samples the trial's action dependent reward for that
-            % trial.
+            % function reward_sample samples the trial's action dependent reward 
+            % (obj.r_t) for that trial.
             %
             % INPUT:
             %   obj: current object
             %   a_t: agent's action
-            %
-            % OUTPUT:
-            %   r_t: state and action dependent reward
 
             obj.s_index = obj.s_t + 1; % s_index because s_t can't be used for indexing in MATLAB
             obj.a_index = a_t + 1; % a_index because a_t can't be used for indexing in MATLAB

@@ -1,0 +1,66 @@
+clc
+clearvars
+
+data = importdata("preprocessed_dataFitting.mat");
+blocks = data.blocks;
+state = data.state;
+subjIDs = unique(data.ID);
+numSubjs = length(subjIDs);
+%
+% mu_hat = rand(height(data),1);
+
+% INITIALIZE
+kappa = randi([1, 100], 1, 50);
+n_blocks = 12;
+trials_per_block = 25;
+alpha = 0.1;
+
+% Set up a range of kappa values to test
+kappa_grid = linspace(1, 100, 100); % or use your actual bounds
+
+% Fix alpha and beta at reasonable values (e.g., from your initial guess or previous fits)
+alpha_fixed = 0.1;
+
+nll_vals = NaN(length(kappa_grid),numSubjs);
+
+figure("Position",[200,200,800,500])
+hold on 
+for n = 1:25%numSubjs
+    % mu_hatSubj = mu_hat(data.ID == subjIDs(n));
+    % mu_hatSubj = mu_hatSubj(~isnan(mu_hatSubj));
+
+    dataSubj = data(data.ID == subjIDs(n),:);
+
+    for h = 1:height(dataSubj)
+        if dataSubj.contrast(h) == 0
+            rewards(h) = dataSubj.recoded_reward(h);%(dataSubj.blocks == 1); % Vector of outcomes
+        else
+            rewards(h) = 1-dataSubj.recoded_reward(h);%(dataSubj.blocks == 1); % Vector of outcomes
+        end
+    end
+    
+    blocks = dataSubj.blocks;
+    state = dataSubj.state;
+
+    % SIMULATE
+    [trueMU] = simulate_fixed_kappa(kappa(n), n_blocks, trials_per_block, blocks, rewards, alpha, state);
+    mu_hatSubj = trueMU;
+
+    for i = 1:length(kappa_grid)
+        params = [alpha_fixed, kappa_grid(i)];
+        nll_vals(i,n) = nll_fitSlider(params, mu_hatSubj, blocks, state, rewards); % mu_hat is your data
+    end
+
+    subplot(5,5,n)
+    hold on
+    plot(kappa_grid, nll_vals(:,n), 'LineWidth', 1, 'Color', 'b');
+    hold on
+    scatter(kappa_grid(kappa_grid == kappa(n)),nll_vals(kappa(n),n),"filled", ...
+        "o","MarkerEdgeColor",'k','MarkerFaceColor',[1,0.7,0.4],'MarkerFaceAlpha',0.7,'SizeData',80)
+    xlabel('\kappa');
+    ylabel('Negative Log-Likelihood');
+    title('Likelihood Surface for \kappa');
+    grid on;
+end
+
+

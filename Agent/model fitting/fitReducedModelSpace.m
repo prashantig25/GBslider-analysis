@@ -33,6 +33,17 @@
 %  to real subject data, both integrated and no-integration, and runs a
 %  3-way comparison against Section 2's/4's pure basicRL_subjectivePE and
 %  RLsigma_subjectivePE fits.
+%  A seventh section runs a 3-way comparison across sections: Section 4's
+%  basicRL_subjectivePE_noIntegration and RLsigma_subjectivePE_noIntegration
+%  (no integration, subjective PE) against Section 1's
+%  BayesianAgent_integrated (with integration). No new fitting happens
+%  there -- it only reloads each model's already-saved NLL/params and runs
+%  its own AIC/BIC/BMS/family-wise comparison, mirroring Section 1's
+%  structure. bayesianAgent has no subjective-PE variant (see Sections 2/4
+%  above), so this is not a PE-type-matched comparison -- it answers "does
+%  the best no-integration RL account of the subject's own slider report
+%  beat the normative with-integration Bayesian account" rather than
+%  isolating integration as the only difference.
 %  bayesianAgent appears in Sections 1 and 3 (objective PE, integrated and
 %  no-integration respectively) but not 2/4 -- it has no subjective-PE
 %  variant (its belief update isn't a simple alpha-driven delta rule). It
@@ -2579,3 +2590,132 @@ disp('basicRL vs RLsigma vs mixture AIC/BIC estimated and saved (Perceptual, no 
 
 fitSlider_ALLmodels.plot_model_comparison(AICBIC_mixtureComp_noInt_table, bestModel_mixtureComp_noInt_table, BMS_mixtureComp_noInt_table, model_names_mixtureComp_noInt, 'Perceptual condition, Subjective PE, No Integration (incl. Mixture)');
 fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegration, params_RLsigma_subjectivePE_noIntegration, params_mixture_subjectivePE_noIntegration}, model_names_mixtureComp_noInt, AICBIC_mixtureComp_noInt_table, 'Perceptual condition, Subjective PE, No Integration (incl. Mixture)', 'sigma (fitted)');
+
+%% ========================================================================
+%  SECTION 7: SUBJECTIVE PE, NO-INTEGRATION RL MODELS VS. INTEGRATED
+%  BAYESIAN AGENT
+%  ------------------------------------------------------------------------
+%  3-way comparison across basicRL (no integration), RLsigma (no
+%  integration), and the normative Bayesian Agent (WITH integration):
+%    - basicRL_subjectivePE_noIntegration, RLsigma_subjectivePE_noIntegration
+%      -- Section 4's point-observation, subjective-PE (mu_hat(n-1)-anchored)
+%      fits.
+%    - BayesianAgent_integrated -- Section 1's with-integration fit. No
+%      subjective-PE variant exists for the Bayesian Agent (its belief
+%      update isn't a simple alpha-driven delta rule -- see Sections 2/4
+%      headers), so its own internally-tracked belief is used as-is. This
+%      makes the comparison "best no-integration RL account of the
+%      subject's own slider report" vs. "best with-integration normative
+%      account", not a PE-type-matched test that isolates integration
+%      alone.
+%  No new fitting happens here -- all three models' NLL/params were
+%  already fit above (Sections 1 and 4); this section only reloads them
+%  from disk and runs its own AIC/BIC/BMS/family-wise comparison,
+%  mirroring Section 1's/3's 3-model structure (family split: Basic RL
+%  alone vs. the two belief-modulation models).
+%  ========================================================================
+
+% Recompute desiredPath/save_dir fresh -- see Section 1's identical block
+% for why.
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)';
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    desiredPath = currentDir;
+else
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
+[dataBoth, dataPerceptual, uniqueID, numSubjs] = fitSlider_ALLmodels.load_fitting_data();
+
+%% --- Both condition ---
+nll_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_subjectivePE_noIntegration_Both_multiSP.mat"));
+nll_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat"));
+nll_bayesianAgent_integrated = importdata(fullfile(save_dir, "nll_bayesianAgent_integratedBoth_multiSP.mat"));
+params_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_basicRL_subjectivePE_noIntegration_Both_multiSP.mat"));
+params_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_subjectivePE_noIntegration_Both_multiSP.mat"));
+params_bayesianAgent_integrated = importdata(fullfile(save_dir, "params_bayesianAgent_integratedBoth_multiSP.mat"));
+
+disp('Computing AIC and BIC for basicRL (no int) vs RLsigma (no int) vs BayesianAgent (with int), subjective PE (Both)...');
+num_trials_both = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_both(n) = length(preprocess_fitSlider(dataBoth, uniqueID(n)).mu_hat);
+end
+num_params_noIntVsInt = [3, 3, 2]; % basicRL_subjectivePE_noIntegration, RLsigma_subjectivePE_noIntegration, BayesianAgent_integrated
+model_names_noIntVsInt = {'basicRL_subjectivePE_noIntegration','RLsigma_subjectivePE_noIntegration','BayesianAgent_integrated'};
+[AICBIC_noIntVsInt_table, bestModel_noIntVsInt_table, BMS_noIntVsInt_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE_noIntegration, nll_RLsigma_subjectivePE_noIntegration, nll_bayesianAgent_integrated], model_names_noIntVsInt, num_params_noIntVsInt, num_trials_both, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_noIntVsInt_subjectivePE_Both_reducedMS_multiSP.mat'), AICBIC_noIntVsInt_table);
+safe_saveall(fullfile(save_dir, 'bestModel_noIntVsInt_subjectivePE_Both_multiSP.mat'), bestModel_noIntVsInt_table);
+disp('basicRL (no int) vs RLsigma (no int) vs BayesianAgent (with int) AIC/BIC estimated and saved (Both).');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_noIntVsInt_table, bestModel_noIntVsInt_table, BMS_noIntVsInt_table, model_names_noIntVsInt, 'Both condition, Subjective PE: No-Int RL vs With-Int Agent');
+fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegration, params_RLsigma_subjectivePE_noIntegration, params_bayesianAgent_integrated}, model_names_noIntVsInt, AICBIC_noIntVsInt_table, 'Both condition, Subjective PE: No-Int RL vs With-Int Agent', 'sigma (fitted)');
+
+% Family-wise Model Comparison (see Section 1 for the full rationale):
+% Basic RL alone vs. the two belief-modulation models (RLsigma no-int,
+% BayesianAgent with-int).
+BIC_matrix = [AICBIC_noIntVsInt_table.BIC_basicRL_subjectivePE_noIntegration, ...
+                  AICBIC_noIntVsInt_table.BIC_RLsigma_subjectivePE_noIntegration, ...
+                  AICBIC_noIntVsInt_table.BIC_BayesianAgent_integrated];
+lme = -0.5 * BIC_matrix;
+family_names = {'Basic_RL', 'LR_Modulation'};
+families{1} = [1];
+families{2} = [2, 3];
+
+fprintf('Running family-wise model comparison (no-int RL vs with-int Agent, Both)...\n');
+[results_summary, posterior, out] = fitSlider_ALLmodels.compute_family_model_comparison(lme, families, family_names, model_names_noIntVsInt);
+save(fullfile(save_dir, 'family_wise_BMS_results_noIntVsInt_subjectivePE_both_multiSP.mat'), 'results_summary', 'posterior', 'out');
+fprintf('\nResults saved to: family_wise_BMS_results_noIntVsInt_subjectivePE_both_multiSP.mat\n');
+
+fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Both condition, Subjective PE: No-Int RL vs With-Int Agent');
+
+%% --- Perceptual condition ---
+% Recompute save_dir/dataBoth/dataPerceptual/uniqueID/numSubjs fresh too
+% -- see Section 1's Both-condition Model comparison cell for the rationale.
+currentDir = cd;
+reqPath = 'Reward-learning-analysis (code_review)';
+pathParts = strsplit(currentDir, filesep);
+if strcmp(pathParts{end}, reqPath)
+    desiredPath = currentDir;
+else
+    desiredPath = createSavePaths(currentDir, reqPath);
+end
+save_dir = fullfile(desiredPath, 'Agent', 'model fitting');
+[dataBoth, dataPerceptual, uniqueID, numSubjs] = fitSlider_ALLmodels.load_fitting_data();
+
+nll_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+nll_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "nll_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+nll_bayesianAgent_integrated = importdata(fullfile(save_dir, "nll_bayesianAgent_integratedPerceptual_multiSP.mat"));
+params_basicRL_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_basicRL_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+params_RLsigma_subjectivePE_noIntegration = importdata(fullfile(save_dir, "params_RLsigma_subjectivePE_noIntegration_Perceptual_multiSP.mat"));
+params_bayesianAgent_integrated = importdata(fullfile(save_dir, "params_bayesianAgent_integratedPerceptual_multiSP.mat"));
+
+disp('Computing AIC and BIC for basicRL (no int) vs RLsigma (no int) vs BayesianAgent (with int), subjective PE (Perceptual)...');
+num_trials_perceptual = NaN(numSubjs, 1);
+for n = 1:numSubjs
+    num_trials_perceptual(n) = length(preprocess_fitSlider(dataPerceptual, uniqueID(n)).mu_hat);
+end
+[AICBIC_noIntVsInt_table, bestModel_noIntVsInt_table, BMS_noIntVsInt_table] = fitSlider_ALLmodels.compute_model_comparison( ...
+    [nll_basicRL_subjectivePE_noIntegration, nll_RLsigma_subjectivePE_noIntegration, nll_bayesianAgent_integrated], model_names_noIntVsInt, num_params_noIntVsInt, num_trials_perceptual, uniqueID);
+safe_saveall(fullfile(save_dir, 'AICBIC_noIntVsInt_subjectivePE_Perceptual_reducedMS_multiSP.mat'), AICBIC_noIntVsInt_table);
+safe_saveall(fullfile(save_dir, 'bestModel_noIntVsInt_subjectivePE_Perceptual_multiSP.mat'), bestModel_noIntVsInt_table);
+disp('basicRL (no int) vs RLsigma (no int) vs BayesianAgent (with int) AIC/BIC estimated and saved (Perceptual).');
+
+fitSlider_ALLmodels.plot_model_comparison(AICBIC_noIntVsInt_table, bestModel_noIntVsInt_table, BMS_noIntVsInt_table, model_names_noIntVsInt, 'Perceptual condition, Subjective PE: No-Int RL vs With-Int Agent');
+fitSlider_ALLmodels.plot_fitted_params({params_basicRL_subjectivePE_noIntegration, params_RLsigma_subjectivePE_noIntegration, params_bayesianAgent_integrated}, model_names_noIntVsInt, AICBIC_noIntVsInt_table, 'Perceptual condition, Subjective PE: No-Int RL vs With-Int Agent', 'sigma (fitted)');
+
+BIC_matrix = [AICBIC_noIntVsInt_table.BIC_basicRL_subjectivePE_noIntegration, ...
+                  AICBIC_noIntVsInt_table.BIC_RLsigma_subjectivePE_noIntegration, ...
+                  AICBIC_noIntVsInt_table.BIC_BayesianAgent_integrated];
+lme = -0.5 * BIC_matrix;
+family_names = {'Basic_RL', 'LR_Modulation'};
+families{1} = [1];
+families{2} = [2, 3];
+
+fprintf('Running family-wise model comparison (no-int RL vs with-int Agent, Perceptual)...\n');
+[results_summary, posterior, out] = fitSlider_ALLmodels.compute_family_model_comparison(lme, families, family_names, model_names_noIntVsInt);
+save(fullfile(save_dir, 'family_wise_BMS_results_noIntVsInt_subjectivePE_perceptual_multiSP.mat'), 'results_summary', 'posterior', 'out');
+fprintf('\nResults saved to: family_wise_BMS_results_noIntVsInt_subjectivePE_perceptual_multiSP.mat\n');
+
+fitSlider_ALLmodels.plot_family_model_comparison(results_summary, 'Perceptual condition, Subjective PE: No-Int RL vs With-Int Agent');

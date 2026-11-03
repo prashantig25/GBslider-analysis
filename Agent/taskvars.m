@@ -4,7 +4,7 @@ classdef taskvars < handle
 
     properties 
         T = 25 % number of trials
-        B = 396 % number of blocks  Todo: realistic value
+        B = 1 % number of blocks  Todo: realistic value
         Theta = 0.5 % parameter for sampling the state of the trial
         mu % contingency parameter
         condition = 1 % experimental condition i.e. both = 1....none = 4
