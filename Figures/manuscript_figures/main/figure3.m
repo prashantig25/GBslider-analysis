@@ -164,7 +164,7 @@ ylim = [0,1.3];
 xlim = [0.5,2.5];
 adjust_figprops(ax2_new,font_name,font_size,line_width,xlim,ylim)
 title({'Belief state (BS)'},'FontWeight','normal')
-xlabel({'Belief-state uncertainty'})
+xlabel({'State uncertainty'})
 set(ax2_new,'XTicklabels',["","Low","","High"],'YColor','none')
 box off
 hold on
@@ -227,7 +227,7 @@ ylim = [0,1.1];
 xlim;
 adjust_figprops(ax3_new,font_name,font_size,line_width,xlim,ylim)
 title({'Expected value (EV)'},'FontWeight','normal')
-xlabel({'Belief-state uncertainty'})
+xlabel({'State uncertainty'})
 set(ax3_new,'XTicklabels',["","Low","","High"],'YColor','K')
 box off
 hold on
@@ -283,7 +283,7 @@ ylim = [-1 1];
 adjust_figprops(ax4_new,font_name,font_size,line_width,xlim,ylim)
 title('Update','FontWeight','normal')
 xlabel({'Prediction error'})
-l1 = legend('Low BS uncertainty','High BS uncertainty','Location','best','Color','none', ...
+l1 = legend('Low State uncertainty','High State uncertainty','Location','best','Color','none', ...
     'EdgeColor','none','AutoUpdate','off');
 l1.ItemTokenSize = [5, 5];
 box off
