@@ -44,7 +44,6 @@ pred_vars = {'pe','salience','contrast_diff','congruence','condition','reward_un
 resp_var = 'up'; % name of response variable
 cat_vars = {'salience','congruence','condition','reward_unc','pe_sign'}; % cell array with names of categorical variables
 num_vars = 5; % number of predictor vars
-res_subjs = []; % empty array to store residuals
 weight_y_n = 0; % non-weighted regression
 subjs = [15,23,40]; % example participants
 
@@ -59,17 +58,23 @@ t.Padding = 'compact';
 % PLOT
 
 axes_list = [];
+lm_subjs = cell(1,3); % store each participant's fitted model and table to reuse below instead of fitting again
+tbl_subjs = cell(1,3);
 for i = 1:3
-    
-    % FIT MODEL
-    data = data_subjs(data_subjs.id == id_subjs(subjs(i)),:);
-    tbl = table(data.pe,data.up, round(data.norm_condiff), data.contrast,...
+
+    % FIT MODEL -- excludes pe == 0 trials and rounds norm_condiff to 2
+    % decimal places, matching the convention used elsewhere (figure4.m,
+    % figure1_SM.m) for this same model
+    data = data_subjs(data_subjs.id == id_subjs(subjs(i)) & data_subjs.pe ~= 0,:);
+    tbl = table(data.pe,data.up, round(data.norm_condiff,2), data.contrast,...
             data.choice_cond,data.congruence,data.reward_unc,data.pe_sign,...
             'VariableNames',{'pe','up','contrast_diff','salience','condition','congruence' ...
             ,'reward_unc','pe_sign'});
     [betas,rsquared,residuals,coeffs_name,lm] = linear_fit(tbl,mdl,pred_vars,resp_var, ...
     cat_vars,num_vars,weight_y_n);
-    
+    lm_subjs{i} = lm;
+    tbl_subjs{i} = tbl;
+
     % PLOT ADDED VARIABLE PLOT
     axes = nexttile(i,[1,1]);
     p = plotAdded(lm,[2,3,4,5,6],'Marker','o','MarkerSize',3,'MarkerEdgeColor', ...
@@ -99,11 +104,10 @@ end
 
 for i = 1:3
 
-    % GET EMPIRICAL and POSTERIOR UPDATES
-    [betas_all,rsquared_full,residuals_reg,coeffs_name,h_vals,p_vals,t_vals,posterior_up_subjs] = get_coeffs(data_subjs, ...
-        mdl,pred_vars,resp_var,cat_vars,num_vars,res_subjs,subjs(i),weight_y_n);
+    % GET EMPIRICAL and POSTERIOR UPDATES -- reuses the model already fit
+    % in the loop above instead of fitting it again via get_coeffs
     y = data_subjs.up(data_subjs.pe ~= 0 & data_subjs.id == id_subjs(subjs(i)));
-    y_hat = posterior_up_subjs;
+    y_hat = predict(lm_subjs{i},tbl_subjs{i});
 
     % PLOT
     axes = nexttile(i+3,[1,1]);
