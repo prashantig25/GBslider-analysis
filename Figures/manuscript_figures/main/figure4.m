@@ -67,33 +67,15 @@ delete(ax1); % delete old axis
 % INITIALISE VARS TO BE PLOTTED
 binned_data = abs(data_subjs.con_diff_choice); % absolute contrast difference
 nbins = 10; % number of bins
-bin_edges = prctile(binned_data, 0:10:100); % calculate percentile edges
-bins = discretize(binned_data, bin_edges); % bin contrast differences 
 data_subjs.lr = data_subjs.up./data_subjs.pe; % learning rates
 data_subjs.abs_lr = abs(data_subjs.lr); % absolute learning rates
 
 % GET RID OF TRIALS WHERE PE = 0 AND OUTLIER LRs
 valid_trials = data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2; % selection vector defined once and reused below instead of recomputing it on every line
-run_id = data_subjs.id(valid_trials);
-y_data = data_subjs.lr(valid_trials);
-bins = bins(valid_trials);
-binned_data = binned_data(valid_trials);
 
-% MEAN LRs for CONDIFF BINS
-avg_ydata_bins = NaN(nbins,num_subjs); 
-avg_behv_bins = NaN(nbins,num_subjs); 
-for b = 1:nbins % run for each bin
-    for n = 1:num_subjs % run for each subject
-        bins_subj = bins(run_id == id_subjs(n)); 
-        y_data_subj = y_data(run_id == id_subjs(n)); % data from that bin for that subject
-        binned_data_subj = binned_data(run_id == id_subjs(n)); % binned data for that subject
-        avg_behv_bins(b,n) = nanmean(binned_data_subj(bins_subj == b)); 
-        avg_ydata_bins(b,n) = nanmean(y_data_subj(bins_subj == b)); % mean of that data within that bin per subject
-    end
-end
-avg_ydata = nanmean(avg_ydata_bins,2); 
-avg_binneddata = nanmean(avg_behv_bins,2);
-sem_ydata = nanstd(avg_ydata_bins,0,2)./sqrt(num_subjs);
+% MEAN LRs for CONDIFF BINS -- shared binning/averaging logic lives in
+% Figures/utilities/binned_analysis.m so figure1_SM.m can reuse it too
+[avg_ydata,avg_binneddata,sem_ydata] = binned_analysis(binned_data,data_subjs.lr,data_subjs.id,valid_trials,id_subjs,num_subjs,nbins);
 
 % PLOT
 s1 = scatter(1:nbins,avg_ydata,"filled",'MarkerEdgeColor',"none",'MarkerFaceColor',"none");

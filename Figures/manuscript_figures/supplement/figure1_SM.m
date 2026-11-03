@@ -79,34 +79,17 @@ box(ax1,"off");
 
 binned_data = abs(data_subjs.pe); % absolute contrast difference
 nbins = 10; % number of bins
-bin_edges = prctile(binned_data, 0:10:100); % calculate percentile edges
-bins = discretize(binned_data, bin_edges); % bin contrast differences 
 data_subjs.lr = data_subjs.up./data_subjs.pe; % learning rates
 data_subjs.abs_lr = abs(data_subjs.lr); % absolute learning rates
 
 % GET RID OF TRIALS WHERE PE = 0 AND OUTLIER LRs
 
-run_id = data_subjs.id(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-y_data = abs(data_subjs.up(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2));
-bins = bins(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-binned_data = binned_data(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
+valid_trials = data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2; % selection vector defined once and reused below (both here and for the contrast-difference bins further down)
 
-% MEAN ABSOLUTE UP for PE BINS
+% MEAN ABSOLUTE UP for PE BINS -- shared binning/averaging logic lives in
+% Figures/utilities/binned_analysis.m so figure4.m can reuse it too
 
-avg_ydata_bins = NaN(nbins,num_subjs); 
-avg_behv_bins = NaN(nbins,num_subjs); 
-for b = 1:nbins
-    for n = 1:num_subjs
-        bins_subj = bins(run_id == id_subjs(n));
-        y_data_subj = y_data(run_id == id_subjs(n));
-        binned_data_subj = binned_data(run_id == id_subjs(n));
-        avg_behv_bins(b,n) = nanmean(binned_data_subj(bins_subj == b));
-        avg_ydata_bins(b,n) = nanmean(y_data_subj(bins_subj == b));
-    end
-end
-avg_ydata = nanmean(avg_ydata_bins,2);
-avg_binneddata = nanmean(avg_behv_bins,2);
-sem_ydata = nanstd(avg_ydata_bins,0,2)./sqrt(num_subjs);
+[avg_ydata,avg_binneddata,sem_ydata] = binned_analysis(binned_data,abs(data_subjs.up),data_subjs.id,valid_trials,id_subjs,num_subjs,nbins);
 
 % PLOT
 
@@ -139,33 +122,11 @@ box(ax2,"off");
 % INITIALISE VARS TO BE PLOTTED
 
 binned_data = abs(data_subjs.con_diff_choice); % absolute contrast difference
-nbins = 10; % number of bins
-bin_edges = prctile(binned_data, 0:10:100); % calculate percentile edges
-bins = discretize(binned_data, bin_edges); % bin contrast differences 
 
-% GET RID OF TRIALS WHERE PE = 0 AND OUTLIER LRs
+% MEAN ABSOLUTE UP for CONTRAST DIFFERENCE BINS -- nbins and valid_trials
+% reused from the PE-bins block above (identical trial filter)
 
-run_id = data_subjs.id(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-y_data = abs(data_subjs.up(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2));
-bins = bins(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-binned_data = binned_data(data_subjs.pe ~= 0 & abs(data_subjs.lr)<=2);
-
-% MEAN ABSOLUTE UP for CONTRAST DIFFERENCE BINS
-
-avg_ydata_bins = NaN(nbins,num_subjs); 
-avg_behv_bins = NaN(nbins,num_subjs); 
-for b = 1:nbins
-    for n = 1:num_subjs
-        bins_subj = bins(run_id == id_subjs(n));
-        y_data_subj = y_data(run_id == id_subjs(n));
-        binned_data_subj = binned_data(run_id == id_subjs(n));
-        avg_behv_bins(b,n) = nanmean(binned_data_subj(bins_subj == b));
-        avg_ydata_bins(b,n) = nanmean(y_data_subj(bins_subj == b));
-    end
-end
-avg_ydata = nanmean(avg_ydata_bins,2);
-avg_binneddata = nanmean(avg_behv_bins,2);
-sem_ydata = nanstd(avg_ydata_bins,0,2)./sqrt(num_subjs);
+[avg_ydata,avg_binneddata,sem_ydata] = binned_analysis(binned_data,abs(data_subjs.up),data_subjs.id,valid_trials,id_subjs,num_subjs,nbins);
 
 % PLOT
 
