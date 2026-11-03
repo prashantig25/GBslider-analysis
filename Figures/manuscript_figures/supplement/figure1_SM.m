@@ -231,6 +231,11 @@ title(strcat("r = ",{' '},num2str(round(rho ...
 set(gca,'Color','none','FontName','Arial','FontSize',font_size)
 set(gca,'LineWidth',line_width)
 
+% MATCH X AND Y AXIS LIMITS so absolute and signed LR are shown on the same scale
+axis_limits = [min([xlim,ylim]), max([xlim,ylim])];
+xlim(axis_limits);
+ylim(axis_limits);
+
 save_table_e = table("subplot_e",round(rho,2),0.001,96,'VariableNames',{'name','rho','pval','df'});
 save_table = vertcat(save_table_a,save_table_b,save_table_e);
 safe_saveall(strcat(save_figures,filesep,'figure1_SM.csv'),save_table);
@@ -308,7 +313,7 @@ xlabel('Prediction error')
 ylabel('Update')
 title('')
 adjust_figprops(ax8,font_name,font_size,line_width);
-l = legend('Outcome','Dis-confirming outcome','Confirming outcome','Location','best');
+l = legend('Outcome','Disconfirming outcome','Confirming outcome','Location','best');
 l.EdgeColor = 'none';
 l.Color = 'none';
 l.ItemTokenSize = [7 7];
