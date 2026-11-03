@@ -128,6 +128,7 @@ yticklabels(ax3,{'Fixed LR','Belief state','Salience','Congruence','Confirmation
 title(ax3,'Signed LR analysis','FontWeight','normal') % title
 adjust_figprops(ax3,font_name,font_size,line_width,xlim_vals,ylim_vals) % adjust figure properties
 box(ax3,'off')
+add_corr_text(ax3,correlation_signed,font_size) % overlay correlation coefficient on each square
 
 imagesc(ax4,correlation_abs)
 colormap(ax4,flipud(bone));
@@ -136,6 +137,7 @@ xticklabels(ax4,{'Fixed LR','Belief-state','Salience','Congruence','Confirmation
 title(ax4,'Absolute LR analysis','FontWeight','normal')
 set(ax4,'YTickLabel', [])
 box(ax4,'off')
+add_corr_text(ax4,correlation_abs,font_size) % overlay correlation coefficient on each square
 
 % ADD SUBPLOT LABELS
 
