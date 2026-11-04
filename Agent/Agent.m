@@ -444,10 +444,33 @@ classdef Agent < agentvars
                 % (observed: "with integration" mu stuck at 0.5). The
                 % actual update now happens in update_mu_from_q, called
                 % explicitly and exactly once per trial from learn().
-                q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)); % numerical polynomial updates
-                q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1);
+
+                % ORIGINAL (no normalization) -- kept for reference/revert,
+                % not deleted. See the NORMALIZATION FIX note below for why
+                % this was changed.
+                % q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)); % numerical polynomial updates
+                % q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1);
+                % obj.q_0 = q_0_num;
+                % obj.q_1 = q_1_num ;
+
+                % NORMALIZATION FIX: eval_ana==1 (above) divides by a
+                % normalizing constant C built from its own current G,
+                % which makes the update exactly neutral when the outcome
+                % matches the model's own current prediction -- proven
+                % algebraically and numerically (see conversation) to be
+                % why eval_ana==1 resists the o_t=c_t overshoot bug while
+                % this branch (previously undivided, above) doesn't. This
+                % mirrors that exact formula, using the numerical EV
+                % estimate (dot(mu_for_ev, p_mu), freshly computed here
+                % rather than read off obj.G -- obj.G defaults to NaN
+                % before any trial has run, so it isn't valid on trial 1)
+                % in place of eval_ana==1's eval_poly()-based G.
+                G_num = dot(obj.mu_for_ev, obj.p_mu); % current numerical EV estimate, i.e. this trial's pre-update belief
+                C_num = (obj.pi_0 - obj.pi_1) * ((1 - G_num) .^ (1 - obj.r_t)) * (G_num .^ obj.r_t) + obj.pi_1; % normalizing constant, mirrors eval_ana==1's C
+                q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)) / C_num; % numerical polynomial updates, now normalized
+                q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1) / C_num;
                 obj.q_0 = q_0_num;
-                obj.q_1 = q_1_num ;
+                obj.q_1 = q_1_num;
 
             end
         end
