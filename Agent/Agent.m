@@ -371,6 +371,117 @@ classdef Agent < agentvars
         %            sum(voi_matrix(:, 2) .* obj.p_o_giv_u_norm')];
         end
 
+        function int_voi = integrate_voi_sampleAverage(obj, voi, varargin)
+            % function integrate_voi_sampleAverage is an alternative
+            % implementation of "integration" proposed in conversation:
+            % instead of averaging the per-hypothetical-observation
+            % q_0/q_1 VALUES first and then applying ONE combined belief
+            % update (integrate_voi's approach, above), this runs the
+            % FULL single-observation update once per hypothetical
+            % observation -- producing a separate, fully-updated belief
+            % distribution over mu for each -- and then averages those
+            % resulting belief distributions together, committing that
+            % average as the belief carried into the next trial.
+            %
+            % NOTE (see conversation): the belief update itself
+            % (product_new = product_old .* (q_1*p_mu+q_0)) is LINEAR in
+            % q_0/q_1, so "average the inputs, update once" and "update
+            % once per hypothesis, average the outputs" are mathematically
+            % the same operation when both use the same per-observation
+            % q_0/q_1 formula and the same weighting across hypothetical
+            % observations. This method exists so that equivalence (or
+            % any discrepancy -- e.g. from renormalizing each hypothesis
+            % separately before averaging, as done below) can be checked
+            % directly by running both, rather than only argued
+            % algebraically.
+            %
+            % The 20 hypothetical observations reused here are the same
+            % obj.set_o grid integrate_voi uses (not fresh random
+            % samples), and the average below is weighted by the same
+            % Gaussian observation-likelihood (obj.p_o_giv_u_norm) rather
+            % than an unweighted mean -- an unweighted mean over this
+            % fixed, evenly-spaced grid would implicitly treat every
+            % hypothetical observation as equally likely, which isn't
+            % true under Gaussian perceptual noise, and would be a
+            % second, confounding change on top of the one this method is
+            % meant to isolate (the ORDER of averaging vs updating).
+            %
+            % This method is NOT currently called by learn() -- it is
+            % provided as a standalone alternative, not wired into the
+            % active with-integration path, so it does not change existing
+            % simulation behavior. It only supports voi==1 (belief/q
+            % updates, eval_ana==0/numerical only); voi==0 (action values)
+            % and confirmation_bias are not implemented here. To actually
+            % use this in place of integrate_voi, learn() would need to
+            % call this method directly instead of integrate_voi +
+            % update_coefficients + update_mu_from_q, since this method
+            % already commits obj.product/obj.mu/obj.mu_for_ev itself.
+            %
+            % INPUT:
+            %    obj: current object
+            %    voi: must be 1 (polynomial/belief updates) -- see note above
+            %    varargin{1}: r_t (reward)
+
+            if nargin > 2
+                obj.r_t = varargin{1};
+            end
+
+            n_o = length(obj.set_o);
+            obj.p_o_giv_u = normpdf(obj.set_o, obj.o_t, obj.sigma); % observation probabilities, same as integrate_voi
+            if sum(obj.p_o_giv_u) == 0
+                [~, closest_idx] = min(abs(obj.set_o - obj.o_t));
+                obj.p_o_giv_u_norm = zeros(size(obj.p_o_giv_u));
+                obj.p_o_giv_u_norm(closest_idx) = 1;
+            else
+                obj.p_o_giv_u_norm = obj.p_o_giv_u / sum(obj.p_o_giv_u);
+            end
+
+            product_old = obj.product; % this trial's starting belief (pre-update), the shared starting point for every hypothesis
+            pi_matrix = NaN(n_o, 2);
+            product_hypotheses = cell(n_o, 1); % one full resulting (renormalized) belief distribution per hypothetical observation -- a cell array, not a preallocated matrix, so this doesn't assume product_old's shape
+
+            for i = 1:n_o
+                obj.p_s_giv_o(obj.set_o(i));
+                pi_matrix(i, 1) = obj.pi_0;
+                pi_matrix(i, 2) = obj.pi_1;
+                if voi == 1
+                    obj.compute_q(obj.r_t); % this hypothesis's own q_0/q_1
+                end
+
+                % Run update_mu_from_q's own formula, starting fresh from
+                % product_old each time (not yet committed to
+                % obj.product) -- mirrors update_mu_from_q exactly, just
+                % once per hypothesis instead of once per trial.
+                product_hyp = product_old.' .* (obj.q_1 * obj.p_mu + obj.q_0);
+                if sum(product_hyp) > 0
+                    product_hyp = product_hyp / sum(product_hyp); % this hypothesis's own fully-updated, renormalized belief
+                else
+                    product_hyp = ones(size(product_hyp)) / numel(product_hyp);
+                end
+                product_hypotheses{i} = product_hyp;
+            end
+
+            % AVERAGE THE n_o RESULTING (FULLY UPDATED) BELIEF
+            % DISTRIBUTIONS, weighted by how likely each hypothetical
+            % observation actually is -- see note above for why this
+            % isn't an unweighted mean.
+            product_avg = zeros(size(product_hypotheses{1}));
+            for i = 1:n_o
+                product_avg = product_avg + obj.p_o_giv_u_norm(i) * product_hypotheses{i};
+            end
+            if sum(product_avg) > 0
+                product_avg = product_avg / sum(product_avg); % renormalize the average itself
+            end
+
+            obj.product = product_avg;
+            obj.mu = obj.product;
+            obj.mu_for_ev = obj.mu / sum(obj.mu);
+            % Correctly marginalized belief state, mirrors integrate_voi.
+            obj.pi_0 = sum(pi_matrix(:, 1) .* obj.p_o_giv_u_norm');
+            obj.pi_1 = sum(pi_matrix(:, 2) .* obj.p_o_giv_u_norm');
+            int_voi = [obj.pi_0, obj.pi_1];
+        end
+
         function decide_e(obj, o_t)
             % function decide_e makes an economic decision (obj.a_t) based for the agent and
             % uses softmax policy to make a choice for the agent.
@@ -445,32 +556,37 @@ classdef Agent < agentvars
                 % actual update now happens in update_mu_from_q, called
                 % explicitly and exactly once per trial from learn().
 
-                % ORIGINAL (no normalization) -- kept for reference/revert,
-                % not deleted. See the NORMALIZATION FIX note below for why
-                % this was changed.
-                % q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)); % numerical polynomial updates
-                % q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1);
-                % obj.q_0 = q_0_num;
-                % obj.q_1 = q_1_num ;
-
-                % NORMALIZATION FIX: eval_ana==1 (above) divides by a
-                % normalizing constant C built from its own current G,
-                % which makes the update exactly neutral when the outcome
-                % matches the model's own current prediction -- proven
-                % algebraically and numerically (see conversation) to be
-                % why eval_ana==1 resists the o_t=c_t overshoot bug while
-                % this branch (previously undivided, above) doesn't. This
-                % mirrors that exact formula, using the numerical EV
-                % estimate (dot(mu_for_ev, p_mu), freshly computed here
-                % rather than read off obj.G -- obj.G defaults to NaN
-                % before any trial has run, so it isn't valid on trial 1)
-                % in place of eval_ana==1's eval_poly()-based G.
-                G_num = dot(obj.mu_for_ev, obj.p_mu); % current numerical EV estimate, i.e. this trial's pre-update belief
-                C_num = (obj.pi_0 - obj.pi_1) * ((1 - G_num) .^ (1 - obj.r_t)) * (G_num .^ obj.r_t) + obj.pi_1; % normalizing constant, mirrors eval_ana==1's C
-                q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)) / C_num; % numerical polynomial updates, now normalized
-                q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1) / C_num;
+                % ORIGINAL (no normalization) -- ACTIVE AGAIN. The
+                % NORMALIZATION FIX below has been commented out per
+                % conversation (the proposed alternative is instead
+                % implemented as its own new method, integrate_voi_
+                % sampleAverage, below integrate_voi) -- not deleted, so
+                % it can be reinstated by swapping which block is
+                % commented.
+                q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)); % numerical polynomial updates
+                q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1);
                 obj.q_0 = q_0_num;
-                obj.q_1 = q_1_num;
+                obj.q_1 = q_1_num ;
+
+                % NORMALIZATION FIX (commented out -- see note above):
+                % eval_ana==1 (above) divides by a normalizing constant C
+                % built from its own current G, which makes the update
+                % exactly neutral when the outcome matches the model's own
+                % current prediction -- proven algebraically and
+                % numerically (see conversation) to be why eval_ana==1
+                % resists the o_t=c_t overshoot bug while this branch
+                % (undivided, active above) doesn't. This mirrors that
+                % exact formula, using the numerical EV estimate
+                % (dot(mu_for_ev, p_mu), freshly computed here rather than
+                % read off obj.G -- obj.G defaults to NaN before any trial
+                % has run, so it isn't valid on trial 1) in place of
+                % eval_ana==1's eval_poly()-based G.
+                % G_num = dot(obj.mu_for_ev, obj.p_mu); % current numerical EV estimate, i.e. this trial's pre-update belief
+                % C_num = (obj.pi_0 - obj.pi_1) * ((1 - G_num) .^ (1 - obj.r_t)) * (G_num .^ obj.r_t) + obj.pi_1; % normalizing constant, mirrors eval_ana==1's C
+                % q_0_num = (obj.pi_1 ^ obj.r_t) * (obj.pi_0 ^ (1 - obj.r_t)) / C_num; % numerical polynomial updates, now normalized
+                % q_1_num = ((-1) ^ (obj.r_t + 1)) * (obj.pi_0 - obj.pi_1) / C_num;
+                % obj.q_0 = q_0_num;
+                % obj.q_1 = q_1_num;
 
             end
         end
